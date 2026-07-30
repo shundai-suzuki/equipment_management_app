@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  app:
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile
+    container_name: fuelphp-app
+    ports:
+      - "80:80"
+    volumes:
+      - ../:/var/www/html/my_fuel_project
+    networks:
+      - fuelphp-network
+
+  db:
+    build:
+      context: ../
+      dockerfile: docker/db/Dockerfile
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: php_kadai
+    ports:
+      - "3306:3306"
+    networks:
+      - fuelphp-network
+
+networks:
+  fuelphp-network:
+    driver: bridge

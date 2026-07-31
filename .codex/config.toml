@@ -1,0 +1,84 @@
+# Place this file at <FuelPHP project root>/.codex/config.toml.
+# It overlays the base user config only when this trusted project is active.
+
+approval_policy = "untrusted"
+approvals_reviewer = "user"
+default_permissions = "fuelphp-review"
+web_search = "disabled"
+allow_login_shell = false
+
+# Use the stronger native Windows sandbox only for this project.
+[windows]
+sandbox = "elevated"
+
+# The permission profile does not control the Browser plugin or MCP servers.
+# Disable the browser-capable surfaces inherited from the base user config for
+# this project. Remove these overrides if intentional browser/MCP use is needed.
+[plugins."browser@openai-bundled"]
+enabled = false
+
+[mcp_servers.node_repl]
+enabled = false
+
+[permissions.fuelphp-review]
+description = "Read-only FuelPHP source review with secrets and runtime data denied."
+
+[permissions.fuelphp-review.filesystem]
+":root" = "deny"
+":minimal" = "read"
+"~/.ssh" = "deny"
+"~/.aws" = "deny"
+"~/.config" = "deny"
+"~/.docker" = "deny"
+"~/CodexConfigBackups" = "deny"
+glob_scan_max_depth = 10
+
+[permissions.fuelphp-review.filesystem.":workspace_roots"]
+"." = "read"
+
+"**/.env" = "deny"
+"**/.env.*" = "deny"
+"**/*.env" = "deny"
+"**/*.pem" = "deny"
+"**/*.key" = "deny"
+"**/*.p12" = "deny"
+"**/*.pfx" = "deny"
+"**/*.ppk" = "deny"
+"**/credentials.json" = "deny"
+"**/id_rsa" = "deny"
+"**/id_rsa.*" = "deny"
+"**/*_id_rsa" = "deny"
+"**/.htpasswd" = "deny"
+
+"fuel/app/config/config.php" = "deny"
+"fuel/app/config/db.php" = "deny"
+"fuel/app/config/development/db.php" = "deny"
+"fuel/app/config/production/db.php" = "deny"
+"fuel/app/config/staging/db.php" = "deny"
+"fuel/app/config/test/db.php" = "deny"
+
+"fuel/app/logs" = "deny"
+"fuel/app/cache" = "deny"
+"fuel/app/tmp" = "deny"
+
+# Enable only if this file is known to contain credentials:
+"docker/db/my.cnf" = "deny"
+
+[permissions.fuelphp-review.network]
+enabled = false
+
+[permissions.fuelphp-review.network.unix_sockets]
+"/var/run/docker.sock" = "deny"
+
+[permissions.fuelphp-edit]
+description = "Edit FuelPHP application source; keep secrets/runtime data denied and stay offline."
+extends = "fuelphp-review"
+
+[permissions.fuelphp-edit.filesystem.":workspace_roots"]
+"." = "write"
+"docs" = "read"
+"fuel/core" = "read"
+"fuel/vendor" = "read"
+"composer.lock" = "read"
+"composer.phar" = "read"
+"oil" = "read"

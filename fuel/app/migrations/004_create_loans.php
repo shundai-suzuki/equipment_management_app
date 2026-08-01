@@ -9,18 +9,63 @@ class Create_loans
 		\DBUtil::create_table(
 			'loans', 
 			array(
-				'id' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
-				'employee_id' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
-				'equipment_id' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
-				'due_date' => array('type' => 'date'),
-				'loaned_at' => array('type' => 'date'),
-				'loaned_by' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
+				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'employee_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'equipment_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'due_date' => array('type' => 'date', 'null' => false),
+				'loaned_at' => array('type' => 'date', 'null' => false),
+				'loaned_by' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
 				'returned_at' => array('type' => 'date', 'null' => true),
 				'returned_by' => array('type' => 'int', 'constraint' => 11, 'null' => true),
 				'note' => array('type' => 'varchar', 'constraint' => 255, 'null' => true),
 				'created_at' => array('type' => 'timestamp', 'null' => true),
 				'updated_at' => array('type' => 'timestamp', 'null' => true),
 		), array('id'), false, 'InnoDB', 'utf8mb4');
+		
+		\DBUtil::add_foreign_key(
+			'loans', array(
+				'constraint' => 'fk_loans_employee',
+				'key' => 'employee_id',
+				'reference' => array(
+					'table' => 'employees',
+					'column' => 'id',
+				),
+				'on_update' => 'RESTRICT',
+				'on_delete' => 'RESTRICT',
+		));
+		\DBUtil::add_foreign_key(
+			'loans', array(
+				'constraint' => 'fk_loans_equipment',
+				'key' => 'equipment_id',
+				'reference' => array(
+					'table' => 'equipments',
+					'column' => 'id',
+				),
+				'on_update' => 'RESTRICT',
+				'on_delete' => 'RESTRICT',
+		));
+		\DBUtil::add_foreign_key(
+      'loans', array(
+        'constraint' => 'fk_loans_loaned_by_employee',
+        'key' => 'loaned_by',
+        'reference' => array(
+          'table' => 'employees',
+          'column' => 'id',
+        ),
+        'on_update' => 'RESTRICT',
+        'on_delete' => 'RESTRICT',
+		));
+		\DBUtil::add_foreign_key(
+      'loans', array(
+        'constraint' => 'fk_loans_returned_by_employee',
+        'key' => 'returned_by',
+        'reference' => array(
+          'table' => 'employees',
+          'column' => 'id',
+        ),
+        'on_update' => 'RESTRICT',
+        'on_delete' => 'RESTRICT',
+		));
 
 		\DBUtil::create_index(
 			'loans',
@@ -32,54 +77,22 @@ class Create_loans
 			array('equipment_id', 'returned_at'),
 			'idx_loans_equipment_returned'
 		);
-		\DBUtil::create_index('loans', array('loaned_by'), 'idx_loans_loaned_by');
-		\DBUtil::create_index('loans', array('returned_by'), 'idx_loans_returned_by');
+		\DBUtil::create_index(
+      'loans', 
+      array('loaned_by'), 
+      'idx_loans_loaned_by'
+    );
+		\DBUtil::create_index(
+      'loans', 
+      array('returned_by'), 
+      'idx_loans_returned_by'
+    );
 		\DBUtil::create_index(
 			'loans',
 			array('returned_at', 'due_date'),
 			'idx_loans_returned_due'
 		);
 
-		\DBUtil::add_foreign_key('loans', array(
-			'constraint' => 'fk_loans_employee',
-			'key' => 'employee_id',
-			'reference' => array(
-				'table' => 'employees',
-				'column' => 'id',
-			),
-			'on_update' => 'RESTRICT',
-			'on_delete' => 'RESTRICT',
-		));
-		\DBUtil::add_foreign_key('loans', array(
-			'constraint' => 'fk_loans_equipment',
-			'key' => 'equipment_id',
-			'reference' => array(
-				'table' => 'equipments',
-				'column' => 'id',
-			),
-			'on_update' => 'RESTRICT',
-			'on_delete' => 'RESTRICT',
-		));
-		\DBUtil::add_foreign_key('loans', array(
-			'constraint' => 'fk_loans_loaned_by',
-			'key' => 'loaned_by',
-			'reference' => array(
-				'table' => 'employees',
-				'column' => 'id',
-			),
-			'on_update' => 'RESTRICT',
-			'on_delete' => 'RESTRICT',
-		));
-		\DBUtil::add_foreign_key('loans', array(
-			'constraint' => 'fk_loans_returned_by',
-			'key' => 'returned_by',
-			'reference' => array(
-				'table' => 'employees',
-				'column' => 'id',
-			),
-			'on_update' => 'RESTRICT',
-			'on_delete' => 'RESTRICT',
-		));
 
 		$table = \DB::quote_identifier(\DB::table_prefix('loans'));
 		\DB::query(

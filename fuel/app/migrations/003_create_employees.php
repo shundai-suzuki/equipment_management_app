@@ -9,33 +9,35 @@ class Create_employees
 		\DBUtil::create_table(
 			'employees', 
 			array(
-				'id' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
-				'employee_name' => array('type' => 'varchar', 'constraint' => 30),
-				'department_id' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
-				'role' => array('type' => 'varchar', 'constraint' => 20),
-				'password_hash' => array('type' => 'varchar', 'constraint' => 255),
-				'is_active' => array('type' => 'int', 'constraint' => 1, 'default' => 1),
+				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'employee_name' => array('type' => 'varchar', 'constraint' => 30, 'null' => false),
+				'department_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'role' => array('type' => 'varchar', 'constraint' => 20, 'null' => false),
+				'password_hash' => array('type' => 'varchar', 'constraint' => 255, 'null' => false),
+				'is_active' => array('type' => 'int', 'constraint' => 1, 'null' => false, 'default' => 1),
 				'created_at' => array('type' => 'timestamp', 'null' => true),
 				'updated_at' => array('type' => 'timestamp', 'null' => true),
 				'deleted_at' => array('type' => 'timestamp', 'null' => true),
 		), array('id'), false, 'InnoDB', 'utf8mb4');
+
+		\DBUtil::add_foreign_key(
+			'employees', 
+			array(
+				'constraint' => 'fk_employees_department',
+				'key' => 'department_id',
+				'reference' => array(
+					'table' => 'departments',
+					'column' => 'id',
+				),
+				'on_update' => 'RESTRICT',
+				'on_delete' => 'RESTRICT',
+		));
 
 		\DBUtil::create_index(
 			'employees',
 			array('department_id', 'deleted_at', 'is_active'),
 			'idx_employees_department_deleted_active'
 		);
-
-		\DBUtil::add_foreign_key('employees', array(
-			'constraint' => 'fk_employees_department',
-			'key' => 'department_id',
-			'reference' => array(
-				'table' => 'departments',
-				'column' => 'id',
-			),
-			'on_update' => 'RESTRICT',
-			'on_delete' => 'RESTRICT',
-		));
 
 		$table = \DB::quote_identifier(\DB::table_prefix('employees'));
 		\DB::query(

@@ -6,6 +6,8 @@ class Create_loans
 {
 	public function up()
 	{
+		\Config::set('db.default.collation', 'utf8mb4_unicode_ci');
+		
 		\DBUtil::create_table(
 			'loans', 
 			array(

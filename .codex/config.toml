@@ -63,6 +63,7 @@ glob_scan_max_depth = 10
 
 # Enable only if this file is known to contain credentials:
 "docker/db/my.cnf" = "deny"
+"docker/docker-compose.yml" = "deny"
 
 [permissions.fuelphp-review.network]
 enabled = false

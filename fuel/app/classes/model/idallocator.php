@@ -42,13 +42,14 @@ class Model_IdAllocator extends Model
 		$result = \DB::query(
 			'SELECT GET_LOCK(:lock_name, :lock_timeout) AS lock_acquired'
 		)
-			->parameters(array(
-				'lock_name' => $lock_name,
-				'lock_timeout' => $timeout_seconds,
+			->parameters(
+				array(
+					'lock_name' => $lock_name,
+					'lock_timeout' => $timeout_seconds,
 			))
 			->execute($this->db);
 
-		return (int) $result->get('lock_acquired', 0) === 1;
+		return ((int) $result->get('lock_acquired', 0)) === 1;
 	}
 
 	/**
@@ -63,7 +64,7 @@ class Model_IdAllocator extends Model
 			->param('lock_name', $lock_name)
 			->execute($this->db);
 
-		return (int) $result->get('lock_released', 0) === 1;
+		return ((int) $result->get('lock_released', 0)) === 1;
 	}
 
 	/**
@@ -114,7 +115,7 @@ class Model_IdAllocator extends Model
 	 */
 	public function execute_insert(\Closure $operation, $id)
 	{
-		call_user_func($operation, $id, $this->db);
+		$operation($id, $this->db);
 	}
 
 	/**
@@ -128,8 +129,10 @@ class Model_IdAllocator extends Model
 		$id_identifier = $this->db->quote_identifier('id');
 		$result = \DB::query(
 			'SELECT 1 AS id_exists FROM '.$table_identifier
-			.' WHERE '.$id_identifier.' = :id LIMIT 1'
-		)->param('id', $id)->execute($this->db);
+			.' WHERE '.$id_identifier.' = :id'
+		)
+			->param('id', $id)
+			->execute($this->db);
 
 		return (int) $result->get('id_exists', 0) === 1;
 	}

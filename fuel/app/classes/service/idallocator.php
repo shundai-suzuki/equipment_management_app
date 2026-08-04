@@ -72,102 +72,20 @@ class Service_IdAllocator
 
 		for ($retry_count = 0; $retry_count <= static::MAX_RETRIES; $retry_count++)
 		{
-			$lock_acquired = false;
-			$transaction_started = false;
+			$this->acquire_lock($lock_name);
 
 			try
 			{
-				if ( ! $this->model->acquire_lock($lock_name, static::LOCK_TIMEOUT_SECONDS))
-				{
-					throw new \RuntimeException(
-						'Failed to acquire the ID allocation lock.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-				$lock_acquired = true;
-
-				if ( ! $this->model->start_transaction())
-				{
-					throw new \RuntimeException('Failed to start the ID allocation transaction.');
-				}
-				$transaction_started = true;
-
-				$id = $this->next_id($this->model->max_id($table));
-
-				try
-				{
-					$this->model->execute_insert($operation, $id);
-				}
-				catch (\Database_Exception $e)
-				{
-					if ((int) $e->getCode() !== 1062)
-					{
-						throw $e;
-					}
-
-					$this->rollback_transaction();
-					$transaction_started = false;
-
-					if ( ! $this->model->id_exists($table, $id))
-					{
-						throw $e;
-					}
-
-					if ($retry_count >= static::MAX_RETRIES)
-					{
-						throw new \RuntimeException(
-							'ID allocation conflicted after the maximum retries.',
-							static::CONFLICT_EXCEPTION_CODE,
-							$e
-						);
-					}
-
-					continue;
-				}
-
-				if ( ! $this->model->in_transaction())
-				{
-					$transaction_started = false;
-					throw new \LogicException('The ID allocation operation ended its transaction.');
-				}
-
-				if ( ! $this->model->id_exists($table, $id))
-				{
-					throw new \RuntimeException('The ID allocation operation did not insert the allocated ID.');
-				}
-
-				if ( ! $this->model->commit_transaction())
-				{
-					throw new \RuntimeException('Failed to commit the ID allocation transaction.');
-				}
-
-				if ($this->model->in_transaction())
-				{
-					$this->rollback_transaction();
-					$transaction_started = false;
-					throw new \LogicException('The ID allocation operation left a nested transaction open.');
-				}
-
-				$transaction_started = false;
-
-				return $id;
+				$id = $this->allocate_once($table, $operation, $retry_count);
 			}
 			finally
 			{
-				try
-				{
-					if ($transaction_started)
-					{
-						$this->rollback_transaction();
-					}
-				}
-				finally
-				{
-					if ($lock_acquired)
-					{
-						$this->release_lock($lock_name);
-					}
-				}
+				$this->release_lock($lock_name);
+			}
+
+			if ($id !== null)
+			{
+				return $id;
 			}
 		}
 
@@ -175,6 +93,150 @@ class Service_IdAllocator
 			'ID allocation conflicted after the maximum retries.',
 			static::CONFLICT_EXCEPTION_CODE
 		);
+	}
+
+	/**
+	 * Execute one allocation attempt inside a transaction.
+	 *
+	 * @param   string   $table
+	 * @param   Closure  $operation
+	 * @param   int      $retry_count
+	 * @return  int|null
+	 */
+	protected function allocate_once($table, \Closure $operation, $retry_count)
+	{
+		if ( ! $this->model->start_transaction())
+		{
+			throw new \RuntimeException('Failed to start the ID allocation transaction.');
+		}
+
+		try
+		{
+			$id = $this->next_id($this->model->max_id($table));
+
+			if ( ! $this->execute_insert($table, $id, $operation, $retry_count))
+			{
+				return null;
+			}
+
+			$this->commit_allocation($table, $id);
+
+			return $id;
+		}
+		finally
+		{
+			if ($this->model->in_transaction())
+			{
+				$this->rollback_transaction();
+			}
+		}
+	}
+
+	/**
+	 * Execute the insert and report whether the attempt may be committed.
+	 *
+	 * @param   string   $table
+	 * @param   int      $id
+	 * @param   Closure  $operation
+	 * @param   int      $retry_count
+	 * @return  bool
+	 */
+	protected function execute_insert($table, $id, \Closure $operation, $retry_count)
+	{
+		try
+		{
+			$this->model->execute_insert($operation, $id);
+		}
+		catch (\Database_Exception $e)
+		{
+			return $this->handle_insert_exception($table, $id, $retry_count, $e);
+		}
+
+		return true;
+	}
+
+	/**
+	 * Handle a database exception raised by the insert operation.
+	 * Except for exception 1062, simply pass it up the chain
+	 *
+	 * @param   string              $table
+	 * @param   int                 $id
+	 * @param   int                 $retry_count
+	 * @param   Database_Exception  $exception
+	 * @return  bool
+	 */
+	protected function handle_insert_exception($table, $id, $retry_count, \Database_Exception $exception)
+	{
+		if ((int) $exception->getCode() !== 1062)
+		{
+			throw $exception;
+		}
+
+		$this->rollback_transaction();
+
+		if ( ! $this->model->id_exists($table, $id))
+		{
+			throw $exception;
+		}
+
+		if ($retry_count >= static::MAX_RETRIES)
+		{
+			throw new \RuntimeException(
+				'ID allocation conflicted after the maximum retries.',
+				static::CONFLICT_EXCEPTION_CODE,
+				$exception
+			);
+		}
+
+		return false;
+	}
+
+	/**
+	 * Validate and commit the completed ID allocation.
+	 *
+	 * @param   string  $table
+	 * @param   int     $id
+	 * @return  void
+	 */
+	protected function commit_allocation($table, $id)
+	{
+		if ( ! $this->model->in_transaction())
+		{
+			throw new \LogicException('The ID allocation operation ended its transaction.');
+		}
+
+		if ( ! $this->model->id_exists($table, $id))
+		{
+			throw new \RuntimeException('The ID allocation operation did not insert the allocated ID.');
+		}
+
+		if ( ! $this->model->commit_transaction())
+		{
+			throw new \RuntimeException('Failed to commit the ID allocation transaction.');
+		}
+
+		if ($this->model->in_transaction())
+		{
+			$this->rollback_transaction();
+			throw new \LogicException('The ID allocation operation left a nested transaction open.');
+		}
+	}
+
+	/**
+	 * Acquire the named ID allocation lock.
+	 *
+	 * @param   string  $lock_name
+	 * @return  void
+	 */
+	protected function acquire_lock($lock_name)
+	{
+		if ( ! $this->model->acquire_lock($lock_name, static::LOCK_TIMEOUT_SECONDS))
+		{
+			throw new \RuntimeException(
+				'Failed to acquire the ID allocation lock.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
 	}
 
 	/**

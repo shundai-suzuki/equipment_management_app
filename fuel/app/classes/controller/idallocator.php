@@ -32,6 +32,7 @@ abstract class Controller_IdAllocator extends Controller
 
 	/**
 	 * Delegate ID allocation to the Service layer.
+	 * Controller(INSERT -> operation) -> Service -> Model -> DB
 	 *
 	 * @param   string   $table
 	 * @param   Closure  $operation

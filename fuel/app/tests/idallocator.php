@@ -14,10 +14,12 @@ class Tests_IdAllocator_Model
 	public $release_count = 0;
 	public $rollback_count = 0;
 	public $commit_count = 0;
+	public $disconnect_count = 0;
 	public $acquire_result = true;
 	public $start_result = true;
 	public $commit_result = true;
 	public $rollback_result = true;
+	public $disconnect_result = true;
 
 	public function in_transaction()
 	{
@@ -72,7 +74,19 @@ class Tests_IdAllocator_Model
 		return $this->rollback_result;
 	}
 
-	public function max_id($table)
+	public function disconnect()
+	{
+		$this->disconnect_count++;
+
+		if ($this->disconnect_result)
+		{
+			$this->transaction = false;
+		}
+
+		return $this->disconnect_result;
+	}
+
+	public function get_max_id($table)
 	{
 		return $this->max_id;
 	}
@@ -142,21 +156,21 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 	 */
 	public function test_service_calculates_next_id_and_commits()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$service = new Service_IdAllocator($test_model);
 		$id = $service->allocate(
 			'departments',
-			function ($allocated_id, $connection) use ($model)
+			function ($allocated_id, $connection) use ($test_model)
 			{
 				$this->assertSame(42, $allocated_id);
 				$this->assertSame('test-connection', $connection);
-				$model->inserted = true;
+				$test_model->inserted = true;
 			}
 		);
 
 		$this->assertSame(42, $id);
-		$this->assertSame(1, $model->commit_count);
-		$this->assertSame(1, $model->release_count);
+		$this->assertSame(1, $test_model->commit_count);
+		$this->assertSame(1, $test_model->release_count);
 	}
 
 	/**
@@ -182,9 +196,9 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 	 */
 	public function test_service_rolls_back_when_the_id_limit_is_reached()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$model->max_id = Service_IdAllocator::MAX_ID;
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$test_model->max_id = Service_IdAllocator::MAX_ID;
+		$service = new Service_IdAllocator($test_model);
 
 		try
 		{
@@ -193,8 +207,8 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 		}
 		catch (\OverflowException $e)
 		{
-			$this->assertSame(1, $model->rollback_count);
-			$this->assertSame(1, $model->release_count);
+			$this->assertSame(1, $test_model->rollback_count);
+			$this->assertSame(1, $test_model->release_count);
 		}
 	}
 
@@ -203,21 +217,21 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 	 */
 	public function test_service_retries_a_duplicate_allocated_id()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$model->duplicate_once = true;
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$test_model->duplicate_once = true;
+		$service = new Service_IdAllocator($test_model);
 		$id = $service->allocate(
 			'loans',
-			function () use ($model)
+			function () use ($test_model)
 			{
-				$model->inserted = true;
+				$test_model->inserted = true;
 			}
 		);
 
 		$this->assertSame(42, $id);
-		$this->assertSame(2, $model->acquire_count);
-		$this->assertSame(1, $model->rollback_count);
-		$this->assertSame(2, $model->release_count);
+		$this->assertSame(2, $test_model->acquire_count);
+		$this->assertSame(1, $test_model->rollback_count);
+		$this->assertSame(2, $test_model->release_count);
 	}
 
 	/**
@@ -225,9 +239,9 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 	 */
 	public function test_service_does_not_release_an_unacquired_lock()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$model->acquire_result = false;
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$test_model->acquire_result = false;
+		$service = new Service_IdAllocator($test_model);
 
 		try
 		{
@@ -237,8 +251,8 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 		catch (\RuntimeException $e)
 		{
 			$this->assertSame(Service_IdAllocator::CONFLICT_EXCEPTION_CODE, $e->getCode());
-			$this->assertSame(0, $model->release_count);
-			$this->assertSame(0, $model->rollback_count);
+			$this->assertSame(0, $test_model->release_count);
+			$this->assertSame(0, $test_model->rollback_count);
 		}
 	}
 
@@ -247,9 +261,9 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 	 */
 	public function test_service_releases_the_lock_when_transaction_start_fails()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$model->start_result = false;
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$test_model->start_result = false;
+		$service = new Service_IdAllocator($test_model);
 
 		try
 		{
@@ -259,8 +273,8 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 		catch (\RuntimeException $e)
 		{
 			$this->assertSame('Failed to start the ID allocation transaction.', $e->getMessage());
-			$this->assertSame(1, $model->release_count);
-			$this->assertSame(0, $model->rollback_count);
+			$this->assertSame(1, $test_model->release_count);
+			$this->assertSame(0, $test_model->rollback_count);
 		}
 	}
 
@@ -269,8 +283,8 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 	 */
 	public function test_service_rolls_back_when_the_insert_does_not_create_the_id()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$service = new Service_IdAllocator($test_model);
 
 		try
 		{
@@ -283,27 +297,27 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 				'The ID allocation operation did not insert the allocated ID.',
 				$e->getMessage()
 			);
-			$this->assertSame(1, $model->rollback_count);
-			$this->assertSame(1, $model->release_count);
+			$this->assertSame(1, $test_model->rollback_count);
+			$this->assertSame(1, $test_model->release_count);
 		}
 	}
 
 	/**
 	 * @test
 	 */
-	public function test_service_rolls_back_when_commit_fails()
+	public function test_service_discards_the_connection_when_commit_fails()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$model->commit_result = false;
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$test_model->commit_result = false;
+		$service = new Service_IdAllocator($test_model);
 
 		try
 		{
 			$service->allocate(
 				'departments',
-				function () use ($model)
+				function () use ($test_model)
 				{
-					$model->inserted = true;
+					$test_model->inserted = true;
 				}
 			);
 			$this->fail('A failed commit was accepted.');
@@ -311,21 +325,22 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 		catch (\RuntimeException $e)
 		{
 			$this->assertSame('Failed to commit the ID allocation transaction.', $e->getMessage());
-			$this->assertSame(1, $model->commit_count);
-			$this->assertSame(1, $model->rollback_count);
-			$this->assertSame(1, $model->release_count);
+			$this->assertSame(1, $test_model->commit_count);
+			$this->assertSame(0, $test_model->rollback_count);
+			$this->assertSame(0, $test_model->release_count);
+			$this->assertSame(1, $test_model->disconnect_count);
 		}
 	}
 
 	/**
 	 * @test
 	 */
-	public function test_service_releases_the_lock_when_rollback_fails()
+	public function test_service_discards_the_connection_when_rollback_fails()
 	{
-		$model = new Tests_IdAllocator_Model();
-		$model->max_id = Service_IdAllocator::MAX_ID;
-		$model->rollback_result = false;
-		$service = new Service_IdAllocator($model);
+		$test_model = new Tests_IdAllocator_Model();
+		$test_model->max_id = Service_IdAllocator::MAX_ID;
+		$test_model->rollback_result = false;
+		$service = new Service_IdAllocator($test_model);
 
 		try
 		{
@@ -335,8 +350,37 @@ class Tests_IdAllocator extends \Fuel\Core\TestCase
 		catch (\RuntimeException $e)
 		{
 			$this->assertSame('Failed to roll back the ID allocation transaction.', $e->getMessage());
-			$this->assertSame(1, $model->rollback_count);
-			$this->assertSame(1, $model->release_count);
+			$this->assertSame(1, $test_model->rollback_count);
+			$this->assertSame(0, $test_model->release_count);
+			$this->assertSame(1, $test_model->disconnect_count);
+		}
+	}
+
+	/**
+	 * @test
+	 */
+	public function test_service_does_not_release_the_lock_when_disconnect_fails()
+	{
+		$test_model = new Tests_IdAllocator_Model();
+		$test_model->max_id = Service_IdAllocator::MAX_ID;
+		$test_model->rollback_result = false;
+		$test_model->disconnect_result = false;
+		$service = new Service_IdAllocator($test_model);
+
+		try
+		{
+			$service->allocate('departments', function () {});
+			$this->fail('A failed connection discard was accepted.');
+		}
+		catch (\RuntimeException $e)
+		{
+			$this->assertSame(
+				'Failed to discard the ID allocation database connection.',
+				$e->getMessage()
+			);
+			$this->assertSame(1, $test_model->rollback_count);
+			$this->assertSame(0, $test_model->release_count);
+			$this->assertSame(1, $test_model->disconnect_count);
 		}
 	}
 

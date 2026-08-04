@@ -32,6 +32,13 @@ class Service_IdAllocator
 	protected $model;
 
 	/**
+	 * Whether the current attempt discarded its database connection.
+	 *
+	 * @var bool
+	 */
+	protected $connection_discarded = false;
+
+	/**
 	 * @param  Model_IdAllocator|null  $model
 	 */
 	public function __construct($model = null)
@@ -72,6 +79,7 @@ class Service_IdAllocator
 
 		for ($retry_count = 0; $retry_count <= static::MAX_RETRIES; $retry_count++)
 		{
+			$this->connection_discarded = false;
 			$this->acquire_lock($lock_name);
 
 			try
@@ -80,7 +88,10 @@ class Service_IdAllocator
 			}
 			finally
 			{
-				$this->release_lock($lock_name);
+				if ( ! $this->connection_discarded)
+				{
+					$this->release_lock($lock_name);
+				}
 			}
 
 			if ($id !== null)
@@ -112,7 +123,7 @@ class Service_IdAllocator
 
 		try
 		{
-			$id = $this->next_id($this->model->max_id($table));
+			$id = $this->next_id($this->model->get_max_id($table));
 
 			if ( ! $this->execute_insert($table, $id, $operation, $retry_count))
 			{
@@ -125,7 +136,7 @@ class Service_IdAllocator
 		}
 		finally
 		{
-			if ($this->model->in_transaction())
+			if ( ! $this->connection_discarded and $this->model->in_transaction())
 			{
 				$this->rollback_transaction();
 			}
@@ -210,10 +221,7 @@ class Service_IdAllocator
 			throw new \RuntimeException('The ID allocation operation did not insert the allocated ID.');
 		}
 
-		if ( ! $this->model->commit_transaction())
-		{
-			throw new \RuntimeException('Failed to commit the ID allocation transaction.');
-		}
+		$this->commit_transaction();
 
 		if ($this->model->in_transaction())
 		{
@@ -293,9 +301,61 @@ class Service_IdAllocator
 	 */
 	protected function rollback_transaction()
 	{
-		if ( ! $this->model->rollback_transaction())
+		try
 		{
+			$rolled_back = $this->model->rollback_transaction();
+		}
+		catch (\Throwable $exception)
+		{
+			$this->discard_connection();
+			throw $exception;
+		}
+
+		if ( ! $rolled_back)
+		{
+			$this->discard_connection();
 			throw new \RuntimeException('Failed to roll back the ID allocation transaction.');
+		}
+	}
+
+	/**
+	 * Commit the active transaction or discard its uncertain connection.
+	 *
+	 * @return  void
+	 * @throws  RuntimeException
+	 */
+	protected function commit_transaction()
+	{
+		try
+		{
+			$committed = $this->model->commit_transaction();
+		}
+		catch (\Throwable $exception)
+		{
+			$this->discard_connection();
+			throw $exception;
+		}
+
+		if ( ! $committed)
+		{
+			$this->discard_connection();
+			throw new \RuntimeException('Failed to commit the ID allocation transaction.');
+		}
+	}
+
+	/**
+	 * Discard a connection whose transaction could not be ended safely.
+	 *
+	 * @return  void
+	 * @throws  RuntimeException
+	 */
+	protected function discard_connection()
+	{
+		$this->connection_discarded = true;
+
+		if ( ! $this->model->disconnect())
+		{
+			throw new \RuntimeException('Failed to discard the ID allocation database connection.');
 		}
 	}
 

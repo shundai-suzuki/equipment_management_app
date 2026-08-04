@@ -489,9 +489,9 @@ erDiagram
 
 - ID採番は`Controller -> Service_IdAllocator -> Model_IdAllocator -> DB`の順に呼び出す。ControllerはServiceだけを呼び、ServiceはModelを呼び出し、ControllerからModelまたはDBを直接呼ばない。
 - `Service_IdAllocator`は対象テーブル名を`departments`、`employees`、`equipments`、`loans`の許可リストに限定し、`MAX(id)`からの次ID計算、符号付きINT上限判定、PK重複時の再試行判断を担当する。
-- `Model_IdAllocator`は同一DB接続での`GET_LOCK('id_alloc:<table>', 5)`、トランザクション、`MAX(id)`取得、採番ID存在確認、登録コールバックの実行、`RELEASE_LOCK()`を担当する。IDの加算や上限判定は行わない。
+- `Model_IdAllocator`は同一DB接続での`GET_LOCK('id_alloc:<table>', 5)`、トランザクション、`MAX(id)`取得、採番ID存在確認、登録コールバックの実行、`RELEASE_LOCK()`、トランザクション終了失敗時の接続破棄を担当する。IDの加算や上限判定は行わない。
 - 新規登録ではModelが名前付きロックを取得してからトランザクションを開始し、ServiceがModelから受け取った`MAX(id)`へ1を加えて候補IDを求める。候補が符号付きINTの上限2,147,483,647を超える場合は登録を停止する。
-- バックエンドは候補IDを0から置換してINSERTし、COMMITまたはROLLBACKを完了してから`finally`で`RELEASE_LOCK()`する。ロック解放前に必ずトランザクションを終了し、次の採番処理が未コミットIDを見落とさないようにする。
+- バックエンドは候補IDを0から置換してINSERTし、COMMITまたはROLLBACKを完了してから`finally`で`RELEASE_LOCK()`する。ロック解放前に必ずトランザクションを終了し、次の採番処理が未コミットIDを見落とさないようにする。COMMITまたはROLLBACKに失敗した場合は同じ接続で`RELEASE_LOCK()`を実行せず、Model経由でDB接続を破棄して未完了トランザクションと接続単位の名前付きロックを終了させる。
 - PK重複時はROLLBACKとロック解放後に再取得・再採番して最大3回まで再試行し、解消しなければ409とする。
 - フロントエンドは登録成功応答の`data.id`が正の整数であることを確認し、Knockout.jsの作成モデルが保持する0を応答IDへ置換する。0または既存IDを新規登録結果として受理しない。
 - 貸出登録と返却はInnoDBトランザクションで処理する。
@@ -1206,7 +1206,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - 認証試行制限状態のJSONスキーマ、1KiB上限、排他更新、部分書込み、破損、シンボリックリンク、権限エラー、期限切れ清掃。
 - 日付、期間、文字数、ページング、許可値の入力検証。
 - カテゴリの必須、20文字上限、前後空白除去、複数値拒否を検証する。
-- `Controller_IdAllocator`がServiceだけを呼ぶこと、`Service_IdAllocator`の許可テーブル、`MAX(id)+1`、空テーブル、PK重複時再試行、INT上限、`Model_IdAllocator`の名前付きロック取得・解放、トランザクション、タイムアウトを検証する。
+- `Controller_IdAllocator`がServiceだけを呼ぶこと、`Service_IdAllocator`の許可テーブル、`MAX(id)+1`、空テーブル、PK重複時再試行、INT上限、`Model_IdAllocator`の名前付きロック取得・解放、トランザクション、タイムアウト、COMMIT・ROLLBACK失敗時の接続破棄と明示的なロック解放の抑止を検証する。
 - 新規作成ViewModelが`id=0`で始まり、成功応答の正のIDへ置換され、0または重複IDの応答を拒否することを検証する。
 - 備品IDと貸出IDを正の整数として検証し、業務番号の生成処理を持たないこと。
 - `returned_at`の有無による貸出中・返却済み判定と、総数、貸出中数、利用可能数を正しく算出すること。

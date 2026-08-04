@@ -92,10 +92,20 @@ class Model_IdAllocator extends Model
 	}
 
 	/**
+	 * Discard the database connection after transaction cleanup fails.
+	 *
+	 * @return  bool
+	 */
+	public function disconnect()
+	{
+		return $this->db->disconnect();
+	}
+
+	/**
 	 * @param   string  $table
 	 * @return  int|string
 	 */
-	public function max_id($table)
+	public function get_max_id($table)
 	{
 		$table_identifier = $this->quoted_table($table);
 		$id_identifier = $this->db->quote_identifier('id');

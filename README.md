@@ -49,6 +49,7 @@ ID採番は `Controller -> Service -> Model -> DB` の順に呼び出します�
 - Controllerは登録処理から`Service_IdAllocator`を呼び出します。任意テーブルを採番するHTTP APIは公開しません。
 - Serviceは許可テーブルの検証、次IDの計算、上限判定、重複時の再試行判断を担当します。
 - ModelはFuelPHP DBクラスを使用した名前付きロック、トランザクション、最大ID取得、ID存在確認、登録処理の実行を担当します。
+- COMMITまたはROLLBACKに失敗した場合は、Model経由でDB接続を破棄し、同じ接続に対する明示的なロック解放は行いません。
 
 ## ログについて
 - **アクセスログ**: Dockerのコンテナのログ

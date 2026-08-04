@@ -12,6 +12,8 @@
 abstract class Controller_IdAllocator extends Controller
 {
 	/**
+	 * Service used to allocate IDs.
+	 *
 	 * @var Service_IdAllocator
 	 */
 	protected $id_allocator_service;

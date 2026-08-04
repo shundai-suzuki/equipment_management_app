@@ -135,6 +135,8 @@ class Model_IdAllocator extends Model
 	}
 
 	/**
+	 * Quote the target table name for an SQL statement.
+	 *
 	 * @param   string  $table
 	 * @return  string
 	 */

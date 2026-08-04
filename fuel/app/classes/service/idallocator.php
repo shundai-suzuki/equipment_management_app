@@ -178,6 +178,8 @@ class Service_IdAllocator
 	}
 
 	/**
+	 * Ensure that the target table supports ID allocation.
+	 *
 	 * @param   string  $table
 	 * @return  void
 	 * @throws  InvalidArgumentException
@@ -191,6 +193,8 @@ class Service_IdAllocator
 	}
 
 	/**
+	 * Calculate the next positive ID from the current maximum ID.
+	 *
 	 * @param   int|string  $max_id
 	 * @return  int
 	 * @throws  OverflowException
@@ -220,6 +224,8 @@ class Service_IdAllocator
 	}
 
 	/**
+	 * Roll back the active ID allocation transaction.
+	 *
 	 * @return  void
 	 * @throws  RuntimeException
 	 */
@@ -232,6 +238,8 @@ class Service_IdAllocator
 	}
 
 	/**
+	 * Release the named ID allocation lock.
+	 *
 	 * @param   string  $lock_name
 	 * @return  void
 	 * @throws  RuntimeException

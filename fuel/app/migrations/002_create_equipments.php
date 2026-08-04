@@ -6,31 +6,21 @@ class Create_equipments
 {
 	public function up()
 	{
+		\Config::set('db.default.collation', 'utf8mb4_unicode_ci');
+		
 		\DBUtil::create_table(
 			'equipments', 
 			array(
-				'id' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
-				'name' => array('type' => 'varchar', 'constraint' => 255),
-				'department_id' => array('type' => 'int', 'constraint' => 11, 'default' => 0),
-				'category' => array('type' => 'varchar', 'constraint' => 20),
-				'total_amount' => array('type' => 'int', 'constraint' => 10),
+				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'name' => array('type' => 'varchar', 'constraint' => 255, 'null' => false),
+				'department_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'category' => array('type' => 'varchar', 'constraint' => 20, 'null' => false),
+				'total_amount' => array('type' => 'int', 'constraint' => 10, 'null' => false),
 				'description' => array('type' => 'varchar', 'constraint' => 255, 'null' => true, 'default' => null),
 				'created_at' => array('type' => 'timestamp', 'null' => true),
 				'updated_at' => array('type' => 'timestamp', 'null' => true),
 				'deleted_at' => array('type' => 'timestamp', 'null' => true),
 		), array('id'), false, 'InnoDB', 'utf8mb4');
-
-		\DBUtil::create_index(
-			'equipments',
-			array('department_id', 'category', 'deleted_at'),
-			'idx_equipments_department_category_deleted'
-		);
-		\DBUtil::create_index(
-			'equipments',
-			array('department_id', 'name'),
-			'uq_equipments_department_name',
-			'UNIQUE'
-		);
 
 		\DBUtil::add_foreign_key(
 			'equipments', 
@@ -44,6 +34,18 @@ class Create_equipments
 				'on_update' => 'RESTRICT',
 				'on_delete' => 'RESTRICT',
 		));
+
+		\DBUtil::create_index(
+			'equipments',
+			array('department_id', 'category', 'deleted_at'),
+			'idx_equipments_department_category_deleted'
+		);
+		\DBUtil::create_index(
+			'equipments',
+			array('department_id', 'name'),
+			'uq_equipments_department_name',
+			'UNIQUE'
+		);
 
 		$table = \DB::quote_identifier(\DB::table_prefix('equipments'));
 		\DB::query(

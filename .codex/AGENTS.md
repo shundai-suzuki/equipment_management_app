@@ -487,8 +487,10 @@ erDiagram
 
 ### トランザクション・排他
 
-- `IdAllocator`は対象テーブル名を`departments`、`employees`、`equipments`、`loans`の許可リストに限定する。
-- 新規登録では同一DB接続で`GET_LOCK('id_alloc:<table>', 5)`を取得してからトランザクションを開始し、`SELECT COALESCE(MAX(id), 0) + 1`で候補IDを求める。候補が符号付きINTの上限2,147,483,647を超える場合は登録を停止する。
+- ID採番は`Controller -> Service_IdAllocator -> Model_IdAllocator -> DB`の順に呼び出す。ControllerはServiceだけを呼び、ServiceはModelを呼び出し、ControllerからModelまたはDBを直接呼ばない。
+- `Service_IdAllocator`は対象テーブル名を`departments`、`employees`、`equipments`、`loans`の許可リストに限定し、`MAX(id)`からの次ID計算、符号付きINT上限判定、PK重複時の再試行判断を担当する。
+- `Model_IdAllocator`は同一DB接続での`GET_LOCK('id_alloc:<table>', 5)`、トランザクション、`MAX(id)`取得、採番ID存在確認、登録コールバックの実行、`RELEASE_LOCK()`を担当する。IDの加算や上限判定は行わない。
+- 新規登録ではModelが名前付きロックを取得してからトランザクションを開始し、ServiceがModelから受け取った`MAX(id)`へ1を加えて候補IDを求める。候補が符号付きINTの上限2,147,483,647を超える場合は登録を停止する。
 - バックエンドは候補IDを0から置換してINSERTし、COMMITまたはROLLBACKを完了してから`finally`で`RELEASE_LOCK()`する。ロック解放前に必ずトランザクションを終了し、次の採番処理が未コミットIDを見落とさないようにする。
 - PK重複時はROLLBACKとロック解放後に再取得・再採番して最大3回まで再試行し、解消しなければ409とする。
 - フロントエンドは登録成功応答の`data.id`が正の整数であることを確認し、Knockout.jsの作成モデルが保持する0を応答IDへ置換する。0または既存IDを新規登録結果として受理しない。
@@ -573,8 +575,8 @@ erDiagram
 
 ### アーキテクチャ・DBアクセス
 
-- FuelPHPではMVCの設計方法に従い、Controller、Service、Repository、View / ViewModelの責務を分離すること。
-- FuelPHPのORMは使用しないこと。DBアクセスはFuelPHPのDBクラスを使用し、Repositoryへ集約すること。
+- FuelPHPではMVCの設計方法に従い、Controller、Service、Model / Repository、View / ViewModelの責務を分離すること。
+- FuelPHPのORMは使用しないこと。DBアクセスはFuelPHPのDBクラスを使用し、通常の業務データはRepositoryへ集約する。ID採番だけは`Model_IdAllocator`へ集約し、`Controller -> Service -> Model -> DB`の順序を守る。
 
 ### インデント・空白
 
@@ -741,7 +743,8 @@ MVP対象外とし、物品状態と個体識別の列、入力、タグ、検�
 | --- | --- |
 | Controller | HTTP入力、`before()`、レスポンス整形 |
 | Validator | 形式、必須、長さ、日付の検証 |
-| Service | 認可、業務ルール、状態遷移、トランザクション、監査 |
+| Service | 認可、業務ルール、状態遷移、監査。ID採番では次ID計算、上限判定、再試行判断 |
+| Model | ID採番に必要なFuelPHP DBクラス操作、名前付きロック、トランザクション、登録コールバック実行 |
 | Repository | FuelPHP DBクラスによる検索、CRUD、行ロック |
 | State Store | 認証試行制限状態のファイル読込、排他更新、削除 |
 | View / ViewModel | HTML表示、Knockout.jsによる画面状態と非同期通信 |
@@ -759,6 +762,7 @@ fuel/app/
       equipment.php
       loans.php
       admin.php
+      idallocator.php
     service/
       authservice.php
       employeeservice.php
@@ -767,6 +771,8 @@ fuel/app/
       loanservice.php
       idallocator.php
       auditservice.php
+    model/
+      idallocator.php
     logging/
       jsonlinewriter.php
     security/
@@ -796,13 +802,15 @@ public/
 | --- | --- |
 | `Controller_Base` | 認証、CSRF、共通ヘッダ |
 | `Controller_Admin` | 管理者認可 |
+| `Controller_IdAllocator` | 登録系Controller用のID採番入口。`Service_IdAllocator`だけを呼び出し、HTTP公開用の採番APIは持たない |
 | `AuthService` | ログイン、ログアウト、パスワード |
 | `LoginRateLimitStore` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
 | `EmployeeService` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
 | `DepartmentService` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
 | `EquipmentService` | 備品在庫CRUD、数量検証、部署変更制御 |
 | `LoanService` | 管理者による貸出登録・返却、在庫再検証、返却期限保持 |
-| `IdAllocator` | 許可された4テーブルのIDをMySQL名前付きロック下で採番し、0や重複IDの保存を防止 |
+| `Service_IdAllocator` | 許可テーブル検証、次ID計算、INT上限判定、PK重複時の再試行判断 |
+| `Model_IdAllocator` | FuelPHP DBクラスによる名前付きロック、トランザクション、最大ID取得、ID存在確認、登録コールバック実行 |
 | `EquipmentRepository` | FuelPHP DBクラスで物理テーブル`equipments`を操作し、`total_amount`を含む許可列だけを読み書き |
 | `AuditService` | 監査項目の選別、マスキング、JSON Lines生成 |
 | `JsonLineWriter` | 固定パスのログファイルへ排他追記、書込み結果の検証 |
@@ -1198,7 +1206,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - 認証試行制限状態のJSONスキーマ、1KiB上限、排他更新、部分書込み、破損、シンボリックリンク、権限エラー、期限切れ清掃。
 - 日付、期間、文字数、ページング、許可値の入力検証。
 - カテゴリの必須、20文字上限、前後空白除去、複数値拒否を検証する。
-- `IdAllocator`の許可テーブル、名前付きロック取得・解放、`MAX(id)+1`、空テーブル、PK重複時再試行、タイムアウト、INT上限を検証する。
+- `Controller_IdAllocator`がServiceだけを呼ぶこと、`Service_IdAllocator`の許可テーブル、`MAX(id)+1`、空テーブル、PK重複時再試行、INT上限、`Model_IdAllocator`の名前付きロック取得・解放、トランザクション、タイムアウトを検証する。
 - 新規作成ViewModelが`id=0`で始まり、成功応答の正のIDへ置換され、0または重複IDの応答を拒否することを検証する。
 - 備品IDと貸出IDを正の整数として検証し、業務番号の生成処理を持たないこと。
 - `returned_at`の有無による貸出中・返却済み判定と、総数、貸出中数、利用可能数を正しく算出すること。
@@ -1279,7 +1287,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 ## 実装順序
 
 1. 現行Dockerfile、Compose、FuelPHP、Composer、Apache、環境別configの実体確認。設定は変更せず、解決されたバージョンと制約を記録する
-2. 4テーブルのマイグレーション、`IdAllocator`、Repository、ログ・認証試行制限状態ディレクトリ
+2. 4テーブルのマイグレーション、Controller・Service・Modelへ分割した`IdAllocator`、Repository、ログ・認証試行制限状態ディレクトリ
 3. Session、認証、認可、認証試行制限Store、CSRF、セキュリティヘッダ
 4. 社員・部署CRUD
 5. 備品在庫CRUD

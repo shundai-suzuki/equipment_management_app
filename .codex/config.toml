@@ -36,6 +36,12 @@ glob_scan_max_depth = 10
 [permissions.fuelphp-review.filesystem.":workspace_roots"]
 "." = "read"
 
+# root
+".env" = "deny"
+".env.*" = "deny"
+"*.env" = "deny"
+
+# sub directory
 "**/.env" = "deny"
 "**/.env.*" = "deny"
 "**/*.env" = "deny"
@@ -83,3 +89,6 @@ extends = "fuelphp-review"
 "composer.lock" = "read"
 "composer.phar" = "read"
 "oil" = "read"
+".git" = "read"
+".codex/config.toml" = "read"
+".codex/AGENTS.md" = "write"

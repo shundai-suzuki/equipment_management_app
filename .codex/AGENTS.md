@@ -1,12 +1,13 @@
 # Codex設計指示
 
-- このファイルは、本案件の要件・設計とUI画像参照を集約した設計正本である。ルート`README.md`は別用途の環境構築資料であり、本ファイルとは同期しない。
+- このファイルは、本案件の要件・設計とUI画像参照を集約した設計正本である。ルート`README.md`は環境構築資料を主用途とし、アーキテクチャ変更の要約だけを本ファイルと同期する。
 - 調査、設計、実装、レビュー、テストの前に、このファイルを最初から最後まで読むこと。
 - UIを扱う場合は、画面IDに対応するリポジトリ内の[`.codex/ui_image/`](ui_image/)配下の画像も確認すること。
-- 設計変更はこのファイルへ反映する。UI画像変更時は`.codex/ui_image/`配下の対応ファイルを更新し、ルート`README.md`やルート`ui_image/`への同期を前提としない。
+- 設計変更はこのファイルへ反映し、アーキテクチャ変更の要約をルート`README.md`へ反映する。UI画像変更時は`.codex/ui_image/`配下の対応ファイルを更新し、ルート`ui_image/`への同期を前提としない。
 - 既存のDocker、Composer、FuelPHP、DBおよび環境別configを現行実装として優先する。本ファイルとの不一致は本ファイル側を修正し、ユーザーから明示的な変更指示がない限り設定ファイルを変更しない。
 - 既存セクションタイトルを変更しないこと。セクション追加は認める。
 - `## 開発スケジュール`と`## 開発条件`の内容を変更しないこと。
+- README.mdは変更せずに、develop_log.mdに実装内容を代わりに追加すること。
 
 ---
 
@@ -303,7 +304,7 @@
 - 社員は`is_active`で一時的な利用停止、`deleted_at`で論理削除を表す。部署・備品は`deleted_at`だけで論理削除を表す。
 - 社員は`deleted_at IS NULL AND is_active = 1`の場合だけログイン・業務操作できる。部署・備品は`deleted_at IS NULL`の場合だけ新規取引に使用できる。
 - 備品は部署別・種類別の在庫を1行で表し、現物1台・1個ごとの行は作成しない。
-- 貸出中数と利用可能数はDBへ重複保存せず、`loans`からRepositoryで算出する。
+- 貸出中数と利用可能数はDBへ重複保存せず、`loans`からModelで算出する。
 - 備品更新、貸出登録、返却は対象行のロックと更新前状態の再検証で競合を検出して409とする。`lock_version`列は使用しない。
 - 外部キー列へインデックスを付与する。
 - `equipments`の非キー属性は`equipments.id`だけに従属させる。同じ名称でも部署が異なる備品は別IDとし、全社共通の商品コードや商品属性は持たない。
@@ -429,7 +430,7 @@ erDiagram
 
 #### `loan_requests`
 
-作成しない。申請機能そのものを廃止し、専用テーブル、外部キー、Repository、Service、APIを持たない。
+作成しない。申請機能そのものを廃止し、専用テーブル、外部キー、Model、Service、APIを持たない。
 
 #### `loans`
 
@@ -469,8 +470,8 @@ erDiagram
 ### 読取用View
 
 - MVPでは必須Viewを設けない。
-- 一覧はRepositoryのJOINで取得し、許可列だけを返す。
-- Repositoryは`loaned_amount = returned_at IS NULLの件数`、`available_amount = total_amount - loaned_amount`として算出する。
+- 一覧はModelのJOINで取得し、許可列だけを返す。
+- Modelは`loaned_amount = returned_at IS NULLの件数`、`available_amount = total_amount - loaned_amount`として算出する。
 - 集計は備品IDごとの派生テーブルをLEFT JOINし、NULL件数を0としてから絞り込みとページングを行う。
 - 算出値が負数になった場合は整合性異常として処理を停止し、エラーログへ記録する。
 
@@ -487,7 +488,9 @@ erDiagram
 
 ### トランザクション・排他
 
-- ID採番は`Controller -> Service_IdAllocator -> Model_IdAllocator -> DB`の順に呼び出す。ControllerはServiceだけを呼び、ServiceはModelを呼び出し、ControllerからModelまたはDBを直接呼ばない。
+- 業務処理は`Controller -> 各Service -> 各Model -> DB`の順に呼び出す。ControllerはServiceだけを呼び、ServiceはModelを呼び出し、ControllerからModelまたはDBを直接呼ばない。
+- 新規登録は各Serviceが共通親`Service_BaseRegistration`の採番付き登録処理を使用し、各Modelが共通親`Model_BaseCrud`の許可列付きINSERTを使用する。テーブル固有の検証は子Service、検索・ロック・復元は子Modelへ置く。
+- ID採番内部は`Service_IdAllocator -> Model_IdAllocator -> DB`の順に呼び出し、採番後の登録コールバックは同じDB接続を各テーブルModelへ渡す。`Service_IdAllocator`と`Model_IdAllocator`はCRUD用共通親の対象外とする。
 - `Service_IdAllocator`は対象テーブル名を`departments`、`employees`、`equipments`、`loans`の許可リストに限定し、`MAX(id)`からの次ID計算、符号付きINT上限判定、PK重複時の再試行判断を担当する。
 - `Model_IdAllocator`は同一DB接続での`GET_LOCK('id_alloc:<table>', 5)`、トランザクション、`MAX(id)`取得、採番ID存在確認、登録コールバックの実行、`RELEASE_LOCK()`、トランザクション終了失敗時の接続破棄を担当する。IDの加算や上限判定は行わない。
 - 新規登録ではModelが名前付きロックを取得してからトランザクションを開始し、ServiceがModelから受け取った`MAX(id)`へ1を加えて候補IDを求める。候補が符号付きINTの上限2,147,483,647を超える場合は登録を停止する。
@@ -506,7 +509,7 @@ erDiagram
 | ID | リスク | 影響 | 対応 |
 | --- | --- | --- | --- |
 | R-01 | PHP 7.3を含む現行Docker構成が旧式で、範囲タグと`latest`により再ビルド時の実体が変わり得る | 高 | 現行設定は変更せず、ビルド時の実バージョンを記録する。実データ利用前にサポート状況と移行計画を別途確認する。 |
-| R-02 | 権限外データ参照 | 高 | Controller、Service、Repositoryで認可・所有者条件を適用する。 |
+| R-02 | 権限外データ参照 | 高 | Controller、Service、Modelで認可・所有者条件を適用する。 |
 | R-03 | 同時操作による在庫超過 | 高 | 備品行のロック、数量再計算、UNIQUE制約、並行テストを行う。 |
 | R-04 | Session固定・盗難 | 高 | HTTPS、Cookie属性、ログイン時Session再作成、期限管理を行う。 |
 | R-05 | XSS・CSRF・SQLインジェクション | 高 | 文脈別出力、独自CSRF、バインド変数を使用する。 |
@@ -575,8 +578,10 @@ erDiagram
 
 ### アーキテクチャ・DBアクセス
 
-- FuelPHPではMVCの設計方法に従い、Controller、Service、Model / Repository、View / ViewModelの責務を分離すること。
-- FuelPHPのORMは使用しないこと。DBアクセスはFuelPHPのDBクラスを使用し、通常の業務データはRepositoryへ集約する。ID採番だけは`Model_IdAllocator`へ集約し、`Controller -> Service -> Model -> DB`の順序を守る。
+- FuelPHPではMVCの設計方法に従い、Controller、Service、Model、View / ViewModelの責務を分離すること。
+- FuelPHPのORMは使用しないこと。DBアクセスはFuelPHPのDBクラスを使用してModelへ集約し、`Controller -> Service -> Model -> DB`の順序を守る。
+- `Model_BaseCrud`はDB接続、テーブル・列の固定許可リスト、採番済みIDを含むINSERTだけを共通化する。`Service_BaseRegistration`は依存注入、厳密な`id=0`検証、`Service_IdAllocator`と各Modelの連携だけを共通化する。
+- `departments`、`employees`、`equipments`、`loans`はそれぞれ`model/table/`と`service/table/`に専用の子Model・子Serviceを持つ。共通親へテーブル固有の入力規則、重複条件、復元、認可、在庫確認を持ち込まない。
 
 ### インデント・空白
 
@@ -592,7 +597,7 @@ erDiagram
 - Controllerは現行`Controller_Welcome`と`action_index()`の形式へ合わせ、`Controller_<Name>`と`action_<name>`を使用する。
 - Oil Taskは現行`fuel/app/tasks/robots.php`へ合わせ、`Fuel\Tasks`名前空間、PascalCaseのクラス名、`run()`を含む静的メソッドを使用する。
 - FuelPHPコアAPIを使用する場合は、同一バージョンの既存シグネチャを確認する。URIの可変セグメント置換には現行`Uri::segment_replace($url, $secure = null)`と`*`を使用する。
-- 新しいService、Repository、Validator、ViewModelは、実装時点で同じ層の既存クラスがあればその名前空間、クラス名、ファイル名へ合わせる。対応例がない最初の1クラスだけ、使用する名前空間と命名案をユーザーへ確認し、承認後は同じ層へ継続適用する。
+- 新しいService、Model、Validator、ViewModelは、実装時点で同じ層の既存クラスがあればその名前空間、クラス名、ファイル名へ合わせる。対応例がない最初の1クラスだけ、使用する名前空間と命名案をユーザーへ確認し、承認後は同じ層へ継続適用する。
 - CSSとHTMLの`id`・`class`には小文字のkebab-caseを使用する。PHP識別子にはハイフンを使用しない。JavaScriptは既存ファイルがあればその形式へ合わせ、存在しない場合はcamelCaseを基準案とする。
 - 関数、クラス、変数、ファイル、HTMLの`id`・`class`は、役割や内容が名前から理解できる意味のある名称にすること。
 - CSSおよびHTMLの`id`・`class`名は小文字で記述すること。
@@ -600,7 +605,7 @@ erDiagram
 ### 名前空間
 
 - ControllerはFuelPHP 1.8の現行Controller形式を維持する。Oil Taskは既存どおり`Fuel\Tasks`を使用する。
-- ServiceやRepository等へ新しい名前空間を導入する場合は、既存のautoload設定と同種クラスを先に確認する。設定ファイルの変更が必要な場合は実装を止め、変更対象と理由をユーザーへ確認する。
+- ServiceやModel等へ新しい名前空間を導入する場合は、既存のautoload設定と同種クラスを先に確認する。設定ファイルの変更が必要な場合は実装を止め、変更対象と理由をユーザーへ確認する。
 - 名前空間内からFuelPHPのグローバルクラスへアクセスする場合は、既存Oil Taskの`\Cli`と同様に先頭バックスラッシュを付ける。
 
 ### HTML・CSS
@@ -656,7 +661,7 @@ erDiagram
 - `Controller_Admin::before()`で社員管理・部署管理と管理変更APIの`role === 'ADMIN'`を検証する。
 - 共通画面Controllerはロール別のViewを選ばず、同じViewへ閲覧範囲と`can_*`フラグを渡す。
 - Serviceで貸出登録・返却が管理者操作であること、参照時の所有者、現在の返却状態を再検証する。
-- Repositoryへログイン社員IDまたは管理者条件を渡し、権限外データを取得しない。
+- Modelへログイン社員IDまたは管理者条件を渡し、権限外データを取得しない。
 - 共通一覧APIは社員なら必ず`employee_id = ログイン社員ID`、管理者なら全件を検索条件へ付与し、クライアント指定で閲覧範囲を変更できないようにする。
 
 ## 業務フロー
@@ -704,7 +709,7 @@ erDiagram
 
 ### 消耗品の入出庫
 
-MVP対象外とし、画面、API、Service、Repository、テーブルを実装しない。
+MVP対象外とし、画面、API、Service、Model、テーブルを実装しない。
 
 ## 状態遷移
 
@@ -744,8 +749,7 @@ MVP対象外とし、物品状態と個体識別の列、入力、タグ、検�
 | Controller | HTTP入力、`before()`、レスポンス整形 |
 | Validator | 形式、必須、長さ、日付の検証 |
 | Service | 認可、業務ルール、状態遷移、監査。ID採番では次ID計算、上限判定、再試行判断 |
-| Model | ID採番に必要なFuelPHP DBクラス操作、名前付きロック、トランザクション、登録コールバック実行 |
-| Repository | FuelPHP DBクラスによる検索、CRUD、行ロック |
+| Model | FuelPHP DBクラスによる検索、CRUD、行ロック。ID採番では名前付きロック、トランザクション、登録コールバック実行 |
 | State Store | 認証試行制限状態のファイル読込、排他更新、削除 |
 | View / ViewModel | HTML表示、Knockout.jsによる画面状態と非同期通信 |
 
@@ -764,24 +768,27 @@ fuel/app/
       admin.php
       idallocator.php
     service/
+      baseregistration.php
+      table/
+        department.php
+        employee.php
+        equipment.php
+        loan.php
       authservice.php
-      employeeservice.php
-      departmentservice.php
-      equipmentservice.php
-      loanservice.php
       idallocator.php
       auditservice.php
     model/
+      basecrud.php
+      table/
+        department.php
+        employee.php
+        equipment.php
+        loan.php
       idallocator.php
     logging/
       jsonlinewriter.php
     security/
       loginratelimitstore.php
-    repository/
-      employeerepository.php
-      departmentrepository.php
-      equipmentrepository.php
-      loanrepository.php
     validation/
     viewmodel/
   tasks/
@@ -805,13 +812,18 @@ public/
 | `Controller_IdAllocator` | 登録系Controller用のID採番入口。`Service_IdAllocator`だけを呼び出し、HTTP公開用の採番APIは持たない |
 | `AuthService` | ログイン、ログアウト、パスワード |
 | `LoginRateLimitStore` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
-| `EmployeeService` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
-| `DepartmentService` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
-| `EquipmentService` | 備品在庫CRUD、数量検証、部署変更制御 |
-| `LoanService` | 管理者による貸出登録・返却、在庫再検証、返却期限保持 |
+| `Service_Table_Employee` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
+| `Service_Table_Department` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
+| `Service_Table_Equipment` | 備品在庫CRUD、数量検証、部署変更制御 |
+| `Service_Table_Loan` | 管理者による貸出登録・返却、在庫再検証、返却期限保持 |
+| `Service_BaseRegistration` | テーブル別Serviceへ共通の依存注入、厳密な`id=0`検証、採番付きINSERT連携を提供 |
 | `Service_IdAllocator` | 許可テーブル検証、次ID計算、INT上限判定、PK重複時の再試行判断 |
+| `Model_BaseCrud` | テーブル別Modelへ共通のDB接続、許可列検証、採番済みIDによるINSERTを提供 |
+| `Model_Table_Department` | `departments`の検索、登録、復元 |
+| `Model_Table_Employee` | `employees`の検索、登録、有効状態・管理者状態確認 |
+| `Model_Table_Equipment` | `equipments`の検索、登録、復元、貸出用行ロックと利用可能数確認 |
+| `Model_Table_Loan` | `loans`の登録と貸出・返却データ操作 |
 | `Model_IdAllocator` | FuelPHP DBクラスによる名前付きロック、トランザクション、最大ID取得、ID存在確認、登録コールバック実行 |
-| `EquipmentRepository` | FuelPHP DBクラスで物理テーブル`equipments`を操作し、`total_amount`を含む許可列だけを読み書き |
 | `AuditService` | 監査項目の選別、マスキング、JSON Lines生成 |
 | `JsonLineWriter` | 固定パスのログファイルへ排他追記、書込み結果の検証 |
 | `Fuel\Tasks\Inventorysetup` | 既存`Fuel\Tasks\Robots`の構造へ合わせ、初期部署と最初の管理者を既存Service経由で作成するOil Task |
@@ -1077,7 +1089,7 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 
 ### SEC-05 SQLインジェクション
 
-- RepositoryでFuelPHP DBクラスのバインドを使用する。
+- ModelでFuelPHP DBクラスのバインドを使用する。
 - テーブル名、列名、並び順は許可リストから選ぶ。
 - 外部入力をSQLへ連結しない。
 
@@ -1217,7 +1229,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 ### 結合テスト
 
-- RepositoryのCRUD、論理削除除外、検索、ページング。
+- ModelのCRUD、論理削除除外、検索、ページング。
 - `employees`のCRUDと、借用者・貸出担当者・返却担当者の外部キー参照を確認する。
 - 部署、社員、備品、貸出の登録要求が`id=0`だけを受け付け、バックエンドが正の一意IDへ置換し、DBへ0を保存しないことを確認する。
 - `employees.id`がバックエンド採番の社員番号としてログインと外部キー参照に使用され、社員番号を手入力・変更できないことを確認する。
@@ -1287,7 +1299,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 ## 実装順序
 
 1. 現行Dockerfile、Compose、FuelPHP、Composer、Apache、環境別configの実体確認。設定は変更せず、解決されたバージョンと制約を記録する
-2. 4テーブルのマイグレーション、Controller・Service・Modelへ分割した`IdAllocator`、Repository、ログ・認証試行制限状態ディレクトリ
+2. 4テーブルのマイグレーション、Controller・Service・Modelへ分割した`IdAllocator`、共通親を継承するテーブル別Service・Model、ログ・認証試行制限状態ディレクトリ
 3. Session、認証、認可、認証試行制限Store、CSRF、セキュリティヘッダ
 4. 社員・部署CRUD
 5. 備品在庫CRUD
@@ -1320,7 +1332,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 ### 初期管理者作成
 
 - 初期化Taskは既存`fuel/app/tasks/robots.php`へ合わせ、`namespace Fuel\Tasks;`、クラス`Inventorysetup`、静的メソッド`run()`を持つ`fuel/app/tasks/inventorysetup.php`として実装する。実装時に同種Taskが追加されていれば、その新しい既存形式を優先する。
-- TaskはControllerやRepositoryへ直接SQLを書かず、初期部署と社員の入力を既存`DepartmentService`、`EmployeeService`、`IdAllocator`へ渡す。DBテーブル、列、制約は変更しない。
+- TaskはSQLを直接実行せず、初期部署と社員の入力を既存`Service_Table_Department`、`Service_Table_Employee`、`IdAllocator`へ渡す。DBテーブル、列、制約は変更しない。
 - 起動時に有効な管理者が1人でも存在する場合は処理を拒否し、二重初期化を防ぐ。途中で失敗した場合はトランザクションをロールバックし、管理者だけが作成された不完全状態を残さない。
 - 初期管理者のパスワードをコマンドライン引数、シェル履歴、標準出力、アプリケーションログ、監査ログへ出力しない。安全な入力方法はTask実装直前に、現行`\Cli` APIと実行環境を確認してユーザーへ提示する。
 - 成功時は採番済みの正の社員IDだけを表示し、パスワードやhashを表示しない。監査ログは`action = INITIAL_ADMIN_CREATE`、`actor_employee_id = null`、作成された社員IDを対象として記録する。
@@ -1343,14 +1355,14 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 - マイグレーション適用・ロールバック試験。
 - 貸出中数・利用可能数の列、および部署・備品の`is_active`列が存在しないことを確認する。
-- 旧`users`テーブル・ルート・Service・Repositoryが存在せず、社員管理の名称が`employees`へ統一されていることを確認する。
+- 旧`users`テーブル・ルート・Service・Modelが存在せず、社員管理の名称が`employees`へ統一されていることを確認する。
 - 初回変更フラグ、パスワード期限、一時パスワード用の列・Service・画面遷移が存在しないことを確認する。
 - 部署コード列と社員番号専用列が存在せず、バックエンドが採番した`employees.id`が社員番号として表示・ログイン・外部キー参照に使用されることを確認する。
 - 社員登録時のパスワード設定、任意の本人変更、管理者再設定、既存Session無効化を確認する。
 - 備品の種類と現物を分割する旧テーブルが存在せず、物理テーブルが`equipments`へ統一されていることを確認する。
 - 管理者専用のダッシュボード、備品、貸出HTMLルートが存在せず、共通画面で管理ボタンが権限別に表示されることを確認する。
 - 独立した備品詳細HTMLルートと旧画面画像が存在しないことを確認する。
-- カテゴリ専用テーブル・外部キー・Repository・APIが存在せず、`equipments.category`だけで登録・検索できることを確認する。
+- カテゴリ専用テーブル・外部キー・Model・APIが存在せず、`equipments.category`だけで登録・検索できることを確認する。
 - 4テーブルの主キーが`INT(11) DEFAULT 0`かつ非`AUTO_INCREMENT`で、アプリケーション登録後に0または重複IDが存在しないことを確認する。
 - 業務番号用の列・テーブル・生成Serviceが存在しないことを確認する。
 - 認証試行制限用のDBテーブル・マイグレーションが存在しないことを確認する。
@@ -1358,7 +1370,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - 現行development環境のHTTP、Cookie、CSP、HTTPヘッダ、DB接続、ポート公開範囲を確認し、外部利用前にはTLSを含む追加審査を行う。
 - 監査ログがDBに保存されないこと、`/var/log/fuel/audit.log`へのJSON Lines追記、権限エラー処理、コンテナ削除時の非永続性が設計どおりであることを確認する。
 - 認証試行制限状態が`/var/cache/fuel/login-rate-limit`へ排他保存され、429・503応答、日次清掃、コンテナ削除時の初期化が設計どおりであることを確認する。
-- `loan_requests`テーブル・Repository・Service・APIと、申請・取消・承認・却下・貸出開始処理が存在しないことを確認する。
+- `loan_requests`テーブル・Model・Service・APIと、申請・取消・承認・却下・貸出開始処理が存在しないことを確認する。
 - 社員が貸出登録・返却APIへアクセスすると403になることを確認する。
 - ログイン、検索、管理者による貸出登録・返却のスモークテスト。
 - 現行Docker構成で解決された実バージョンのサポート状況と、実利用承認または隔離デモ制限を確認する。
@@ -1366,7 +1378,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 ## 完了条件
 
 - MVP対象機能と権限が本書どおり動作する。
-- 社員データが`employees`で管理され、社員管理画面・API・Service・Repositoryが同じ名称を使用する。
+- 社員データが`employees`で管理され、社員管理画面・API・Service・Modelが同じ名称を使用する。
 - 部署はアプリケーション採番の内部IDと部署名で管理し、部署コードを持たない。社員はアプリケーション採番の`employees.id`を社員番号として使用し、社員番号専用列と社員番号入力欄を持たない。
 - 社員登録時にパスワードを設定し、初回変更・定期変更・有効期限を要求せず、本人の任意変更と管理者再設定だけを提供する。
 - 備品の貸出中数と利用可能数が`loans`から算出され、DBへ重複保存されない。
@@ -1375,11 +1387,11 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - `loans`に状態列を持たず、`returned_at`の有無から貸出中と返却済みを判定する。
 - アプリ内・外部の通知機能、期限接近の事前警告、通知カードが存在せず、返却期限と返却超過を貸出一覧およびダッシュボードへ文字表示する。
 - `is_active`は社員の一時利用停止だけに使用し、部署・備品の利用可否は`deleted_at`で判定する。
-- 消耗品管理と物品状態管理の画面、API、Service、Repository、テーブルが存在しない。
+- 消耗品管理と物品状態管理の画面、API、Service、Model、テーブルが存在しない。
 - 設置先専用のDBテーブル、マスタ画面、APIが存在せず、備品の管理部署が`departments`を参照する。
-- カテゴリ専用のDBテーブル、マスタ画面、API、Repositoryが存在せず、各備品が`equipments.category`へ20文字以内のカテゴリ文字列を1つ保持する。
-- 監査用DBテーブル、監査ログ検索画面・API・Repositoryが存在せず、監査記録がローカルJSON Linesファイルへ出力される。
-- 認証試行制限用のDBテーブル・Repositoryが存在せず、社員番号・IP別の状態が専用ローカルファイルへ排他保存される。
+- カテゴリ専用のDBテーブル、マスタ画面、API、Modelが存在せず、各備品が`equipments.category`へ20文字以内のカテゴリ文字列を1つ保持する。
+- 監査用DBテーブル、監査ログ検索画面・API・Modelが存在せず、監査記録がローカルJSON Linesファイルへ出力される。
+- 認証試行制限用のDBテーブル・Modelが存在せず、社員番号・IP別の状態が専用ローカルファイルへ排他保存される。
 - 備品と貸出は業務番号用の列・テーブル・Serviceを持たず、各内部主キーIDだけで識別する。
 - `departments`、`employees`、`equipments`、`loans`の新規作成では、フロントエンドの`id=0`をバックエンドが正の一意IDへ置換し、成功応答後にフロントエンドも同じIDへ置換する。
 - 同一部署・同一名称を1行で数量管理し、在庫超過、二重貸出処理、二重返却処理が発生しない。
@@ -1388,7 +1400,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - 備品の詳細は一覧内で確認でき、独立した備品詳細HTML画面を持たない。
 - `.codex/ui_image`のファイルが画面設計表と1対1で対応し、廃止した貸出申込み画像が存在しない。
 - 単体、結合、並行、セキュリティ、UIテストに重大・高優先度の未解決不具合がない。
-- `.codex/AGENTS.md`、マイグレーション、初回セットアップ、運用手順が実装と一致する。ルート`README.md`は別用途の環境構築資料として扱い、本設計との自動同期対象にしない。
+- `.codex/AGENTS.md`、マイグレーション、初回セットアップ、運用手順が実装と一致する。ルート`README.md`は環境構築資料として扱い、アーキテクチャ変更の要約を本設計と同期する。
 - 開発スケジュールと開発条件が原文から変更されていない。
 
 ## 参考資料

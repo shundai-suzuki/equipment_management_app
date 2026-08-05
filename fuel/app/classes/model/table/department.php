@@ -31,16 +31,10 @@ class Model_Table_Department extends Model_BaseCrud
 	public function find_by_name($name, $db = null)
 	{
 		$db = $this->connection($db);
-		$id = $this->quoted_column('id', $db);
-		$name_column = $this->quoted_column('name', $db);
-		$deleted_at = $this->quoted_column('deleted_at', $db);
-		$result = \DB::query(
-			'SELECT '.$id.', '.$name_column.', '.$deleted_at
-			.' FROM '.$this->quoted_table($db)
-			.' WHERE '.$name_column.' = :name LIMIT 1',
-			\DB::SELECT
-		)
-			->param('name', $name)
+		$result = \DB::select('id', 'name', 'deleted_at')
+			->from(static::$table_name)
+			->where('name', '=', $name)
+			->limit(1)
 			->execute($db);
 
 		if (count($result) === 0)
@@ -65,14 +59,12 @@ class Model_Table_Department extends Model_BaseCrud
 	public function is_active($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$id_column = $this->quoted_column('id', $db);
-		$deleted_at = $this->quoted_column('deleted_at', $db);
-		$result = \DB::query(
-			'SELECT 1 AS is_active FROM '.$this->quoted_table($db)
-			.' WHERE '.$id_column.' = :id AND '.$deleted_at.' IS NULL',
-			\DB::SELECT
-		)
-			->param('id', $id)
+		$result = \DB::select(
+			array(\DB::expr('1'), 'is_active')
+			)
+			->from(static::$table_name)
+			->where('id', '=', $id)
+			->where('deleted_at', 'IS', null)
 			->execute($db);
 
 		return (int) $result->get('is_active', 0) === 1;
@@ -88,16 +80,15 @@ class Model_Table_Department extends Model_BaseCrud
 	public function restore($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$id_column = $this->quoted_column('id', $db);
-		$updated_at = $this->quoted_column('updated_at', $db);
-		$deleted_at = $this->quoted_column('deleted_at', $db);
-		$result = \DB::query(
-			'UPDATE '.$this->quoted_table($db)
-			.' SET '.$deleted_at.' = NULL, '.$updated_at.' = CURRENT_TIMESTAMP'
-			.' WHERE '.$id_column.' = :id AND '.$deleted_at.' IS NOT NULL',
-			\DB::UPDATE
+		$result = \DB::update(static::$table_name)
+			->set(
+				array(
+					'deleted_at' => null,
+					'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
+				)
 		)
-			->param('id', $id)
+			->where('id', '=', $id)
+			->where('deleted_at', 'IS NOT', null)
 			->execute($db);
 
 		return (int) $result === 1;

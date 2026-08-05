@@ -53,32 +53,21 @@ abstract class Model_BaseCrud extends \Model
 			throw new \InvalidArgumentException('The allocated ID must be a positive integer.');
 		}
 
+		$this->assert_identifier(static::$table_name);
 		$this->assert_insert_values($values);
 
-		$columns = array($this->quoted_column('id', $db));
-		$placeholders = array(':id');
-		$parameters = array('id' => $id);
+		$insert_values = array('id' => $id);
 
 		foreach (static::$insert_columns as $column)
 		{
-			$parameter = 'value_'.$column;
-			$columns[] = $this->quoted_column($column, $db);
-			$placeholders[] = ':'.$parameter;
-			$parameters[$parameter] = $values[$column];
+			$insert_values[$column] = $values[$column];
 		}
 
-		$columns[] = $this->quoted_column('created_at', $db);
-		$columns[] = $this->quoted_column('updated_at', $db);
-		$placeholders[] = 'CURRENT_TIMESTAMP';
-		$placeholders[] = 'CURRENT_TIMESTAMP';
+		$insert_values['created_at'] = \DB::expr('CURRENT_TIMESTAMP');
+		$insert_values['updated_at'] = \DB::expr('CURRENT_TIMESTAMP');
 
-		$result = \DB::query(
-			'INSERT INTO '.$this->quoted_table($db)
-			.' ('.implode(', ', $columns).')'
-			.' VALUES ('.implode(', ', $placeholders).')',
-			\DB::INSERT
-		)
-			->parameters($parameters)
+		$result = \DB::insert(static::$table_name)
+			->set($insert_values)
 			->execute($db);
 
 		return isset($result[1]) and (int) $result[1] === 1;
@@ -92,7 +81,7 @@ abstract class Model_BaseCrud extends \Model
 	 */
 	protected function connection($db = null)
 	{
-		return $db ?: $this->db;
+		return $db ? $db : $this->db;
 	}
 
 	/**

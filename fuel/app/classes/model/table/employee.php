@@ -62,24 +62,20 @@ class Model_Table_Employee extends Model_BaseCrud
 	protected function has_active_role($id, $role, $db)
 	{
 		$db = $this->connection($db);
-		$id_column = $this->quoted_column('id', $db);
-		$role_column = $this->quoted_column('role', $db);
-		$is_active = $this->quoted_column('is_active', $db);
-		$deleted_at = $this->quoted_column('deleted_at', $db);
-		$sql = 'SELECT 1 AS employee_exists FROM '.$this->quoted_table($db)
-			.' WHERE '.$id_column.' = :id'
-			.' AND '.$is_active.' = 1 AND '.$deleted_at.' IS NULL';
-		$parameters = array('id' => $id);
+		$query = \DB::select(
+			array(\DB::expr('1'), 'employee_exists')
+		)
+			->from(static::$table_name)
+			->where('id', '=', $id)
+			->where('is_active', '=', 1)
+			->where('deleted_at', 'IS', null);
 
 		if ($role !== null)
 		{
-			$sql .= ' AND '.$role_column.' = :role';
-			$parameters['role'] = $role;
+			$query->where('role', '=', $role);
 		}
 
-		$result = \DB::query($sql, \DB::SELECT)
-			->parameters($parameters)
-			->execute($db);
+		$result = $query->execute($db);
 
 		return (int) $result->get('employee_exists', 0) === 1;
 	}

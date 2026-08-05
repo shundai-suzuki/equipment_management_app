@@ -38,18 +38,11 @@ class Model_Table_Equipment extends Model_BaseCrud
 	public function find_by_department_and_name($department_id, $name, $db = null)
 	{
 		$db = $this->connection($db);
-		$id = $this->quoted_column('id', $db);
-		$department = $this->quoted_column('department_id', $db);
-		$name_column = $this->quoted_column('name', $db);
-		$deleted_at = $this->quoted_column('deleted_at', $db);
-		$result = \DB::query(
-			'SELECT '.$id.', '.$department.', '.$name_column.', '.$deleted_at
-			.' FROM '.$this->quoted_table($db)
-			.' WHERE '.$department.' = :department_id'
-			.' AND '.$name_column.' = :name LIMIT 1',
-			\DB::SELECT
-		)
-			->parameters(array('department_id' => $department_id, 'name' => $name))
+		$result = \DB::select('id', 'department_id', 'name', 'deleted_at')
+			->from(static::$table_name)
+			->where('department_id', '=', $department_id)
+			->where('name', '=', $name)
+			->limit(1)
 			->execute($db);
 
 		if (count($result) === 0)
@@ -75,16 +68,15 @@ class Model_Table_Equipment extends Model_BaseCrud
 	public function restore($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$id_column = $this->quoted_column('id', $db);
-		$updated_at = $this->quoted_column('updated_at', $db);
-		$deleted_at = $this->quoted_column('deleted_at', $db);
-		$result = \DB::query(
-			'UPDATE '.$this->quoted_table($db)
-			.' SET '.$deleted_at.' = NULL, '.$updated_at.' = CURRENT_TIMESTAMP'
-			.' WHERE '.$id_column.' = :id AND '.$deleted_at.' IS NOT NULL',
-			\DB::UPDATE
-		)
-			->param('id', $id)
+		$result = \DB::update(static::$table_name)
+			->set(
+				array(
+					'deleted_at' => null,
+					'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
+				)
+			)
+			->where('id', '=', $id)
+			->where('deleted_at', 'IS NOT', null)
 			->execute($db);
 
 		return (int) $result === 1;
@@ -102,6 +94,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 		$id_column = $this->quoted_column('id', $db);
 		$total_amount = $this->quoted_column('total_amount', $db);
 		$deleted_at = $this->quoted_column('deleted_at', $db);
+
 		$result = \DB::query(
 			'SELECT '.$id_column.', '.$total_amount
 			.' FROM '.$this->quoted_table($db)
@@ -116,15 +109,12 @@ class Model_Table_Equipment extends Model_BaseCrud
 			return null;
 		}
 
-		$loan_table = $db->quote_identifier($db->table_prefix('loans'));
-		$equipment_id = $db->quote_identifier('equipment_id');
-		$returned_at = $db->quote_identifier('returned_at');
-		$loaned = \DB::query(
-			'SELECT COUNT(*) AS loaned_amount FROM '.$loan_table
-			.' WHERE '.$equipment_id.' = :equipment_id AND '.$returned_at.' IS NULL',
-			\DB::SELECT
+		$loaned = \DB::select(
+			array(\DB::expr('COUNT(*)'), 'loaned_amount')
 		)
-			->param('equipment_id', $id)
+			->from('loans')
+			->where('equipment_id', '=', $id)
+			->where('returned_at', 'IS', null)
 			->execute($db);
 
 		$total = (int) $result->get('total_amount');

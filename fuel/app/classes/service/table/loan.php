@@ -39,12 +39,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	 * @param  object|null  $employee_model
 	 * @param  object|null  $equipment_model
 	 */
-	public function __construct(
-		$model = null,
-		$id_allocator = null,
-		$employee_model = null,
-		$equipment_model = null
-	)
+	public function __construct($model = null, $id_allocator = null, $employee_model = null, $equipment_model = null)
 	{
 		parent::__construct($model, $id_allocator);
 
@@ -58,8 +53,8 @@ class Service_Table_Loan extends Service_BaseRegistration
 			throw new \InvalidArgumentException('The equipment model must be an object.');
 		}
 
-		$this->employee_model = $employee_model ?: new Model_Table_Employee();
-		$this->equipment_model = $equipment_model ?: new Model_Table_Equipment();
+		$this->employee_model = $employee_model ? $employee_model : new Model_Table_Employee();
+		$this->equipment_model = $equipment_model ? $equipment_model : new Model_Table_Equipment();
 	}
 
 	/**
@@ -78,6 +73,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 		$this->assert_positive_id($employee_id, 'The borrower employee ID');
 		$this->assert_positive_id($equipment_id, 'The equipment ID');
 		$this->assert_positive_id($loaned_by, 'The loan operator employee ID');
+		
 		$loaned_at = $this->current_loan_date();
 		$due_date = $this->normalize_due_date($due_date, $loaned_at);
 		$this->assert_employee_states($employee_id, $loaned_by);

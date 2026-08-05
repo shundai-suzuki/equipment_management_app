@@ -41,7 +41,7 @@ class Service_Table_Equipment extends Service_BaseRegistration
 			throw new \InvalidArgumentException('The department model must be an object.');
 		}
 
-		$this->department_model = $department_model ?: new Model_Table_Department();
+		$this->department_model = $department_model ? $department_model : new Model_Table_Department();
 	}
 
 	/**
@@ -59,10 +59,12 @@ class Service_Table_Equipment extends Service_BaseRegistration
 	{
 		$this->assert_new_id($id);
 		$this->assert_positive_id($department_id, 'The department ID');
+
 		$name = $this->normalize_required_text($name, 'The equipment name', static::MAX_NAME_LENGTH);
 		$category = $this->normalize_required_text($category, 'The equipment category', static::MAX_CATEGORY_LENGTH);
 		$total_amount = $this->normalize_total_amount($total_amount);
 		$description = $this->normalize_description($description);
+		
 		$this->assert_active_department($department_id);
 		$equipment = $this->model->find_by_department_and_name($department_id, $name);
 

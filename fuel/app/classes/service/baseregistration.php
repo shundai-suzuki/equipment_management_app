@@ -44,8 +44,8 @@ abstract class Service_BaseRegistration
 			throw new \InvalidArgumentException('The ID allocator service must be an object.');
 		}
 
-		$this->model = $model ?: $this->new_model();
-		$this->id_allocator = $id_allocator ?: new Service_IdAllocator();
+		$this->model = $model ? $model : $this->new_model();
+		$this->id_allocator = $id_allocator ? $id_allocator : new Service_IdAllocator();
 	}
 
 	/**

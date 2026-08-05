@@ -39,7 +39,7 @@ class Service_Table_Employee extends Service_BaseRegistration
 			throw new \InvalidArgumentException('The department model must be an object.');
 		}
 
-		$this->department_model = $department_model ?: new Model_Table_Department();
+		$this->department_model = $department_model ? $department_model: new Model_Table_Department();
 	}
 
 	/**
@@ -57,9 +57,11 @@ class Service_Table_Employee extends Service_BaseRegistration
 	{
 		$this->assert_new_id($id);
 		$this->assert_positive_id($department_id, 'The department ID');
+
 		$employee_name = $this->normalize_name($employee_name);
 		$role = $this->normalize_role($role);
-		$password_hash = $this->hash_password($password, $password_confirmation);
+		
+		$password_hash = $this->create_hash_password($password, $password_confirmation);
 		$this->assert_active_department($department_id);
 
 		return $this->register(array(
@@ -146,7 +148,7 @@ class Service_Table_Employee extends Service_BaseRegistration
 	 * @param   mixed  $confirmation
 	 * @return  string
 	 */
-	protected function hash_password($password, $confirmation)
+	protected function create_hash_password($password, $confirmation)
 	{
 		if ( ! is_string($password) or ! is_string($confirmation))
 		{

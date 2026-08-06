@@ -1,9 +1,9 @@
 # Codex設計指示
 
-- このファイルは、本案件の要件・設計とUI画像参照を集約した設計正本である。ルート`README.md`は環境構築資料を主用途とし、アーキテクチャ変更の要約だけを本ファイルと同期する。
+- このファイルは、本案件の要件・設計とUI画像参照を集約した設計正本である。実装内容とアーキテクチャ変更の要約はルート`develop_log.md`へ記録する。
 - 調査、設計、実装、レビュー、テストの前に、このファイルを最初から最後まで読むこと。
 - UIを扱う場合は、画面IDに対応するリポジトリ内の[`.codex/ui_image/`](ui_image/)配下の画像も確認すること。
-- 設計変更はこのファイルへ反映し、アーキテクチャ変更の要約をルート`README.md`へ反映する。UI画像変更時は`.codex/ui_image/`配下の対応ファイルを更新し、ルート`ui_image/`への同期を前提としない。
+- 設計変更はこのファイルへ先に反映し、実装内容とアーキテクチャ変更の要約をルート`develop_log.md`へ反映する。UI画像変更時は`.codex/ui_image/`配下の対応ファイルを更新し、ルート`ui_image/`への同期を前提としない。
 - 既存のDocker、Composer、FuelPHP、DBおよび環境別configを現行実装として優先する。本ファイルとの不一致は本ファイル側を修正し、ユーザーから明示的な変更指示がない限り設定ファイルを変更しない。
 - 既存セクションタイトルを変更しないこと。セクション追加は認める。
 - `## 開発スケジュール`と`## 開発条件`の内容を変更しないこと。
@@ -239,7 +239,7 @@
 + uxを考慮して一部動的なuiが実装されている（非同期処理）
 + GitHubでコードの管理を行う
 + 開発ブランチでコードを書き、PRベースのマージを行って開発を進めていく
-+ セキュリティ資料を読み、必要な実装を行う (https://www.ipa.go.jp/security/vuln/websecurity/ug65p900000196e2-att/000017316.pdf)
++ セキュリティ資料を読み、必要な実装を行う 
 
 ## チェックシート
 
@@ -512,7 +512,7 @@ erDiagram
 | R-02 | 権限外データ参照 | 高 | Controller、Service、Modelで認可・所有者条件を適用する。 |
 | R-03 | 同時操作による在庫超過 | 高 | 備品行のロック、数量再計算、UNIQUE制約、並行テストを行う。 |
 | R-04 | Session固定・盗難 | 高 | HTTPS、Cookie属性、ログイン時Session再作成、期限管理を行う。 |
-| R-05 | XSS・CSRF・SQLインジェクション | 高 | 文脈別出力、独自CSRF、バインド変数を使用する。 |
+| R-05 | XSS・CSRF・SQLインジェクション | 高 | 文脈別出力、FuelPHP Securityと`Form::csrf()`によるCSRF検証、バインド変数を使用する。 |
 | R-06 | 監査ファイル書込み失敗 | 高 | コミット前の追記失敗は業務処理をロールバックし、PHPエラーログへ`SECURITY_ALERT`を送る。 |
 | R-07 | DB更新と監査ファイル追記の非原子性 | 中 | コミット前に監査記録を追記し、コミット失敗時は同じ`audit_event_id`の失敗記録を追加する。完全な原子性がないことを残存リスクとして受容する。 |
 | R-08 | 認証試行制限ファイルの破損・書込み失敗 | 高 | 排他更新と書込み結果検証を行い、読込・更新できない場合はログインを503で拒否してPHPエラーログとDockerログへ記録する。 |
@@ -758,6 +758,9 @@ MVP対象外とし、物品状態と個体識別の列、入力、タグ、検�
 ```text
 fuel/app/
   classes/
+    auth/
+      login/
+        employee.php
     controller/
       base.php
       auth.php
@@ -774,7 +777,7 @@ fuel/app/
         employee.php
         equipment.php
         loan.php
-      authservice.php
+      auth.php
       idallocator.php
       auditservice.php
     model/
@@ -795,6 +798,8 @@ fuel/app/
     loginratelimitcleanup.php
     inventorysetup.php
   config/
+    auth.php
+    config_recommend.php
     inventory.php
     routes.php
   views/
@@ -810,7 +815,8 @@ public/
 | `Controller_Base` | 認証、CSRF、共通ヘッダ |
 | `Controller_Admin` | 管理者認可 |
 | `Controller_IdAllocator` | 登録系Controller用のID採番入口。`Service_IdAllocator`だけを呼び出し、HTTP公開用の採番APIは持たない |
-| `AuthService` | ログイン、ログアウト、パスワード |
+| `Auth_Login_Employee` | `Auth_Login_Driver`を直接継承し、FuelPHP Authと社員認証Serviceを接続する。SimpleAuthのログイン、Session再作成、ログアウトの流れへ合わせるが、DB依存メソッドは継承しない |
+| `Service_Auth` | 社員番号・パスワード照合、利用可能状態、資格情報フィンガープリントの生成・比較 |
 | `LoginRateLimitStore` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
 | `Service_Table_Employee` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
 | `Service_Table_Department` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
@@ -820,13 +826,15 @@ public/
 | `Service_IdAllocator` | 許可テーブル検証、次ID計算、INT上限判定、PK重複時の再試行判断 |
 | `Model_BaseCrud` | テーブル別Modelへ共通のDB接続、許可列検証、採番済みIDによるINSERTを提供 |
 | `Model_Table_Department` | `departments`の検索、登録、復元 |
-| `Model_Table_Employee` | `employees`の検索、登録、有効状態・管理者状態確認 |
+| `Model_Table_Employee` | `employees`の検索、登録、有効状態・管理者状態確認、認証用許可列の取得 |
 | `Model_Table_Equipment` | `equipments`の検索、登録、復元、貸出用行ロックと利用可能数確認 |
 | `Model_Table_Loan` | `loans`の登録と貸出・返却データ操作 |
 | `Model_IdAllocator` | FuelPHP DBクラスによる名前付きロック、トランザクション、最大ID取得、ID存在確認、登録コールバック実行 |
 | `AuditService` | 監査項目の選別、マスキング、JSON Lines生成 |
 | `JsonLineWriter` | 固定パスのログファイルへ排他追記、書込み結果の検証 |
 | `Fuel\Tasks\Inventorysetup` | 既存`Fuel\Tasks\Robots`の構造へ合わせ、初期部署と最初の管理者を既存Service経由で作成するOil Task |
+
+fuel/app/config/auth.phpはカスタムドライバEmployeeを選択する実行時configとする。fuel/app/config/config_recommend.phpはdeny対象のconfig.phpへユーザーが手動でマージする項目の説明専用であり、アプリケーションから読み込まない。
 
 ### 独自config
 
@@ -860,13 +868,15 @@ return array(
 
 ### `before()`処理順
 
+FuelPHP Securityの`csrf_autoload`によるPOSTのCSRF検証はController生成前に実行される。以下はCSRF検証を通過した後のController処理順とする。
+
 1. 追跡IDとセキュリティヘッダを設定する。
 2. 本番環境ではHTTPSを確認する。現行Dockerのdevelopment環境では既存のHTTP構成を維持し、HTTPS強制を行わない。
 3. Sessionを読み込む。
 4. 未認証を401またはログイン画面へ遷移させる。
 5. DBの`password_hash`からHMACで算出した資格情報フィンガープリント、アカウント有効状態、論理削除状態を確認する。
 6. 管理者ルートで権限を確認する。
-7. POSTでCSRF、Origin、Fetch Metadataを確認する。
+7. POSTでOriginとFetch Metadataを確認する。CSRFトークン自体はFuelPHP Securityが自動検証する。
 
 ### Session設定
 
@@ -1050,6 +1060,9 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 ### SEC-01 認証・認可
 
 - 全業務画面・APIを認証必須とする。
+- FuelPHPの`Auth::login()`、`Auth::check()`、`Auth::logout()`を使用し、カスタムログインドライバ`Auth_Login_Employee`は`Auth_Login_Driver`を直接継承する。
+- カスタムドライバはSimpleAuthを継承せず、SimpleAuthのSession処理の流れだけを参考にする。DBアクセスは行わず、`Service_Auth -> Model_Table_Employee -> DB`へ委譲する。
+- カスタムドライバへ`force_login()`、ユーザー作成・削除、パスワード変更等の不要な公開メソッドを追加しない。
 - 権限はSessionへ固定保存せず、各リクエストでDBから取得する。
 - 資格情報フィンガープリント不一致、利用停止、論理削除を検出したSessionを破棄する。フィンガープリントはDB列へ保存せず、現在の`password_hash`と環境秘密値からHMACで算出する。
 - 画面でボタンを隠すだけでなく、Serviceで権限と所有者を検証する。
@@ -1082,7 +1095,9 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 
 ### SEC-04 CSRF
 
-- `random_bytes(32)`でSession同期トークンを生成し、`hash_equals()`で比較する。
+- FuelPHP Securityの`csrf_autoload`を有効にし、POST受信時のトークン検証をControllerより前に自動実行する。
+- `csrf_auto_token`を有効にし、`Form::open()`から`Form::csrf()`のhidden fieldを自動生成する。フォームへCSRF hidden fieldを手書きしない。
+- `config.php`へ手動反映する推奨値と説明は、実行時に読み込まれない`fuel/app/config/config_recommend.php`へ記載する。
 - ログイン、ログアウト、パスワード変更を含む全POSTを対象とする。
 - OriginとFetch Metadataも検証する。
 - URL、ログ、エラーメッセージへトークンを出力しない。
@@ -1149,7 +1164,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 | --- | --- |
 | SQLインジェクション | DBバインド、許可リスト |
 | XSS | 文脈別出力、HTML挿入禁止 |
-| CSRF | Session同期トークン、Origin検証 |
+| CSRF | FuelPHP Securityと`Form::csrf()`、Origin検証 |
 | Session管理 | Cookie限定、再作成、期限、属性 |
 | 認証・認可 | bcrypt、試行制限、サーバ側認可 |
 | エラー情報 | 一般化メッセージ、追跡ID |
@@ -1400,7 +1415,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - 備品の詳細は一覧内で確認でき、独立した備品詳細HTML画面を持たない。
 - `.codex/ui_image`のファイルが画面設計表と1対1で対応し、廃止した貸出申込み画像が存在しない。
 - 単体、結合、並行、セキュリティ、UIテストに重大・高優先度の未解決不具合がない。
-- `.codex/AGENTS.md`、マイグレーション、初回セットアップ、運用手順が実装と一致する。ルート`README.md`は環境構築資料として扱い、アーキテクチャ変更の要約を本設計と同期する。
+- `.codex/AGENTS.md`、`develop_log.md`、マイグレーション、初回セットアップ、運用手順が実装と一致する。実装内容とアーキテクチャ変更の要約は`develop_log.md`へ記録し、ルート`README.md`は変更しない。
 - 開発スケジュールと開発条件が原文から変更されていない。
 
 ## 参考資料

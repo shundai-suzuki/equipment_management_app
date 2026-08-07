@@ -206,9 +206,36 @@ return array(
 	 * Use a dedicated value of at least 32 bytes; do not reuse the CSRF salt.
 	 */
 	'employee_auth' => array(
+		// How to get fingerprint key.
 		'credential_fingerprint_key' => getenv(
 			'FUEL_AUTH_FINGERPRINT_KEY'
 		),
+	),
+
+	/**
+	 * Login attempt limits stored outside the public directory.
+	 * Use a dedicated value of at least 32 bytes for the HMAC key.
+	 */
+	'login_rate_limit' => array(
+		// key used to HMAC-encode employee ID and IP address 
+		'hmac_key' => getenv('FUEL_LOGIN_RATE_LIMIT_KEY'),
+		// Storage location for JSON files containing limit conditions (Ex. number of failures)
+		'state_dir' => '/var/cache/fuel/login-rate-limit',
+		'account' => array(
+			// Number of failures.
+			'max_failures' => 5,
+			// Period during count the number of failures.
+			'window_seconds' => 900,
+			// Period during logins are prohibited after login locked.
+			'block_seconds' => 900,
+		),
+		'ip' => array(
+			'max_failures' => 30,
+			'window_seconds' => 900,
+			'block_seconds' => 900,
+		),
+		// The period until old state files are deleted.
+		'retention_seconds' => 604800,
 	),
 
 	/**

@@ -791,7 +791,7 @@ fuel/app/
     logging/
       jsonlinewriter.php
     security/
-      loginratelimitstore.php
+      loginratelimit.php
     validation/
     viewmodel/
   tasks/
@@ -814,11 +814,11 @@ public/
 | --- | --- |
 | `Controller_Base` | 認証、CSRF、共通ヘッダ、JSONレスポンス整形、リクエストID生成 |
 | `Controller_Admin` | 管理者認可 |
-| `Controller_Auth` | POSTのログイン・ログアウト入力をAuthへ渡し、共通JSON形式で応答 |
+| `Controller_Auth` | POSTのログイン入力を`Security_LoginRateLimit`で確認してからAuthへ渡し、ログアウトとともに共通JSON形式で応答 |
 | `Controller_IdAllocator` | 登録系Controller用のID採番入口。`Service_IdAllocator`だけを呼び出し、HTTP公開用の採番APIは持たない |
 | `Auth_Login_Employee` | `Auth_Login_Driver`を直接継承し、FuelPHP Authと社員認証Serviceを接続する。SimpleAuthのログイン、Session再作成、ログアウトの流れへ合わせるが、DB依存メソッドは継承しない |
 | `Service_Auth` | 社員番号・パスワード照合、利用可能状態、資格情報フィンガープリントの生成・比較 |
-| `LoginRateLimitStore` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
+| `Security_LoginRateLimit` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
 | `Service_Table_Employee` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
 | `Service_Table_Department` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
 | `Service_Table_Equipment` | 備品在庫CRUD、数量検証、部署変更制御 |
@@ -845,6 +845,7 @@ return array(
     'loan' => array('max_days' => 90),
     'session' => array('idle_seconds' => 1800, 'absolute_seconds' => 28800),
     'login_rate_limit' => array(
+        'hmac_key' => getenv('FUEL_LOGIN_RATE_LIMIT_KEY'),
         'state_dir' => '/var/cache/fuel/login-rate-limit',
         'account' => array(
             'max_failures' => 5,
@@ -865,7 +866,7 @@ return array(
 );
 ```
 
-`login_hmac_key`と資格情報フィンガープリント用の鍵は、用途を分離した32バイト以上の秘密値として環境変数またはHTTP公開外の権限制限ファイルから読み込み、config、Git、Session本文、状態ファイル、ログへ値を出力しない。
+`login_rate_limit.hmac_key`は環境変数`FUEL_LOGIN_RATE_LIMIT_KEY`から取得し、資格情報フィンガープリント用の鍵と用途を分離した32バイト以上の秘密値とする。各秘密値をconfig、Git、Session本文、状態ファイル、ログへ出力しない。
 
 ### `before()`処理順
 
@@ -1133,7 +1134,8 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 ### SEC-02A 認証試行制限
 
 - 社員番号単位と接続元IP単位を別々のバケットとして判定し、どちらかが上限に達した場合にログインを拒否する。
-- 社員番号は前後空白除去後に正の整数として検証し、先頭ゼロのない10進表記へ正規化する。接続元IPは正規形式へ変換してから、それぞれ`hash_hmac('sha256', 値, login_hmac_key)`でファイルキーを生成する。
+- 社員番号は前後空白除去後に正の整数として検証し、先頭ゼロのない10進表記へ正規化する。接続元IPは正規形式へ変換してから、それぞれ`hash_hmac('sha256', 値, login_rate_limit.hmac_key)`でファイルキーを生成する。
+- 社員番号が正規化できない入力では社員番号バケットを作成せず、接続元IPバケットだけを確認・加算する。これにより無効な入力値を状態ファイル名へ使用せず、IP単位の制限は維持する。
 - 社員番号バケットは15分間に5回失敗した場合、IPバケットは15分間に30回失敗した場合に、それぞれ15分間ブロックする。
 - ログイン成功時は社員番号バケットだけを削除し、IPバケットは観測期間が終わるまで保持する。
 - 接続元IPは直接接続元を使用する。リバースプロキシを導入する場合だけ、許可したプロキシからの転送ヘッダを検証して使用する。
@@ -1245,7 +1247,8 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 ### 認証試行制限状態ファイル
 
-- `LoginRateLimitStore`は現行Dockerfileが作成する`/var/cache/fuel`配下の`/var/cache/fuel/login-rate-limit`へ、バケットごとに1個のUTF-8 JSONファイルを保存する。これはログではなく上書き可能な一時状態であり、DB、監査ログ、ローテーションの対象にしない。
+- `Security_LoginRateLimit`は現行Dockerfileが作成する`/var/cache/fuel`配下の`/var/cache/fuel/login-rate-limit`へ、バケットごとに1個のUTF-8 JSONファイルを保存する。これはログではなく上書き可能な一時状態であり、DB、監査ログ、ローテーションの対象にしない。
+- `login_rate_limit.state_dir`は固定値`/var/cache/fuel/login-rate-limit`との完全一致を必須とし、異なる保存先、相対パス、`.`、`..`、ヌルバイトを含む値を受け入れない。
 - ファイル名は`account-<64文字のHMAC>.json`または`ip-<64文字のHMAC>.json`とし、社員番号と接続元IPの実値はファイル名・内容のどちらにも保存しない。
 - JSON項目は`version`、`failed_count`、`window_started_at`、`blocked_until`、`updated_at`とし、日時はUTCのUnix秒、ファイル上限は1KiBとする。
 - 更新時は対象ファイルを`c+`で開いて`flock(LOCK_EX)`を取得し、読込、JSONスキーマ検証、期限判定、加算または初期化、`ftruncate()`、`rewind()`、全バイト書込み、`fflush()`、ロック解除の順で処理する。
@@ -1283,7 +1286,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 - 認証、社員登録時のパスワード設定、本人変更、管理者再設定、資格情報フィンガープリントの生成・比較。
 - 初回変更フラグ、パスワード期限、一時パスワードの処理を持たないこと。
-- `LoginRateLimitStore`のHMACキー生成、別バケット判定、観測期間、ブロック期限、ログイン成功時の社員番号バケット削除。
+- `Security_LoginRateLimit`のHMACキー生成、別バケット判定、観測期間、ブロック期限、ログイン成功時の社員番号バケット削除。
 - 認証試行制限状態のJSONスキーマ、1KiB上限、排他更新、部分書込み、破損、シンボリックリンク、権限エラー、期限切れ清掃。
 - 日付、期間、文字数、ページング、許可値の入力検証。
 - カテゴリの必須、20文字上限、前後空白除去、複数値拒否を検証する。

@@ -1,12 +1,13 @@
 # Codex設計指示
 
-- このファイルは、本案件の要件・設計とUI画像参照を集約した設計正本である。ルート`README.md`は別用途の環境構築資料であり、本ファイルとは同期しない。
+- このファイルは、本案件の要件・設計とUI画像参照を集約した設計正本である。実装内容とアーキテクチャ変更の要約はルート`develop_log.md`へ記録する。
 - 調査、設計、実装、レビュー、テストの前に、このファイルを最初から最後まで読むこと。
 - UIを扱う場合は、画面IDに対応するリポジトリ内の[`.codex/ui_image/`](ui_image/)配下の画像も確認すること。
-- 設計変更はこのファイルへ反映する。UI画像変更時は`.codex/ui_image/`配下の対応ファイルを更新し、ルート`README.md`やルート`ui_image/`への同期を前提としない。
+- 設計変更はこのファイルへ先に反映し、実装内容とアーキテクチャ変更の要約をルート`develop_log.md`へ反映する。UI画像変更時は`.codex/ui_image/`配下の対応ファイルを更新し、ルート`ui_image/`への同期を前提としない。
 - 既存のDocker、Composer、FuelPHP、DBおよび環境別configを現行実装として優先する。本ファイルとの不一致は本ファイル側を修正し、ユーザーから明示的な変更指示がない限り設定ファイルを変更しない。
 - 既存セクションタイトルを変更しないこと。セクション追加は認める。
 - `## 開発スケジュール`と`## 開発条件`の内容を変更しないこと。
+- README.mdは変更せずに、develop_log.mdに実装内容を代わりに追加すること。
 
 ---
 
@@ -238,7 +239,7 @@
 + uxを考慮して一部動的なuiが実装されている（非同期処理）
 + GitHubでコードの管理を行う
 + 開発ブランチでコードを書き、PRベースのマージを行って開発を進めていく
-+ セキュリティ資料を読み、必要な実装を行う (https://www.ipa.go.jp/security/vuln/websecurity/ug65p900000196e2-att/000017316.pdf)
++ セキュリティ資料を読み、必要な実装を行う 
 
 ## チェックシート
 
@@ -303,7 +304,7 @@
 - 社員は`is_active`で一時的な利用停止、`deleted_at`で論理削除を表す。部署・備品は`deleted_at`だけで論理削除を表す。
 - 社員は`deleted_at IS NULL AND is_active = 1`の場合だけログイン・業務操作できる。部署・備品は`deleted_at IS NULL`の場合だけ新規取引に使用できる。
 - 備品は部署別・種類別の在庫を1行で表し、現物1台・1個ごとの行は作成しない。
-- 貸出中数と利用可能数はDBへ重複保存せず、`loans`からRepositoryで算出する。
+- 貸出中数と利用可能数はDBへ重複保存せず、`loans`からModelで算出する。
 - 備品更新、貸出登録、返却は対象行のロックと更新前状態の再検証で競合を検出して409とする。`lock_version`列は使用しない。
 - 外部キー列へインデックスを付与する。
 - `equipments`の非キー属性は`equipments.id`だけに従属させる。同じ名称でも部署が異なる備品は別IDとし、全社共通の商品コードや商品属性は持たない。
@@ -429,7 +430,7 @@ erDiagram
 
 #### `loan_requests`
 
-作成しない。申請機能そのものを廃止し、専用テーブル、外部キー、Repository、Service、APIを持たない。
+作成しない。申請機能そのものを廃止し、専用テーブル、外部キー、Model、Service、APIを持たない。
 
 #### `loans`
 
@@ -469,8 +470,8 @@ erDiagram
 ### 読取用View
 
 - MVPでは必須Viewを設けない。
-- 一覧はRepositoryのJOINで取得し、許可列だけを返す。
-- Repositoryは`loaned_amount = returned_at IS NULLの件数`、`available_amount = total_amount - loaned_amount`として算出する。
+- 一覧はModelのJOINで取得し、許可列だけを返す。
+- Modelは`loaned_amount = returned_at IS NULLの件数`、`available_amount = total_amount - loaned_amount`として算出する。
 - 集計は備品IDごとの派生テーブルをLEFT JOINし、NULL件数を0としてから絞り込みとページングを行う。
 - 算出値が負数になった場合は整合性異常として処理を停止し、エラーログへ記録する。
 
@@ -487,7 +488,9 @@ erDiagram
 
 ### トランザクション・排他
 
-- ID採番は`Controller -> Service_IdAllocator -> Model_IdAllocator -> DB`の順に呼び出す。ControllerはServiceだけを呼び、ServiceはModelを呼び出し、ControllerからModelまたはDBを直接呼ばない。
+- 業務処理は`Controller -> 各Service -> 各Model -> DB`の順に呼び出す。ControllerはServiceだけを呼び、ServiceはModelを呼び出し、ControllerからModelまたはDBを直接呼ばない。
+- 新規登録は各Serviceが共通親`Service_BaseRegistration`の採番付き登録処理を使用し、各Modelが共通親`Model_BaseCrud`の許可列付きINSERTを使用する。テーブル固有の検証は子Service、検索・ロック・復元は子Modelへ置く。
+- ID採番内部は`Service_IdAllocator -> Model_IdAllocator -> DB`の順に呼び出し、採番後の登録コールバックは同じDB接続を各テーブルModelへ渡す。`Service_IdAllocator`と`Model_IdAllocator`はCRUD用共通親の対象外とする。
 - `Service_IdAllocator`は対象テーブル名を`departments`、`employees`、`equipments`、`loans`の許可リストに限定し、`MAX(id)`からの次ID計算、符号付きINT上限判定、PK重複時の再試行判断を担当する。
 - `Model_IdAllocator`は同一DB接続での`GET_LOCK('id_alloc:<table>', 5)`、トランザクション、`MAX(id)`取得、採番ID存在確認、登録コールバックの実行、`RELEASE_LOCK()`、トランザクション終了失敗時の接続破棄を担当する。IDの加算や上限判定は行わない。
 - 新規登録ではModelが名前付きロックを取得してからトランザクションを開始し、ServiceがModelから受け取った`MAX(id)`へ1を加えて候補IDを求める。候補が符号付きINTの上限2,147,483,647を超える場合は登録を停止する。
@@ -506,10 +509,10 @@ erDiagram
 | ID | リスク | 影響 | 対応 |
 | --- | --- | --- | --- |
 | R-01 | PHP 7.3を含む現行Docker構成が旧式で、範囲タグと`latest`により再ビルド時の実体が変わり得る | 高 | 現行設定は変更せず、ビルド時の実バージョンを記録する。実データ利用前にサポート状況と移行計画を別途確認する。 |
-| R-02 | 権限外データ参照 | 高 | Controller、Service、Repositoryで認可・所有者条件を適用する。 |
+| R-02 | 権限外データ参照 | 高 | Controller、Service、Modelで認可・所有者条件を適用する。 |
 | R-03 | 同時操作による在庫超過 | 高 | 備品行のロック、数量再計算、UNIQUE制約、並行テストを行う。 |
 | R-04 | Session固定・盗難 | 高 | HTTPS、Cookie属性、ログイン時Session再作成、期限管理を行う。 |
-| R-05 | XSS・CSRF・SQLインジェクション | 高 | 文脈別出力、独自CSRF、バインド変数を使用する。 |
+| R-05 | XSS・CSRF・SQLインジェクション | 高 | 文脈別出力、FuelPHP Securityと`Form::csrf()`によるCSRF検証、バインド変数を使用する。 |
 | R-06 | 監査ファイル書込み失敗 | 高 | コミット前の追記失敗は業務処理をロールバックし、PHPエラーログへ`SECURITY_ALERT`を送る。 |
 | R-07 | DB更新と監査ファイル追記の非原子性 | 中 | コミット前に監査記録を追記し、コミット失敗時は同じ`audit_event_id`の失敗記録を追加する。完全な原子性がないことを残存リスクとして受容する。 |
 | R-08 | 認証試行制限ファイルの破損・書込み失敗 | 高 | 排他更新と書込み結果検証を行い、読込・更新できない場合はログインを503で拒否してPHPエラーログとDockerログへ記録する。 |
@@ -575,8 +578,10 @@ erDiagram
 
 ### アーキテクチャ・DBアクセス
 
-- FuelPHPではMVCの設計方法に従い、Controller、Service、Model / Repository、View / ViewModelの責務を分離すること。
-- FuelPHPのORMは使用しないこと。DBアクセスはFuelPHPのDBクラスを使用し、通常の業務データはRepositoryへ集約する。ID採番だけは`Model_IdAllocator`へ集約し、`Controller -> Service -> Model -> DB`の順序を守る。
+- FuelPHPではMVCの設計方法に従い、Controller、Service、Model、View / ViewModelの責務を分離すること。
+- FuelPHPのORMは使用しないこと。DBアクセスはFuelPHPのDBクラスを使用してModelへ集約し、`Controller -> Service -> Model -> DB`の順序を守る。
+- `Model_BaseCrud`はDB接続、テーブル・列の固定許可リスト、採番済みIDを含むINSERTだけを共通化する。`Service_BaseRegistration`は依存注入、厳密な`id=0`検証、`Service_IdAllocator`と各Modelの連携だけを共通化する。
+- `departments`、`employees`、`equipments`、`loans`はそれぞれ`model/table/`と`service/table/`に専用の子Model・子Serviceを持つ。共通親へテーブル固有の入力規則、重複条件、復元、認可、在庫確認を持ち込まない。
 
 ### インデント・空白
 
@@ -592,7 +597,7 @@ erDiagram
 - Controllerは現行`Controller_Welcome`と`action_index()`の形式へ合わせ、`Controller_<Name>`と`action_<name>`を使用する。
 - Oil Taskは現行`fuel/app/tasks/robots.php`へ合わせ、`Fuel\Tasks`名前空間、PascalCaseのクラス名、`run()`を含む静的メソッドを使用する。
 - FuelPHPコアAPIを使用する場合は、同一バージョンの既存シグネチャを確認する。URIの可変セグメント置換には現行`Uri::segment_replace($url, $secure = null)`と`*`を使用する。
-- 新しいService、Repository、Validator、ViewModelは、実装時点で同じ層の既存クラスがあればその名前空間、クラス名、ファイル名へ合わせる。対応例がない最初の1クラスだけ、使用する名前空間と命名案をユーザーへ確認し、承認後は同じ層へ継続適用する。
+- 新しいService、Model、Validator、ViewModelは、実装時点で同じ層の既存クラスがあればその名前空間、クラス名、ファイル名へ合わせる。対応例がない最初の1クラスだけ、使用する名前空間と命名案をユーザーへ確認し、承認後は同じ層へ継続適用する。
 - CSSとHTMLの`id`・`class`には小文字のkebab-caseを使用する。PHP識別子にはハイフンを使用しない。JavaScriptは既存ファイルがあればその形式へ合わせ、存在しない場合はcamelCaseを基準案とする。
 - 関数、クラス、変数、ファイル、HTMLの`id`・`class`は、役割や内容が名前から理解できる意味のある名称にすること。
 - CSSおよびHTMLの`id`・`class`名は小文字で記述すること。
@@ -600,7 +605,7 @@ erDiagram
 ### 名前空間
 
 - ControllerはFuelPHP 1.8の現行Controller形式を維持する。Oil Taskは既存どおり`Fuel\Tasks`を使用する。
-- ServiceやRepository等へ新しい名前空間を導入する場合は、既存のautoload設定と同種クラスを先に確認する。設定ファイルの変更が必要な場合は実装を止め、変更対象と理由をユーザーへ確認する。
+- ServiceやModel等へ新しい名前空間を導入する場合は、既存のautoload設定と同種クラスを先に確認する。設定ファイルの変更が必要な場合は実装を止め、変更対象と理由をユーザーへ確認する。
 - 名前空間内からFuelPHPのグローバルクラスへアクセスする場合は、既存Oil Taskの`\Cli`と同様に先頭バックスラッシュを付ける。
 
 ### HTML・CSS
@@ -656,7 +661,7 @@ erDiagram
 - `Controller_Admin::before()`で社員管理・部署管理と管理変更APIの`role === 'ADMIN'`を検証する。
 - 共通画面Controllerはロール別のViewを選ばず、同じViewへ閲覧範囲と`can_*`フラグを渡す。
 - Serviceで貸出登録・返却が管理者操作であること、参照時の所有者、現在の返却状態を再検証する。
-- Repositoryへログイン社員IDまたは管理者条件を渡し、権限外データを取得しない。
+- Modelへログイン社員IDまたは管理者条件を渡し、権限外データを取得しない。
 - 共通一覧APIは社員なら必ず`employee_id = ログイン社員ID`、管理者なら全件を検索条件へ付与し、クライアント指定で閲覧範囲を変更できないようにする。
 
 ## 業務フロー
@@ -704,7 +709,7 @@ erDiagram
 
 ### 消耗品の入出庫
 
-MVP対象外とし、画面、API、Service、Repository、テーブルを実装しない。
+MVP対象外とし、画面、API、Service、Model、テーブルを実装しない。
 
 ## 状態遷移
 
@@ -744,8 +749,7 @@ MVP対象外とし、物品状態と個体識別の列、入力、タグ、検�
 | Controller | HTTP入力、`before()`、レスポンス整形 |
 | Validator | 形式、必須、長さ、日付の検証 |
 | Service | 認可、業務ルール、状態遷移、監査。ID採番では次ID計算、上限判定、再試行判断 |
-| Model | ID採番に必要なFuelPHP DBクラス操作、名前付きロック、トランザクション、登録コールバック実行 |
-| Repository | FuelPHP DBクラスによる検索、CRUD、行ロック |
+| Model | FuelPHP DBクラスによる検索、CRUD、行ロック。ID採番では名前付きロック、トランザクション、登録コールバック実行 |
 | State Store | 認証試行制限状態のファイル読込、排他更新、削除 |
 | View / ViewModel | HTML表示、Knockout.jsによる画面状態と非同期通信 |
 
@@ -754,6 +758,9 @@ MVP対象外とし、物品状態と個体識別の列、入力、タグ、検�
 ```text
 fuel/app/
   classes/
+    auth/
+      login/
+        employee.php
     controller/
       base.php
       auth.php
@@ -764,30 +771,35 @@ fuel/app/
       admin.php
       idallocator.php
     service/
-      authservice.php
-      employeeservice.php
-      departmentservice.php
-      equipmentservice.php
-      loanservice.php
+      baseregistration.php
+      table/
+        department.php
+        employee.php
+        equipment.php
+        loan.php
+      auth.php
       idallocator.php
       auditservice.php
     model/
+      basecrud.php
+      table/
+        department.php
+        employee.php
+        equipment.php
+        loan.php
       idallocator.php
     logging/
       jsonlinewriter.php
     security/
-      loginratelimitstore.php
-    repository/
-      employeerepository.php
-      departmentrepository.php
-      equipmentrepository.php
-      loanrepository.php
+      loginratelimit.php
     validation/
     viewmodel/
   tasks/
     loginratelimitcleanup.php
     inventorysetup.php
   config/
+    auth.php
+    config_recommend.php
     inventory.php
     routes.php
   views/
@@ -800,21 +812,31 @@ public/
 
 | クラス | 主責務 |
 | --- | --- |
-| `Controller_Base` | 認証、CSRF、共通ヘッダ |
+| `Controller_Base` | 認証、CSRF、共通ヘッダ、JSONレスポンス整形、リクエストID生成 |
 | `Controller_Admin` | 管理者認可 |
+| `Controller_Auth` | POSTのログイン入力を`Security_LoginRateLimit`で確認してからAuthへ渡し、ログアウトとともに共通JSON形式で応答 |
 | `Controller_IdAllocator` | 登録系Controller用のID採番入口。`Service_IdAllocator`だけを呼び出し、HTTP公開用の採番APIは持たない |
-| `AuthService` | ログイン、ログアウト、パスワード |
-| `LoginRateLimitStore` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
-| `EmployeeService` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
-| `DepartmentService` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
-| `EquipmentService` | 備品在庫CRUD、数量検証、部署変更制御 |
-| `LoanService` | 管理者による貸出登録・返却、在庫再検証、返却期限保持 |
+| `Auth_Login_Employee` | `Auth_Login_Driver`を直接継承し、FuelPHP Authと社員認証Serviceを接続する。SimpleAuthのログイン、Session再作成、ログアウトの流れへ合わせるが、DB依存メソッドは継承しない |
+| `Service_Auth` | 社員番号・パスワード照合、利用可能状態、資格情報フィンガープリントの生成・比較 |
+| `Security_LoginRateLimit` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
+| `Fuel\Tasks\LoginRateLimitCleanup` | `Security_LoginRateLimit`の期限切れ状態清掃をCLIから起動し、削除件数を表示 |
+| `Service_Table_Employee` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
+| `Service_Table_Department` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
+| `Service_Table_Equipment` | 備品在庫CRUD、数量検証、部署変更制御 |
+| `Service_Table_Loan` | 管理者による貸出登録・返却、在庫再検証、返却期限保持 |
+| `Service_BaseRegistration` | テーブル別Serviceへ共通の依存注入、厳密な`id=0`検証、採番付きINSERT連携を提供 |
 | `Service_IdAllocator` | 許可テーブル検証、次ID計算、INT上限判定、PK重複時の再試行判断 |
+| `Model_BaseCrud` | テーブル別Modelへ共通のDB接続、許可列検証、採番済みIDによるINSERTを提供 |
+| `Model_Table_Department` | `departments`の検索、登録、復元 |
+| `Model_Table_Employee` | `employees`の検索、登録、有効状態・管理者状態確認、認証用許可列の取得 |
+| `Model_Table_Equipment` | `equipments`の検索、登録、復元、貸出用行ロックと利用可能数確認 |
+| `Model_Table_Loan` | `loans`の登録と貸出・返却データ操作 |
 | `Model_IdAllocator` | FuelPHP DBクラスによる名前付きロック、トランザクション、最大ID取得、ID存在確認、登録コールバック実行 |
-| `EquipmentRepository` | FuelPHP DBクラスで物理テーブル`equipments`を操作し、`total_amount`を含む許可列だけを読み書き |
 | `AuditService` | 監査項目の選別、マスキング、JSON Lines生成 |
 | `JsonLineWriter` | 固定パスのログファイルへ排他追記、書込み結果の検証 |
 | `Fuel\Tasks\Inventorysetup` | 既存`Fuel\Tasks\Robots`の構造へ合わせ、初期部署と最初の管理者を既存Service経由で作成するOil Task |
+
+fuel/app/config/auth.phpはカスタムドライバEmployeeを選択する実行時configとする。fuel/app/config/config_recommend.phpはdeny対象のconfig.phpへ反映する推奨項目の説明専用として残し、アプリケーションから読み込まない。推奨項目はユーザーがconfig.phpへ手動反映済みとし、秘密値を含む可能性があるためconfig.php本文を実装時に再読込しない。
 
 ### 独自config
 
@@ -824,6 +846,7 @@ return array(
     'loan' => array('max_days' => 90),
     'session' => array('idle_seconds' => 1800, 'absolute_seconds' => 28800),
     'login_rate_limit' => array(
+        'hmac_key' => getenv('FUEL_LOGIN_RATE_LIMIT_KEY'),
         'state_dir' => '/var/cache/fuel/login-rate-limit',
         'account' => array(
             'max_failures' => 5,
@@ -844,9 +867,11 @@ return array(
 );
 ```
 
-`login_hmac_key`と資格情報フィンガープリント用の鍵は、用途を分離した32バイト以上の秘密値として環境変数またはHTTP公開外の権限制限ファイルから読み込み、config、Git、Session本文、状態ファイル、ログへ値を出力しない。
+`login_rate_limit.hmac_key`は環境変数`FUEL_LOGIN_RATE_LIMIT_KEY`から取得し、資格情報フィンガープリント用の鍵と用途を分離した32バイト以上の秘密値とする。各秘密値をconfig、Git、Session本文、状態ファイル、ログへ出力しない。
 
 ### `before()`処理順
+
+FuelPHP Securityの`csrf_autoload`によるPOSTのCSRF検証はController生成前に実行される。以下はCSRF検証を通過した後のController処理順とする。
 
 1. 追跡IDとセキュリティヘッダを設定する。
 2. 本番環境ではHTTPSを確認する。現行Dockerのdevelopment環境では既存のHTTP構成を維持し、HTTPS強制を行わない。
@@ -854,7 +879,7 @@ return array(
 4. 未認証を401またはログイン画面へ遷移させる。
 5. DBの`password_hash`からHMACで算出した資格情報フィンガープリント、アカウント有効状態、論理削除状態を確認する。
 6. 管理者ルートで権限を確認する。
-7. POSTでCSRF、Origin、Fetch Metadataを確認する。
+7. POSTでOriginとFetch Metadataを確認する。CSRFトークン自体はFuelPHP Securityが自動検証する。
 
 ### Session設定
 
@@ -925,6 +950,8 @@ return array(
 
 | Method | パス | 権限 | 成功 |
 | --- | --- | --- | --- |
+| POST | `/login` | 未認証 | 200、安全な社員情報 |
+| POST | `/logout` | 認証済 | 200、`data.logged_out = true` |
 | GET | `/api/equipment` | 認証済 | 200、検索結果 |
 | GET | `/api/equipment/:id` | 認証済 | 200、備品詳細 |
 | GET | `/api/loans` | 認証済 | 200、社員は本人分、管理者は全貸出履歴 |
@@ -990,10 +1017,60 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 
 ### JSON形式
 
-- APIは成功データ用の`data`、一覧メタ情報用の`meta`、エラー用の`error`、追跡用の`request_id`を持つ方針とする。
-- 配列とオブジェクトの使い分け、作成・更新・一覧・詳細・エラーの具体的なJSON例は未確定とする。最初のJSON APIを実装する直前に、既存Controllerやレスポンス形式を確認したうえで候補を提示し、ユーザーへ確認すること。
-- ユーザー確認前に仮のJSON例を実装上の確定仕様として扱わない。ただし、新規作成成功時にバックエンド採番IDを返し、フロントエンドの`id=0`を正のIDへ置換する業務要件は維持する。
-- エラーには一般化したコード、メッセージ、必要な入力欄情報、`request_id`を含め、内部例外、DBエラー、機密情報を返さない。具体的なキー配置は実装前確認で確定する。
+- JSON APIは共通外枠を使用し、`Content-Type: application/json; charset=utf-8`で返す。HTTP上の成功・失敗はHTTPステータスを正とし、本文へ`success`または`status`を重複して持たせない。
+- 成功時は`data`と`request_id`を必須とし、`error`を含めない。`data`は詳細・登録・更新ではオブジェクト、一覧では配列とする。
+- 一覧時だけ`meta`を必須とし、`pagination.page`、`pagination.per_page`、`pagination.total`、`pagination.total_pages`を持たせる。備品一覧では重複排除したカテゴリ候補を`meta.category_options`へ追加する。詳細・登録・更新・認証応答へ空の`meta`を付けない。
+- 失敗時は`error.code`、一般化した`error.message`、`request_id`を必須とし、`data`を含めない。入力項目別エラーがある422応答だけ、`error.fields`へ項目名をキー、メッセージ配列を値として追加する。
+- `request_id`は32文字の小文字16進数とし、成功・失敗の全JSON応答へ含める。パスワード、パスワードhash、Session ID、資格情報フィンガープリント、CSRFトークン、内部例外、SQL、スタックトレースをJSONへ含めない。
+- 作成成功は201とし、採番済みの正のIDを`data.id`へ必ず含める。更新・詳細・一覧・ログイン・ログアウト成功は200とする。Fetch APIで共通してJSON解析できるよう、ログアウト成功に204は使用せず、`data.logged_out = true`を返す。
+- ログイン成功の`data.employee`は`id`、`employee_name`、`role`だけを含める。認証失敗は社員番号の存在を判別できない共通の`AUTHENTICATION_FAILED`とメッセージを返し、項目別理由を含めない。
+- AJAXとFetch APIのPOST入力は、`Form::csrf()`が生成したhidden項目を含む`FormData`またはフォームURLエンコードを使用する。`FormData`では境界文字列をブラウザへ設定させるため、JavaScriptから`Content-Type`を手動設定しない。
+- Controller生成前にCSRF自動検証等で`HttpBadRequestException`となった場合は、アプリケーションの400 Viewが`BAD_REQUEST`、一般化したメッセージ、32文字の`request_id`をJSONで返す。CSRF判定の詳細理由は返さない。
+
+成功応答の基本形:
+
+```json
+{
+  "data": {
+    "id": 1
+  },
+  "request_id": "0123456789abcdef0123456789abcdef"
+}
+```
+
+一覧成功応答の基本形:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 0,
+      "total_pages": 0
+    }
+  },
+  "request_id": "0123456789abcdef0123456789abcdef"
+}
+```
+
+入力エラー応答の基本形:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "入力内容を確認してください。",
+    "fields": {
+      "name": [
+        "名称を入力してください。"
+      ]
+    }
+  },
+  "request_id": "0123456789abcdef0123456789abcdef"
+}
+```
 
 ### HTTPステータス
 
@@ -1005,6 +1082,7 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 | 401 | 未認証 |
 | 403 | 権限不足 |
 | 404 | 存在しない、または閲覧不可 |
+| 405 | 許可されていないHTTPメソッド |
 | 409 | 版・状態競合 |
 | 422 | 業務・入力検証エラー |
 | 429 | 試行回数超過 |
@@ -1038,6 +1116,9 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 ### SEC-01 認証・認可
 
 - 全業務画面・APIを認証必須とする。
+- FuelPHPの`Auth::login()`、`Auth::check()`、`Auth::logout()`を使用し、カスタムログインドライバ`Auth_Login_Employee`は`Auth_Login_Driver`を直接継承する。
+- カスタムドライバはSimpleAuthを継承せず、SimpleAuthのSession処理の流れだけを参考にする。DBアクセスは行わず、`Service_Auth -> Model_Table_Employee -> DB`へ委譲する。
+- カスタムドライバへ`force_login()`、ユーザー作成・削除、パスワード変更等の不要な公開メソッドを追加しない。
 - 権限はSessionへ固定保存せず、各リクエストでDBから取得する。
 - 資格情報フィンガープリント不一致、利用停止、論理削除を検出したSessionを破棄する。フィンガープリントはDB列へ保存せず、現在の`password_hash`と環境秘密値からHMACで算出する。
 - 画面でボタンを隠すだけでなく、Serviceで権限と所有者を検証する。
@@ -1054,7 +1135,8 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 ### SEC-02A 認証試行制限
 
 - 社員番号単位と接続元IP単位を別々のバケットとして判定し、どちらかが上限に達した場合にログインを拒否する。
-- 社員番号は前後空白除去後に正の整数として検証し、先頭ゼロのない10進表記へ正規化する。接続元IPは正規形式へ変換してから、それぞれ`hash_hmac('sha256', 値, login_hmac_key)`でファイルキーを生成する。
+- 社員番号は前後空白除去後に正の整数として検証し、先頭ゼロのない10進表記へ正規化する。接続元IPは正規形式へ変換してから、それぞれ`hash_hmac('sha256', 値, login_rate_limit.hmac_key)`でファイルキーを生成する。
+- 社員番号が正規化できない入力では社員番号バケットを作成せず、接続元IPバケットだけを確認・加算する。これにより無効な入力値を状態ファイル名へ使用せず、IP単位の制限は維持する。
 - 社員番号バケットは15分間に5回失敗した場合、IPバケットは15分間に30回失敗した場合に、それぞれ15分間ブロックする。
 - ログイン成功時は社員番号バケットだけを削除し、IPバケットは観測期間が終わるまで保持する。
 - 接続元IPは直接接続元を使用する。リバースプロキシを導入する場合だけ、許可したプロキシからの転送ヘッダを検証して使用する。
@@ -1070,14 +1152,16 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 
 ### SEC-04 CSRF
 
-- `random_bytes(32)`でSession同期トークンを生成し、`hash_equals()`で比較する。
+- FuelPHP Securityの`csrf_autoload`を有効にし、POST受信時のトークン検証をControllerより前に自動実行する。
+- `csrf_auto_token`を有効にし、`Form::open()`から`Form::csrf()`のhidden fieldを自動生成する。フォームへCSRF hidden fieldを手書きしない。
+- 認証、Session、Cookie、CSRFの推奨値と説明は、実行時に読み込まれない`fuel/app/config/config_recommend.php`へ残す。推奨値はユーザーが`config.php`へ手動反映済みとし、`config.php`の本文や秘密値をレスポンス、文書、ログへ出力しない。
 - ログイン、ログアウト、パスワード変更を含む全POSTを対象とする。
 - OriginとFetch Metadataも検証する。
 - URL、ログ、エラーメッセージへトークンを出力しない。
 
 ### SEC-05 SQLインジェクション
 
-- RepositoryでFuelPHP DBクラスのバインドを使用する。
+- ModelでFuelPHP DBクラスのバインドを使用する。
 - テーブル名、列名、並び順は許可リストから選ぶ。
 - 外部入力をSQLへ連結しない。
 
@@ -1137,7 +1221,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 | --- | --- |
 | SQLインジェクション | DBバインド、許可リスト |
 | XSS | 文脈別出力、HTML挿入禁止 |
-| CSRF | Session同期トークン、Origin検証 |
+| CSRF | FuelPHP Securityと`Form::csrf()`、Origin検証 |
 | Session管理 | Cookie限定、再作成、期限、属性 |
 | 認証・認可 | bcrypt、試行制限、サーバ側認可 |
 | エラー情報 | 一般化メッセージ、追跡ID |
@@ -1164,13 +1248,15 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 ### 認証試行制限状態ファイル
 
-- `LoginRateLimitStore`は現行Dockerfileが作成する`/var/cache/fuel`配下の`/var/cache/fuel/login-rate-limit`へ、バケットごとに1個のUTF-8 JSONファイルを保存する。これはログではなく上書き可能な一時状態であり、DB、監査ログ、ローテーションの対象にしない。
+- `Security_LoginRateLimit`は現行Dockerfileが作成する`/var/cache/fuel`配下の`/var/cache/fuel/login-rate-limit`へ、バケットごとに1個のUTF-8 JSONファイルを保存する。これはログではなく上書き可能な一時状態であり、DB、監査ログ、ローテーションの対象にしない。
+- `login_rate_limit.state_dir`は固定値`/var/cache/fuel/login-rate-limit`との完全一致を必須とし、異なる保存先、相対パス、`.`、`..`、ヌルバイトを含む値を受け入れない。
 - ファイル名は`account-<64文字のHMAC>.json`または`ip-<64文字のHMAC>.json`とし、社員番号と接続元IPの実値はファイル名・内容のどちらにも保存しない。
 - JSON項目は`version`、`failed_count`、`window_started_at`、`blocked_until`、`updated_at`とし、日時はUTCのUnix秒、ファイル上限は1KiBとする。
 - 更新時は対象ファイルを`c+`で開いて`flock(LOCK_EX)`を取得し、読込、JSONスキーマ検証、期限判定、加算または初期化、`ftruncate()`、`rewind()`、全バイト書込み、`fflush()`、ロック解除の順で処理する。
 - JSON不正、上限超過、シンボリックリンク、ロック・読込・書込・flush失敗を状態異常として扱い、破損状態を初期化して認証を続行しない。
 - 状態ディレクトリはDocumentRoot外の`/var/cache/fuel`配下へ置き、現行アプリ実行ユーザー`www-data`だけが状態ファイルを処理する。現行Dockerfileのディレクトリ権限は変更せず、状態ファイル作成時にアプリから可能な範囲で他ユーザーの読取りを許可しない。
 - アプリコンテナ内で`php oil refine loginratelimitcleanup`を実行し、ブロック期限が終了し、かつ`updated_at`から7日を超えた状態ファイルだけを排他確認後に削除する。定期実行方法は現行Dockerfileに含まれるcronを使用する案を実装前にユーザーへ確認する。
+- Taskは清掃の起動だけを担当する。`Security_LoginRateLimit`は正の整数の`retention_seconds`を検証し、専用ディレクトリ直下の`account-<64文字の小文字16進HMAC>.json`と`ip-<64文字の小文字16進HMAC>.json`だけを対象として、不正な名前とシンボリックリンクを拒否し、ロック中にJSONを検証して削除条件を判定する。
 
 ### 監査ログ
 
@@ -1202,7 +1288,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 - 認証、社員登録時のパスワード設定、本人変更、管理者再設定、資格情報フィンガープリントの生成・比較。
 - 初回変更フラグ、パスワード期限、一時パスワードの処理を持たないこと。
-- `LoginRateLimitStore`のHMACキー生成、別バケット判定、観測期間、ブロック期限、ログイン成功時の社員番号バケット削除。
+- `Security_LoginRateLimit`のHMACキー生成、別バケット判定、観測期間、ブロック期限、ログイン成功時の社員番号バケット削除。
 - 認証試行制限状態のJSONスキーマ、1KiB上限、排他更新、部分書込み、破損、シンボリックリンク、権限エラー、期限切れ清掃。
 - 日付、期間、文字数、ページング、許可値の入力検証。
 - カテゴリの必須、20文字上限、前後空白除去、複数値拒否を検証する。
@@ -1217,7 +1303,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 ### 結合テスト
 
-- RepositoryのCRUD、論理削除除外、検索、ページング。
+- ModelのCRUD、論理削除除外、検索、ページング。
 - `employees`のCRUDと、借用者・貸出担当者・返却担当者の外部キー参照を確認する。
 - 部署、社員、備品、貸出の登録要求が`id=0`だけを受け付け、バックエンドが正の一意IDへ置換し、DBへ0を保存しないことを確認する。
 - `employees.id`がバックエンド採番の社員番号としてログインと外部キー参照に使用され、社員番号を手入力・変更できないことを確認する。
@@ -1287,7 +1373,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 ## 実装順序
 
 1. 現行Dockerfile、Compose、FuelPHP、Composer、Apache、環境別configの実体確認。設定は変更せず、解決されたバージョンと制約を記録する
-2. 4テーブルのマイグレーション、Controller・Service・Modelへ分割した`IdAllocator`、Repository、ログ・認証試行制限状態ディレクトリ
+2. 4テーブルのマイグレーション、Controller・Service・Modelへ分割した`IdAllocator`、共通親を継承するテーブル別Service・Model、ログ・認証試行制限状態ディレクトリ
 3. Session、認証、認可、認証試行制限Store、CSRF、セキュリティヘッダ
 4. 社員・部署CRUD
 5. 備品在庫CRUD
@@ -1320,7 +1406,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 ### 初期管理者作成
 
 - 初期化Taskは既存`fuel/app/tasks/robots.php`へ合わせ、`namespace Fuel\Tasks;`、クラス`Inventorysetup`、静的メソッド`run()`を持つ`fuel/app/tasks/inventorysetup.php`として実装する。実装時に同種Taskが追加されていれば、その新しい既存形式を優先する。
-- TaskはControllerやRepositoryへ直接SQLを書かず、初期部署と社員の入力を既存`DepartmentService`、`EmployeeService`、`IdAllocator`へ渡す。DBテーブル、列、制約は変更しない。
+- TaskはSQLを直接実行せず、初期部署と社員の入力を既存`Service_Table_Department`、`Service_Table_Employee`、`IdAllocator`へ渡す。DBテーブル、列、制約は変更しない。
 - 起動時に有効な管理者が1人でも存在する場合は処理を拒否し、二重初期化を防ぐ。途中で失敗した場合はトランザクションをロールバックし、管理者だけが作成された不完全状態を残さない。
 - 初期管理者のパスワードをコマンドライン引数、シェル履歴、標準出力、アプリケーションログ、監査ログへ出力しない。安全な入力方法はTask実装直前に、現行`\Cli` APIと実行環境を確認してユーザーへ提示する。
 - 成功時は採番済みの正の社員IDだけを表示し、パスワードやhashを表示しない。監査ログは`action = INITIAL_ADMIN_CREATE`、`actor_employee_id = null`、作成された社員IDを対象として記録する。
@@ -1343,14 +1429,14 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 
 - マイグレーション適用・ロールバック試験。
 - 貸出中数・利用可能数の列、および部署・備品の`is_active`列が存在しないことを確認する。
-- 旧`users`テーブル・ルート・Service・Repositoryが存在せず、社員管理の名称が`employees`へ統一されていることを確認する。
+- 旧`users`テーブル・ルート・Service・Modelが存在せず、社員管理の名称が`employees`へ統一されていることを確認する。
 - 初回変更フラグ、パスワード期限、一時パスワード用の列・Service・画面遷移が存在しないことを確認する。
 - 部署コード列と社員番号専用列が存在せず、バックエンドが採番した`employees.id`が社員番号として表示・ログイン・外部キー参照に使用されることを確認する。
 - 社員登録時のパスワード設定、任意の本人変更、管理者再設定、既存Session無効化を確認する。
 - 備品の種類と現物を分割する旧テーブルが存在せず、物理テーブルが`equipments`へ統一されていることを確認する。
 - 管理者専用のダッシュボード、備品、貸出HTMLルートが存在せず、共通画面で管理ボタンが権限別に表示されることを確認する。
 - 独立した備品詳細HTMLルートと旧画面画像が存在しないことを確認する。
-- カテゴリ専用テーブル・外部キー・Repository・APIが存在せず、`equipments.category`だけで登録・検索できることを確認する。
+- カテゴリ専用テーブル・外部キー・Model・APIが存在せず、`equipments.category`だけで登録・検索できることを確認する。
 - 4テーブルの主キーが`INT(11) DEFAULT 0`かつ非`AUTO_INCREMENT`で、アプリケーション登録後に0または重複IDが存在しないことを確認する。
 - 業務番号用の列・テーブル・生成Serviceが存在しないことを確認する。
 - 認証試行制限用のDBテーブル・マイグレーションが存在しないことを確認する。
@@ -1358,7 +1444,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - 現行development環境のHTTP、Cookie、CSP、HTTPヘッダ、DB接続、ポート公開範囲を確認し、外部利用前にはTLSを含む追加審査を行う。
 - 監査ログがDBに保存されないこと、`/var/log/fuel/audit.log`へのJSON Lines追記、権限エラー処理、コンテナ削除時の非永続性が設計どおりであることを確認する。
 - 認証試行制限状態が`/var/cache/fuel/login-rate-limit`へ排他保存され、429・503応答、日次清掃、コンテナ削除時の初期化が設計どおりであることを確認する。
-- `loan_requests`テーブル・Repository・Service・APIと、申請・取消・承認・却下・貸出開始処理が存在しないことを確認する。
+- `loan_requests`テーブル・Model・Service・APIと、申請・取消・承認・却下・貸出開始処理が存在しないことを確認する。
 - 社員が貸出登録・返却APIへアクセスすると403になることを確認する。
 - ログイン、検索、管理者による貸出登録・返却のスモークテスト。
 - 現行Docker構成で解決された実バージョンのサポート状況と、実利用承認または隔離デモ制限を確認する。
@@ -1366,7 +1452,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 ## 完了条件
 
 - MVP対象機能と権限が本書どおり動作する。
-- 社員データが`employees`で管理され、社員管理画面・API・Service・Repositoryが同じ名称を使用する。
+- 社員データが`employees`で管理され、社員管理画面・API・Service・Modelが同じ名称を使用する。
 - 部署はアプリケーション採番の内部IDと部署名で管理し、部署コードを持たない。社員はアプリケーション採番の`employees.id`を社員番号として使用し、社員番号専用列と社員番号入力欄を持たない。
 - 社員登録時にパスワードを設定し、初回変更・定期変更・有効期限を要求せず、本人の任意変更と管理者再設定だけを提供する。
 - 備品の貸出中数と利用可能数が`loans`から算出され、DBへ重複保存されない。
@@ -1375,11 +1461,11 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - `loans`に状態列を持たず、`returned_at`の有無から貸出中と返却済みを判定する。
 - アプリ内・外部の通知機能、期限接近の事前警告、通知カードが存在せず、返却期限と返却超過を貸出一覧およびダッシュボードへ文字表示する。
 - `is_active`は社員の一時利用停止だけに使用し、部署・備品の利用可否は`deleted_at`で判定する。
-- 消耗品管理と物品状態管理の画面、API、Service、Repository、テーブルが存在しない。
+- 消耗品管理と物品状態管理の画面、API、Service、Model、テーブルが存在しない。
 - 設置先専用のDBテーブル、マスタ画面、APIが存在せず、備品の管理部署が`departments`を参照する。
-- カテゴリ専用のDBテーブル、マスタ画面、API、Repositoryが存在せず、各備品が`equipments.category`へ20文字以内のカテゴリ文字列を1つ保持する。
-- 監査用DBテーブル、監査ログ検索画面・API・Repositoryが存在せず、監査記録がローカルJSON Linesファイルへ出力される。
-- 認証試行制限用のDBテーブル・Repositoryが存在せず、社員番号・IP別の状態が専用ローカルファイルへ排他保存される。
+- カテゴリ専用のDBテーブル、マスタ画面、API、Modelが存在せず、各備品が`equipments.category`へ20文字以内のカテゴリ文字列を1つ保持する。
+- 監査用DBテーブル、監査ログ検索画面・API・Modelが存在せず、監査記録がローカルJSON Linesファイルへ出力される。
+- 認証試行制限用のDBテーブル・Modelが存在せず、社員番号・IP別の状態が専用ローカルファイルへ排他保存される。
 - 備品と貸出は業務番号用の列・テーブル・Serviceを持たず、各内部主キーIDだけで識別する。
 - `departments`、`employees`、`equipments`、`loans`の新規作成では、フロントエンドの`id=0`をバックエンドが正の一意IDへ置換し、成功応答後にフロントエンドも同じIDへ置換する。
 - 同一部署・同一名称を1行で数量管理し、在庫超過、二重貸出処理、二重返却処理が発生しない。
@@ -1388,7 +1474,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - 備品の詳細は一覧内で確認でき、独立した備品詳細HTML画面を持たない。
 - `.codex/ui_image`のファイルが画面設計表と1対1で対応し、廃止した貸出申込み画像が存在しない。
 - 単体、結合、並行、セキュリティ、UIテストに重大・高優先度の未解決不具合がない。
-- `.codex/AGENTS.md`、マイグレーション、初回セットアップ、運用手順が実装と一致する。ルート`README.md`は別用途の環境構築資料として扱い、本設計との自動同期対象にしない。
+- `.codex/AGENTS.md`、`develop_log.md`、マイグレーション、初回セットアップ、運用手順が実装と一致する。実装内容とアーキテクチャ変更の要約は`develop_log.md`へ記録し、ルート`README.md`は変更しない。
 - 開発スケジュールと開発条件が原文から変更されていない。
 
 ## 参考資料

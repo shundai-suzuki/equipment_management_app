@@ -40,13 +40,15 @@ class Model_IdAllocator extends Model
 	public function acquire_lock($lock_name, $timeout_seconds)
 	{
 		$result = \DB::query(
-			'SELECT GET_LOCK(:lock_name, :lock_timeout) AS lock_acquired'
+			'SELECT GET_LOCK(:lock_name, :lock_timeout) AS lock_acquired',
+			\DB::SELECT
 		)
 			->parameters(
 				array(
 					'lock_name' => $lock_name,
 					'lock_timeout' => $timeout_seconds,
-			))
+				)
+			)
 			->execute($this->db);
 
 		return ((int) $result->get('lock_acquired', 0)) === 1;
@@ -59,7 +61,8 @@ class Model_IdAllocator extends Model
 	public function release_lock($lock_name)
 	{
 		$result = \DB::query(
-			'SELECT RELEASE_LOCK(:lock_name) AS lock_released'
+			'SELECT RELEASE_LOCK(:lock_name) AS lock_released',
+			\DB::SELECT
 		)
 			->param('lock_name', $lock_name)
 			->execute($this->db);
@@ -107,11 +110,15 @@ class Model_IdAllocator extends Model
 	 */
 	public function get_max_id($table)
 	{
-		$table_identifier = $this->quoted_table($table);
 		$id_identifier = $this->db->quote_identifier('id');
-		$result = \DB::query(
-			'SELECT COALESCE(MAX('.$id_identifier.'), 0) AS max_id FROM '.$table_identifier
-		)->execute($this->db);
+		$result = \DB::select(
+			array(
+				\DB::expr('COALESCE(MAX('.$id_identifier.'), 0)'),
+				'max_id',
+			)
+		)
+			->from($table)
+			->execute($this->db);
 
 		return $result->get('max_id');
 	}
@@ -135,26 +142,13 @@ class Model_IdAllocator extends Model
 	 */
 	public function id_exists($table, $id)
 	{
-		$table_identifier = $this->quoted_table($table);
-		$id_identifier = $this->db->quote_identifier('id');
-		$result = \DB::query(
-			'SELECT 1 AS id_exists FROM '.$table_identifier
-			.' WHERE '.$id_identifier.' = :id'
+		$result = \DB::select(
+			array(\DB::expr('1'), 'id_exists')
 		)
-			->param('id', $id)
+			->from($table)
+			->where('id', '=', $id)
 			->execute($this->db);
 
 		return (int) $result->get('id_exists', 0) === 1;
-	}
-
-	/**
-	 * Quote the target table name for an SQL statement.
-	 *
-	 * @param   string  $table
-	 * @return  string
-	 */
-	protected function quoted_table($table)
-	{
-		return $this->db->quote_identifier($this->db->table_prefix($table));
 	}
 }

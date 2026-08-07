@@ -812,8 +812,9 @@ public/
 
 | クラス | 主責務 |
 | --- | --- |
-| `Controller_Base` | 認証、CSRF、共通ヘッダ |
+| `Controller_Base` | 認証、CSRF、共通ヘッダ、JSONレスポンス整形、リクエストID生成 |
 | `Controller_Admin` | 管理者認可 |
+| `Controller_Auth` | POSTのログイン・ログアウト入力をAuthへ渡し、共通JSON形式で応答 |
 | `Controller_IdAllocator` | 登録系Controller用のID採番入口。`Service_IdAllocator`だけを呼び出し、HTTP公開用の採番APIは持たない |
 | `Auth_Login_Employee` | `Auth_Login_Driver`を直接継承し、FuelPHP Authと社員認証Serviceを接続する。SimpleAuthのログイン、Session再作成、ログアウトの流れへ合わせるが、DB依存メソッドは継承しない |
 | `Service_Auth` | 社員番号・パスワード照合、利用可能状態、資格情報フィンガープリントの生成・比較 |
@@ -834,7 +835,7 @@ public/
 | `JsonLineWriter` | 固定パスのログファイルへ排他追記、書込み結果の検証 |
 | `Fuel\Tasks\Inventorysetup` | 既存`Fuel\Tasks\Robots`の構造へ合わせ、初期部署と最初の管理者を既存Service経由で作成するOil Task |
 
-fuel/app/config/auth.phpはカスタムドライバEmployeeを選択する実行時configとする。fuel/app/config/config_recommend.phpはdeny対象のconfig.phpへユーザーが手動でマージする項目の説明専用であり、アプリケーションから読み込まない。
+fuel/app/config/auth.phpはカスタムドライバEmployeeを選択する実行時configとする。fuel/app/config/config_recommend.phpはdeny対象のconfig.phpへ反映する推奨項目の説明専用として残し、アプリケーションから読み込まない。推奨項目はユーザーがconfig.phpへ手動反映済みとし、秘密値を含む可能性があるためconfig.php本文を実装時に再読込しない。
 
 ### 独自config
 
@@ -947,6 +948,8 @@ FuelPHP Securityの`csrf_autoload`によるPOSTのCSRF検証はController生成�
 
 | Method | パス | 権限 | 成功 |
 | --- | --- | --- | --- |
+| POST | `/login` | 未認証 | 200、安全な社員情報 |
+| POST | `/logout` | 認証済 | 200、`data.logged_out = true` |
 | GET | `/api/equipment` | 認証済 | 200、検索結果 |
 | GET | `/api/equipment/:id` | 認証済 | 200、備品詳細 |
 | GET | `/api/loans` | 認証済 | 200、社員は本人分、管理者は全貸出履歴 |
@@ -1012,10 +1015,60 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 
 ### JSON形式
 
-- APIは成功データ用の`data`、一覧メタ情報用の`meta`、エラー用の`error`、追跡用の`request_id`を持つ方針とする。
-- 配列とオブジェクトの使い分け、作成・更新・一覧・詳細・エラーの具体的なJSON例は未確定とする。最初のJSON APIを実装する直前に、既存Controllerやレスポンス形式を確認したうえで候補を提示し、ユーザーへ確認すること。
-- ユーザー確認前に仮のJSON例を実装上の確定仕様として扱わない。ただし、新規作成成功時にバックエンド採番IDを返し、フロントエンドの`id=0`を正のIDへ置換する業務要件は維持する。
-- エラーには一般化したコード、メッセージ、必要な入力欄情報、`request_id`を含め、内部例外、DBエラー、機密情報を返さない。具体的なキー配置は実装前確認で確定する。
+- JSON APIは共通外枠を使用し、`Content-Type: application/json; charset=utf-8`で返す。HTTP上の成功・失敗はHTTPステータスを正とし、本文へ`success`または`status`を重複して持たせない。
+- 成功時は`data`と`request_id`を必須とし、`error`を含めない。`data`は詳細・登録・更新ではオブジェクト、一覧では配列とする。
+- 一覧時だけ`meta`を必須とし、`pagination.page`、`pagination.per_page`、`pagination.total`、`pagination.total_pages`を持たせる。備品一覧では重複排除したカテゴリ候補を`meta.category_options`へ追加する。詳細・登録・更新・認証応答へ空の`meta`を付けない。
+- 失敗時は`error.code`、一般化した`error.message`、`request_id`を必須とし、`data`を含めない。入力項目別エラーがある422応答だけ、`error.fields`へ項目名をキー、メッセージ配列を値として追加する。
+- `request_id`は32文字の小文字16進数とし、成功・失敗の全JSON応答へ含める。パスワード、パスワードhash、Session ID、資格情報フィンガープリント、CSRFトークン、内部例外、SQL、スタックトレースをJSONへ含めない。
+- 作成成功は201とし、採番済みの正のIDを`data.id`へ必ず含める。更新・詳細・一覧・ログイン・ログアウト成功は200とする。Fetch APIで共通してJSON解析できるよう、ログアウト成功に204は使用せず、`data.logged_out = true`を返す。
+- ログイン成功の`data.employee`は`id`、`employee_name`、`role`だけを含める。認証失敗は社員番号の存在を判別できない共通の`AUTHENTICATION_FAILED`とメッセージを返し、項目別理由を含めない。
+- AJAXとFetch APIのPOST入力は、`Form::csrf()`が生成したhidden項目を含む`FormData`またはフォームURLエンコードを使用する。`FormData`では境界文字列をブラウザへ設定させるため、JavaScriptから`Content-Type`を手動設定しない。
+- Controller生成前にCSRF自動検証等で`HttpBadRequestException`となった場合は、アプリケーションの400 Viewが`BAD_REQUEST`、一般化したメッセージ、32文字の`request_id`をJSONで返す。CSRF判定の詳細理由は返さない。
+
+成功応答の基本形:
+
+```json
+{
+  "data": {
+    "id": 1
+  },
+  "request_id": "0123456789abcdef0123456789abcdef"
+}
+```
+
+一覧成功応答の基本形:
+
+```json
+{
+  "data": [],
+  "meta": {
+    "pagination": {
+      "page": 1,
+      "per_page": 20,
+      "total": 0,
+      "total_pages": 0
+    }
+  },
+  "request_id": "0123456789abcdef0123456789abcdef"
+}
+```
+
+入力エラー応答の基本形:
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "入力内容を確認してください。",
+    "fields": {
+      "name": [
+        "名称を入力してください。"
+      ]
+    }
+  },
+  "request_id": "0123456789abcdef0123456789abcdef"
+}
+```
 
 ### HTTPステータス
 
@@ -1027,6 +1080,7 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 | 401 | 未認証 |
 | 403 | 権限不足 |
 | 404 | 存在しない、または閲覧不可 |
+| 405 | 許可されていないHTTPメソッド |
 | 409 | 版・状態競合 |
 | 422 | 業務・入力検証エラー |
 | 429 | 試行回数超過 |
@@ -1097,7 +1151,7 @@ APIリソース`departments`、`employees`、`equipment`を静的ルートとし
 
 - FuelPHP Securityの`csrf_autoload`を有効にし、POST受信時のトークン検証をControllerより前に自動実行する。
 - `csrf_auto_token`を有効にし、`Form::open()`から`Form::csrf()`のhidden fieldを自動生成する。フォームへCSRF hidden fieldを手書きしない。
-- `config.php`へ手動反映する推奨値と説明は、実行時に読み込まれない`fuel/app/config/config_recommend.php`へ記載する。
+- 認証、Session、Cookie、CSRFの推奨値と説明は、実行時に読み込まれない`fuel/app/config/config_recommend.php`へ残す。推奨値はユーザーが`config.php`へ手動反映済みとし、`config.php`の本文や秘密値をレスポンス、文書、ログへ出力しない。
 - ログイン、ログアウト、パスワード変更を含む全POSTを対象とする。
 - OriginとFetch Metadataも検証する。
 - URL、ログ、エラーメッセージへトークンを出力しない。

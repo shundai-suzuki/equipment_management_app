@@ -144,7 +144,7 @@ class Service_Auth
 		$employee_number = trim($employee_number);
 
 		if ( ! preg_match('/\A[1-9][0-9]*\z/', $employee_number)
-			or strlen($employee_number) > MAX_EMPLOYEE_ID_LEN)
+			or strlen($employee_number) > static::MAX_EMPLOYEE_ID_LEN)
 		{
 			return null;
 		}

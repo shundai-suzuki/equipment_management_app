@@ -84,10 +84,11 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	 */
 	public function validate_user($employee_number = '', $password = '')
 	{
-		$authentication = $this->get_service()->authenticate(
-			$employee_number,
-			$password
-		);
+		$authentication = $this->get_service()
+			->authenticate(
+				$employee_number,
+				$password
+			);
 
 		if ($authentication === false)
 		{
@@ -114,21 +115,19 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 		{
 			$this->user = null;
 			$this->clear_session_values();
-			\Auth::_unregister_verified($this);
-			return false;
+
+			return $this->check();
 		}
 
-		$this->user = $user;
 		$fingerprint = $this->pending_fingerprint;
 		$this->pending_fingerprint = null;
 
 		\Session::destroy();
 		\Session::read();
-		\Session::set(static::SESSION_EMPLOYEE_ID, $this->user['id']);
+		\Session::set(static::SESSION_EMPLOYEE_ID, $user['id']);
 		\Session::set(static::SESSION_CREDENTIAL_FINGERPRINT, $fingerprint);
-		\Auth::_register_verified($this);
 
-		return true;
+		return $this->check();
 	}
 
 	/**

@@ -123,7 +123,7 @@ return array(
 		/**
 		 * A salt to make sure the generated security tokens are not predictable
 		 */
-		'token_salt'            => getenv('INVENTORY_CSRF_TOKEN_SALT'),
+		'token_salt'            => getenv('FUEL_CSRF_TOKEN_SALT'),
 
 		/**
 		 * Allow the Input class to use X headers when present
@@ -207,7 +207,7 @@ return array(
 	 */
 	'employee_auth' => array(
 		'credential_fingerprint_key' => getenv(
-			'INVENTORY_AUTH_FINGERPRINT_KEY'
+			'FUEL_AUTH_FINGERPRINT_KEY'
 		),
 	),
 

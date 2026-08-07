@@ -819,6 +819,7 @@ public/
 | `Auth_Login_Employee` | `Auth_Login_Driver`を直接継承し、FuelPHP Authと社員認証Serviceを接続する。SimpleAuthのログイン、Session再作成、ログアウトの流れへ合わせるが、DB依存メソッドは継承しない |
 | `Service_Auth` | 社員番号・パスワード照合、利用可能状態、資格情報フィンガープリントの生成・比較 |
 | `Security_LoginRateLimit` | 社員番号・IP別の認証失敗回数とブロック期限をローカルJSONファイルで排他管理 |
+| `Fuel\Tasks\LoginRateLimitCleanup` | `Security_LoginRateLimit`の期限切れ状態清掃をCLIから起動し、削除件数を表示 |
 | `Service_Table_Employee` | 社員CRUD、利用停止・再有効化・論理削除・復元、最後の管理者保護、権限変更、パスワード再設定 |
 | `Service_Table_Department` | 部署CRUD、参照中部署の削除制御、削除済み同名部署の復元 |
 | `Service_Table_Equipment` | 備品在庫CRUD、数量検証、部署変更制御 |
@@ -1255,6 +1256,7 @@ PHP 7.3を含む現行構成は旧式である。MySQL、Apache、Composer、Fue
 - JSON不正、上限超過、シンボリックリンク、ロック・読込・書込・flush失敗を状態異常として扱い、破損状態を初期化して認証を続行しない。
 - 状態ディレクトリはDocumentRoot外の`/var/cache/fuel`配下へ置き、現行アプリ実行ユーザー`www-data`だけが状態ファイルを処理する。現行Dockerfileのディレクトリ権限は変更せず、状態ファイル作成時にアプリから可能な範囲で他ユーザーの読取りを許可しない。
 - アプリコンテナ内で`php oil refine loginratelimitcleanup`を実行し、ブロック期限が終了し、かつ`updated_at`から7日を超えた状態ファイルだけを排他確認後に削除する。定期実行方法は現行Dockerfileに含まれるcronを使用する案を実装前にユーザーへ確認する。
+- Taskは清掃の起動だけを担当する。`Security_LoginRateLimit`は正の整数の`retention_seconds`を検証し、専用ディレクトリ直下の`account-<64文字の小文字16進HMAC>.json`と`ip-<64文字の小文字16進HMAC>.json`だけを対象として、不正な名前とシンボリックリンクを拒否し、ロック中にJSONを検証して削除条件を判定する。
 
 ### 監査ログ
 

@@ -43,6 +43,13 @@ class Security_LoginRateLimit
 	protected $ip_policy;
 
 	/**
+	 * Seconds to retain an inactive state file.
+	 *
+	 * @var int
+	 */
+	protected $retention_seconds;
+
+	/**
 	 * @param  array|null  $config
 	 */
 	public function __construct($config = null)
@@ -69,6 +76,9 @@ class Security_LoginRateLimit
 		);
 		$this->ip_policy = $this->validate_policy(
 			isset($config['ip']) ? $config['ip'] : null
+		);
+		$this->retention_seconds = $this->validate_retention_seconds(
+			isset($config['retention_seconds']) ? $config['retention_seconds'] : null
 		);
 
 		if ( ! is_string($this->hmac_key)
@@ -145,6 +155,53 @@ class Security_LoginRateLimit
 	}
 
 	/**
+	 * Delete inactive state files whose retention period has elapsed.
+	 *
+	 * @return  int  Number of deleted files
+	 */
+	public function cleanup()
+	{
+		$filenames = @scandir($this->state_dir);
+
+		if ( ! is_array($filenames))
+		{
+			throw new Security_LoginRateLimitException(
+				'The login rate-limit state directory cannot be scanned.'
+			);
+		}
+
+		$deleted = 0;
+		$now = time();
+
+		foreach ($filenames as $filename)
+		{
+			if ($filename === '.' or $filename === '..')
+			{
+				continue;
+			}
+
+			if (preg_match(
+				'/\A(?:account|ip)-[0-9a-f]{64}\.json\z/',
+				$filename
+			) !== 1)
+			{
+				throw new Security_LoginRateLimitException(
+					'The login rate-limit state filename is invalid.'
+				);
+			}
+
+			$path = $this->state_dir.DIRECTORY_SEPARATOR.$filename;
+
+			if ($this->delete_expired_bucket($path, $now))
+			{
+				$deleted++;
+			}
+		}
+
+		return $deleted;
+	}
+
+	/**
 	 * Accept only one fixed absolute directory outside the public tree.
 	 *
 	 * @param   mixed  $state_dir
@@ -196,6 +253,24 @@ class Security_LoginRateLimit
 			'window_seconds' => $policy['window_seconds'],
 			'block_seconds' => $policy['block_seconds'],
 		);
+	}
+
+	/**
+	 * Accept one positive cleanup retention period.
+	 *
+	 * @param   mixed  $retention_seconds
+	 * @return  int
+	 */
+	protected function validate_retention_seconds($retention_seconds)
+	{
+		if ( ! is_int($retention_seconds) or $retention_seconds < 1)
+		{
+			throw new Security_LoginRateLimitException(
+				'The login rate-limit retention period is invalid.'
+			);
+		}
+
+		return $retention_seconds;
 	}
 
 	/**
@@ -453,6 +528,48 @@ class Security_LoginRateLimit
 					'The login rate-limit state cannot be deleted.'
 				);
 			}
+		}
+		finally
+		{
+			$this->close_locked_file($locked_file['handle']);
+		}
+	}
+
+	/**
+	 * Delete one expired bucket after validating it under its lock.
+	 *
+	 * @param   string  $path
+	 * @param   int     $now
+	 * @return  bool
+	 */
+	protected function delete_expired_bucket($path, $now)
+	{
+		$locked_file = $this->open_locked_file($path, false);
+
+		if ($locked_file === null)
+		{
+			return false;
+		}
+
+		try
+		{
+			$state = $this->read_state($locked_file['handle'], false);
+
+			if ($state['blocked_until'] > $now
+				or $state['updated_at'] > $now
+				or $now - $state['updated_at'] < $this->retention_seconds)
+			{
+				return false;
+			}
+
+			if ( ! @unlink($path))
+			{
+				throw new Security_LoginRateLimitException(
+					'The login rate-limit state cannot be deleted.'
+				);
+			}
+
+			return true;
 		}
 		finally
 		{

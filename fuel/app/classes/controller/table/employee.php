@@ -8,6 +8,93 @@
 class Controller_Table_Employee extends Controller_AdminCrud
 {
 	/**
+	 * Temporarily disable one employee account.
+	 *
+	 * @param   mixed  $id
+	 * @return  Response
+	 */
+	public function post_deactivate($id)
+	{
+		return $this->execute_crud(
+			function () use ($id)
+			{
+				return $this->json_success(
+					$this->service->deactivate_for_admin(
+						$this->actor_id(),
+						$this->integer_value($id, 'id')
+					)
+				);
+			}
+		);
+	}
+
+	/**
+	 * Re-enable one inactive employee account.
+	 *
+	 * @param   mixed  $id
+	 * @return  Response
+	 */
+	public function post_activate($id)
+	{
+		return $this->execute_crud(
+			function () use ($id)
+			{
+				return $this->json_success(
+					$this->service->activate_for_admin(
+						$this->actor_id(),
+						$this->integer_value($id, 'id')
+					)
+				);
+			}
+		);
+	}
+
+	/**
+	 * Restore one archived employee.
+	 *
+	 * @param   mixed  $id
+	 * @return  Response
+	 */
+	public function post_restore($id)
+	{
+		return $this->execute_crud(
+			function () use ($id)
+			{
+				return $this->json_success(
+					$this->service->restore_for_admin(
+						$this->actor_id(),
+						$this->integer_value($id, 'id')
+					)
+				);
+			}
+		);
+	}
+
+	/**
+	 * Reset one employee password.
+	 *
+	 * @param   mixed  $id
+	 * @return  Response
+	 */
+	public function post_password($id)
+	{
+		return $this->execute_crud(
+			function () use ($id)
+			{
+				return $this->json_success(
+					$this->service->reset_password_for_admin(
+						$this->actor_id(),
+						$this->integer_value($id, 'id'),
+						Input::post('admin_password'),
+						Input::post('password'),
+						Input::post('password_confirmation')
+					)
+				);
+			}
+		);
+	}
+
+	/**
 	 * Create the employee Service.
 	 *
 	 * @return  Service_Table_Employee

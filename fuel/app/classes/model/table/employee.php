@@ -233,6 +233,51 @@ class Model_Table_Employee extends Model_BaseCrud
 	}
 
 	/**
+	 * Change the temporary account availability state.
+	 *
+	 * @param   int                       $id
+	 * @param   int                       $is_active
+	 * @param   Database_Connection|null  $db
+	 * @return  int
+	 */
+	public function update_active_state($id, $is_active, $db = null)
+	{
+		$db = $this->connection($db);
+
+		return (int) \DB::update(static::$table_name)
+			->set(array(
+				'is_active' => $is_active,
+				'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
+			))
+			->where('id', '=', $id)
+			->where('is_active', '!=', $is_active)
+			->where('deleted_at', 'IS', null)
+			->execute($db);
+	}
+
+	/**
+	 * Replace one non-archived employee's password hash.
+	 *
+	 * @param   int                       $id
+	 * @param   string                    $password_hash
+	 * @param   Database_Connection|null  $db
+	 * @return  int
+	 */
+	public function update_password_hash($id, $password_hash, $db = null)
+	{
+		$db = $this->connection($db);
+
+		return (int) \DB::update(static::$table_name)
+			->set(array(
+				'password_hash' => $password_hash,
+				'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
+			))
+			->where('id', '=', $id)
+			->where('deleted_at', 'IS', null)
+			->execute($db);
+	}
+
+	/**
 	 * Apply the common active conditions and an optional role condition.
 	 *
 	 * @param   int                       $id

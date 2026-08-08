@@ -69,7 +69,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 
 		if ($read_equipment !== null)
 		{
-			return $this->restore_or_reject($read_equipment, $department_id, $name);
+			return $this->restore_or_reject($read_equipment);
 		}
 
 		$create_values = array(
@@ -164,7 +164,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 			function ($db) use ($actor_id, $id,	$name, $department_id, $category,	$total_amount, $description)
 			{
 				$this->assert_admin_actor($actor_id, $db);
-				$equipment_before_update = $this->model->read_before_update($id, false, $db);
+				$equipment_before_update = $this->model->read_for_update($id, false, $db);
 
 				if ($equipment_before_update === null)
 				{
@@ -240,11 +240,21 @@ class Service_Table_Equipment extends Service_BaseCrud
 			{
 				$this->assert_admin_actor($actor_id, $db);
 
-				if ($this->model->read_before_update($id, false, $db) === null)
+				$equipment_before_delete = $this->model->read_for_update($id, true, $db);
+
+				if ($equipment_before_delete === null)
 				{
 					throw new RuntimeException(
 						'The equipment was not found.',
 						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($equipment_before_delete['deleted_at'] !== null)
+				{
+					throw new RuntimeException(
+						'The equipment is already archived.',
+						static::CONFLICT_EXCEPTION_CODE
 					);
 				}
 
@@ -360,7 +370,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Require a department that is not archived.
+	 * Require and lock a department during transactional writes.
 	 *
 	 * @param   int                       $department_id
 	 * @param   Database_Connection|null  $db
@@ -368,21 +378,30 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 */
 	protected function assert_active_department($department_id, $db = null)
 	{
-		if ( ! $this->department_model->is_active($department_id, $db))
+		if ($db instanceof \Database_Connection)
 		{
-			throw new \InvalidArgumentException('The selected department is not available.');
+			if ($this->department_model->read_for_update($department_id, false,	$db) !== null)
+			{
+				return;
+			}
 		}
+		elseif ($this->department_model->is_active($department_id))
+		{
+			return;
+		}
+
+		throw new \InvalidArgumentException(
+			'The selected department is not available.'
+		);
 	}
 
 	/**
 	 * Restore an archived match or reject an active duplicate.
 	 *
-	 * @param   array   $read_equipment
-	 * @param   int     $department_id
-	 * @param   string  $name
+	 * @param   array  $read_equipment
 	 * @return  int
 	 */
-	protected function restore_or_reject(array $read_equipment, $department_id, $name)
+	protected function restore_or_reject(array $read_equipment)
 	{
 		if ($read_equipment['deleted_at'] === null)
 		{
@@ -394,23 +413,36 @@ class Service_Table_Equipment extends Service_BaseCrud
 
 		$id = (int) $read_equipment['id'];
 
-		if ($this->model->restore($id))
-		{
-			return $id;
-		}
+		return $this->model->transaction(
+			function ($db) use ($id)
+			{
+				$equipment_before_restore = $this->model->read_for_update(
+					$id,
+					true,
+					$db
+				);
 
-		$read_current = $this->model->read_by_department_and_name($department_id, $name);
+				if ($equipment_before_restore === null)
+				{
+					throw new \RuntimeException(
+						'The archived equipment could not be read.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
 
-		if ($read_current !== null
-			and (int) $read_current['id'] === $id
-			and $read_current['deleted_at'] === null)
-		{
-			return $id;
-		}
+				if ($equipment_before_restore['deleted_at'] === null)
+				{
+					return $id;
+				}
 
-		throw new \RuntimeException(
-			'Failed to restore the archived equipment.',
-			static::CONFLICT_EXCEPTION_CODE
+				$this->assert_active_department(
+					(int) $equipment_before_restore['department_id'],
+					$db
+				);
+				$this->restore_and_read_record($id, $db);
+
+				return $id;
+			}
 		);
 	}
 
@@ -436,6 +468,6 @@ class Service_Table_Equipment extends Service_BaseCrud
 			throw $exception;
 		}
 
-		return $this->restore_or_reject($read_equipment, $department_id, $name);
+		return $this->restore_or_reject($read_equipment);
 	}
 }

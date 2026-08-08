@@ -147,6 +147,26 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
+	 * Restore an already locked row and return its active representation.
+	 *
+	 * @param   int                       $id
+	 * @param   Database_Connection|null  $db
+	 * @return  array
+	 */
+	protected function restore_and_read_record($id, $db = null)
+	{
+		if ($this->model->restore($id, $db) !== 1)
+		{
+			throw new \RuntimeException(
+				'The record changed during the restore operation.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
+
+		return $this->read_required_record($id, $db);
+	}
+
+	/**
 	 * Require a reason suitable for the later audit event.
 	 *
 	 * @param   mixed  $reason

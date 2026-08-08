@@ -260,8 +260,14 @@ abstract class Model_BaseCrud extends \Model
 	public function read_for_update($id, $include_soft_deleted, \Database_Connection $db)
 	{
 		$this->assert_crud_configuration();
-		$read_query = 
-			'SELECT '.implode(', ', $columns)
+		$columns = array();
+
+		foreach (static::$read_columns as $column)
+		{
+			$columns[] = $this->quoted_column($column, $db);
+		}
+
+		$sql = 'SELECT '.implode(', ', $columns)
 			.' FROM '.$this->quoted_table($db)
 			.' WHERE '.$this->quoted_column('id', $db).' = :id';
 

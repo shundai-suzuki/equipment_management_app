@@ -13,7 +13,6 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	const CONFLICT_EXCEPTION_CODE = 409;
 	const PER_PAGE = 10;
 	const MAX_KEYWORD_LENGTH = 255;
-	const MAX_SOFT_DELETE_REASON_LENGTH = 255;
 
 	/**
 	 * Employee Model for checking the administrator performing an operation.
@@ -164,28 +163,6 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 		}
 
 		return $this->read_required_record($id, $db);
-	}
-
-	/**
-	 * Require a reason suitable for the later audit event.
-	 *
-	 * @param   mixed  $reason
-	 * @return  void
-	 */
-	protected function assert_soft_delete_reason($reason)
-	{
-		if ( ! is_string($reason))
-		{
-			throw new \InvalidArgumentException('The soft-delete reason must be a string.');
-		}
-
-		$reason = trim($reason);
-
-		if ($reason === ''
-			or mb_strlen($reason, 'UTF-8') > static::MAX_SOFT_DELETE_REASON_LENGTH)
-		{
-			throw new \InvalidArgumentException('The soft-delete reason is invalid.');
-		}
 	}
 
 	/**

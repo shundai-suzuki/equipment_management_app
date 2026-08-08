@@ -227,13 +227,11 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $id
-	 * @param   string  $reason
 	 * @return  array
 	 */
-	public function soft_delete_for_admin($actor_id, $id, $reason)
+	public function soft_delete_for_admin($actor_id, $id)
 	{
 		$this->assert_positive_id($id, 'The equipment ID');
-		$this->assert_soft_delete_reason($reason);
 
 		return $this->model->transaction(
 			function ($db) use ($actor_id, $id)

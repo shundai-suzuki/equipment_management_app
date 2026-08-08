@@ -75,6 +75,15 @@ return array(
 		array('GET', new Route('table/equipment/search')),
 		array('POST', new Route('table/equipment/create')),
 	),
+	'api/admin/loans/:id/return' => array(
+		array('POST', new Route('adminloans/return/$1')),
+	),
+	'api/admin/loans' => array(
+		array('POST', new Route('adminloans/create')),
+	),
+	'api/loans' => array(
+		array('GET', new Route('table/loan/search')),
+	),
 
 	'hello(/:name)?' => array('welcome/hello', 'name' => 'hello'),
 );

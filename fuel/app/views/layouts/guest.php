@@ -1,3 +1,6 @@
+<?php
+// before login layout
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>

@@ -1,3 +1,6 @@
+<?php
+// after login layout
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -8,10 +11,7 @@
 <body>
 	<?php echo View::forge('partials/header', array('guest' => false)); ?>
 	<div class="mih-vh68 d-grid gtc230">
-		<?php echo View::forge(
-			'partials/sidebar',
-			array('active_page' => $active_page)
-		); ?>
+		<?php echo View::forge('partials/sidebar', array('active_page' => $active_page)); ?>
 		<main class="miw0 p30_36_48">
 			<?php echo $content; ?>
 		</main>

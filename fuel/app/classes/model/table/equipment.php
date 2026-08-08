@@ -15,11 +15,11 @@ class Model_Table_Equipment extends Model_BaseCrud
 	protected static $table_name = 'equipments';
 
 	/**
-	 * Equipment values accepted for a new row.
+	 * Equipment create values accepted for a new row.
 	 *
 	 * @var array
 	 */
-	protected static $insert_columns = array(
+	protected static $create_columns = array(
 		'name',
 		'department_id',
 		'category',
@@ -28,58 +28,144 @@ class Model_Table_Equipment extends Model_BaseCrud
 	);
 
 	/**
-	 * Find equipment by its unique department and name pair.
+	 * Equipment columns returned by CRUD reads. 
+	 * 
+	 * @var array 
+	 */
+	protected static $read_columns = array(
+		'id',
+		'name',
+		'department_id',
+		'category',
+		'total_amount',
+		'description',
+		'created_at',
+		'updated_at',
+		'deleted_at',
+	);
+
+	/** 
+	 * Columns accepted by equipment updates. 
+	 * 
+	 * @var array
+	 */
+	protected static $update_columns = array(
+		'name',
+		'department_id',
+		'category',
+		'total_amount',
+		'description',
+	);
+
+	/** 
+	 * Equipment columns included in keyword searches. 
+	 * 
+	 * @var array 
+	 */
+	protected static $search_columns = array('name');
+
+	/**
+	 * Exact-match equipment search filters. 
+	 * 
+	 * @var array
+	 */
+	protected static $filter_columns = array(
+		'department_id' => 'department_id',
+		'category' => 'category',
+	);
+
+	/** 
+	 * Equipment columns returned as integers. 
+	 * 
+	 * @var array
+	 */
+	protected static $integer_columns = array('id', 'department_id', 'total_amount');
+
+	/**
+	 * Read equipment by its unique department and name pair.
 	 *
 	 * @param   int                       $department_id
 	 * @param   string                    $name
 	 * @param   Database_Connection|null  $db
 	 * @return  array|null
 	 */
-	public function find_by_department_and_name($department_id, $name, $db = null)
+	public function read_by_department_and_name($department_id, $name, $db = null)
 	{
 		$db = $this->connection($db);
-		$result = \DB::select('id', 'department_id', 'name', 'deleted_at')
+		$read_result = \DB::select('id', 'department_id', 'name', 'deleted_at')
 			->from(static::$table_name)
 			->where('department_id', '=', $department_id)
 			->where('name', '=', $name)
-			->limit(1)
 			->execute($db);
 
-		if (count($result) === 0)
+		if (count($read_result) === 0)
 		{
 			return null;
 		}
 
 		return array(
-			'id' => (int) $result->get('id'),
-			'department_id' => (int) $result->get('department_id'),
-			'name' => $result->get('name'),
-			'deleted_at' => $result->get('deleted_at'),
+			'id' => (int) $read_result->get('id'),
+			'department_id' => (int) $read_result->get('department_id'),
+			'name' => $read_result->get('name'),
+			'deleted_at' => $read_result->get('deleted_at'),
 		);
 	}
 
 	/**
-	 * Restore archived equipment without changing its ID.
+	 * Return active equipment categories for the list filter.
+	 *
+	 * @return  array
+	 */
+	public function read_category_options()
+	{
+		$read_rows = DB::select('category')
+			->distinct()
+			->from(static::$table_name)
+			->where('deleted_at', 'IS', null)
+			->order_by('category', 'ASC')
+			->execute($this->db)
+			->as_array();
+		return array_column($read_rows, 'category');
+	}
+
+	/**
+	 * Count unreturned loans for an equipment row.
+	 *
+	 * @param   int                       $id
+	 * @param   Database_Connection|null  $db
+	 * @return  int
+	 */
+	public function count_active_loans($id, $db = null)
+	{
+		$db = $this->connection($db);
+		$read_count_result = \DB::select(array(\DB::expr('COUNT(*)'), 'total'))
+			->from('loans')
+			->where('equipment_id', '=', $id)
+			->where('returned_at', 'IS', null)
+			->execute($db);
+
+		return (int) $read_count_result->get('total', 0);
+	}
+
+	/**
+	 * Check whether an equipment row has lending history.
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
 	 * @return  bool
 	 */
-	public function restore($id, $db = null)
+	public function has_loan_history($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$result = \DB::update(static::$table_name)
-			->set(
-				array(
-					'deleted_at' => null,
-					'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
-				)
-			)
-			->where('id', '=', $id)
-			->where('deleted_at', 'IS NOT', null)
+		$read_result = \DB::select(
+			array(\DB::expr('1'), 'loan_exists')
+		)
+			->from('loans')
+			->where('equipment_id', '=', $id)
+			->limit(1)
 			->execute($db);
 
-		return (int) $result === 1;
+		return (int) $read_result->get('loan_exists', 0) === 1;
 	}
 
 	/**
@@ -95,7 +181,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 		$total_amount = $this->quoted_column('total_amount', $db);
 		$deleted_at = $this->quoted_column('deleted_at', $db);
 
-		$result = \DB::query(
+		$read_equipment_result = \DB::query(
 			'SELECT '.$id_column.', '.$total_amount
 			.' FROM '.$this->quoted_table($db)
 			.' WHERE '.$id_column.' = :id AND '.$deleted_at.' IS NULL FOR UPDATE',
@@ -104,12 +190,12 @@ class Model_Table_Equipment extends Model_BaseCrud
 			->param('id', $id)
 			->execute($db);
 
-		if (count($result) === 0)
+		if (count($read_equipment_result) === 0)
 		{
 			return null;
 		}
 
-		$loaned = \DB::select(
+		$read_loan_count = \DB::select(
 			array(\DB::expr('COUNT(*)'), 'loaned_amount')
 		)
 			->from('loans')
@@ -117,8 +203,8 @@ class Model_Table_Equipment extends Model_BaseCrud
 			->where('returned_at', 'IS', null)
 			->execute($db);
 
-		$total = (int) $result->get('total_amount');
-		$loaned_amount = (int) $loaned->get('loaned_amount', 0);
+		$total = (int) $read_equipment_result->get('total_amount');
+		$loaned_amount = (int) $read_loan_count->get('loaned_amount', 0);
 		$available = $total - $loaned_amount;
 
 		if ($available < 0)
@@ -127,7 +213,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 		}
 
 		return array(
-			'id' => (int) $result->get('id'),
+			'id' => (int) $read_equipment_result->get('id'),
 			'total_amount' => $total,
 			'loaned_amount' => $loaned_amount,
 			'available_amount' => $available,

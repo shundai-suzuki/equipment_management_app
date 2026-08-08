@@ -73,12 +73,12 @@ class Service_Table_Loan extends Service_BaseRegistration
 		$this->assert_positive_id($employee_id, 'The borrower employee ID');
 		$this->assert_positive_id($equipment_id, 'The equipment ID');
 		$this->assert_positive_id($loaned_by, 'The loan operator employee ID');
-		
+
 		$loaned_at = $this->current_loan_date();
 		$due_date = $this->normalize_due_date($due_date, $loaned_at);
 		$this->assert_employee_states($employee_id, $loaned_by);
 
-		return $this->register(array(
+		return $this->create_record(array(
 			'employee_id' => $employee_id,
 			'equipment_id' => $equipment_id,
 			'due_date' => $due_date,
@@ -103,14 +103,21 @@ class Service_Table_Loan extends Service_BaseRegistration
 	/**
 	 * Recheck participants and inventory inside the allocation transaction.
 	 *
-	 * @param   array                $values
+	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
 	 * @return  void
 	 */
-	protected function before_insert(array $values, \Database_Connection $db)
+	protected function before_create(array $create_values, \Database_Connection $db)
 	{
-		$this->assert_employee_states($values['employee_id'], $values['loaned_by'], $db);
-		$inventory = $this->equipment_model->lock_available($values['equipment_id'], $db);
+		$this->assert_employee_states(
+			$create_values['employee_id'],
+			$create_values['loaned_by'],
+			$db
+		);
+		$inventory = $this->equipment_model->lock_available(
+			$create_values['equipment_id'],
+			$db
+		);
 
 		if ($inventory === null or $inventory['available_amount'] < 1)
 		{

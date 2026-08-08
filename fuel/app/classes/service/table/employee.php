@@ -5,7 +5,7 @@
  *
  * @package  app
  */
-class Service_Table_Employee extends Service_BaseRegistration
+class Service_Table_Employee extends Service_BaseCrud
 {
 	const MAX_NAME_LENGTH = 30;
 	const MIN_PASSWORD_BYTES = 12;
@@ -39,7 +39,7 @@ class Service_Table_Employee extends Service_BaseRegistration
 			throw new \InvalidArgumentException('The department model must be an object.');
 		}
 
-		$this->department_model = $department_model ? $department_model: new Model_Table_Department();
+		$this->department_model = $department_model ? $department_model : new Model_Table_Department();
 	}
 
 	/**
@@ -60,17 +60,155 @@ class Service_Table_Employee extends Service_BaseRegistration
 
 		$employee_name = $this->normalize_name($employee_name);
 		$role = $this->normalize_role($role);
-		
-		$password_hash = $this->create_hash_password($password, $password_confirmation);
-		$this->assert_active_department($department_id);
 
-		return $this->register(array(
+		$password_hash = $this->create_hash_password($password, $password_confirmation);
+		return $this->create_record(array(
 			'employee_name' => $employee_name,
 			'department_id' => $department_id,
 			'role' => $role,
 			'password_hash' => $password_hash,
 			'is_active' => 1,
 		));
+	}
+
+	/**
+	 * Create an employee after rechecking the administrator.
+	 *
+	 * @param   int     $actor_id
+	 * @param   int     $id
+	 * @param   string  $employee_name
+	 * @param   int     $department_id
+	 * @param   string  $role
+	 * @param   string  $password
+	 * @param   string  $password_confirmation
+	 * @return  int
+	 */
+	public function create_for_admin($actor_id,	$id, $employee_name, $department_id, $role, $password, $password_confirmation)
+	{
+		$this->assert_admin_actor($actor_id);
+
+		return $this->create(
+			$id,
+			$employee_name,
+			$department_id,
+			$role,
+			$password,
+			$password_confirmation
+		);
+	}
+
+	/**
+	 * Update the editable employee fields.
+	 *
+	 * @param   int     $actor_id
+	 * @param   int     $id
+	 * @param   string  $employee_name
+	 * @param   int     $department_id
+	 * @param   string  $role
+	 * @return  array
+	 */
+	public function update_for_admin($actor_id, $id, $employee_name, $department_id, $role)
+	{
+		$this->assert_positive_id($id, 'The employee ID');
+		$this->assert_positive_id($department_id, 'The department ID');
+		$employee_name = $this->normalize_name($employee_name);
+		$role = $this->normalize_role($role);
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $id, $employee_name, $department_id, $role)
+			{
+				$this->assert_admin_actor($actor_id, $db);
+				$employee_before_update = $this->model->read_before_update($id, false, $db);
+
+				if ($employee_before_update === null)
+				{
+					throw new RuntimeException(
+						'The employee was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				$this->assert_active_department($department_id, $db);
+
+				if ((int) $employee_before_update['department_id'] !== $department_id
+					and $this->model->has_loan_history($id, $db))
+				{
+					throw new RuntimeException(
+						'An employee with lending history cannot change departments.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				if ($employee_before_update['role'] === 'ADMIN'
+					and $role !== 'ADMIN'
+					and $this->model->lock_active_admin_count($db) <= 1)
+				{
+					throw new RuntimeException(
+						'The last active administrator cannot lose administrator access.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->update_and_read_record(
+					$id,
+					array(
+						'employee_name' => $employee_name,
+						'department_id' => $department_id,
+						'role' => $role,
+					),
+					$db
+				);
+			}
+		);
+	}
+
+	/**
+	 * Soft-delete an employee who has no active loan.
+	 *
+	 * @param   int     $actor_id
+	 * @param   int     $id
+	 * @param   string  $reason
+	 * @return  array
+	 */
+	public function soft_delete_for_admin($actor_id, $id, $reason)
+	{
+		$this->assert_positive_id($id, 'The employee ID');
+		$this->assert_soft_delete_reason($reason);
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $id)
+			{
+				$this->assert_admin_actor($actor_id, $db);
+				$employee_before_delete = $this->model->read_before_update($id, false, $db);
+
+				if ($employee_before_delete === null)
+				{
+					throw new RuntimeException(
+						'The employee was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($employee_before_delete['role'] === 'ADMIN'
+					and $this->model->lock_active_admin_count($db) <= 1)
+				{
+					throw new RuntimeException(
+						'The last active administrator cannot be archived.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				if ($this->model->has_active_loans($id, $db))
+				{
+					throw new RuntimeException(
+						'An employee with an active loan cannot be archived.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->soft_delete_and_read_record($id, $db);
+			}
+		);
 	}
 
 	/**
@@ -86,13 +224,13 @@ class Service_Table_Employee extends Service_BaseRegistration
 	/**
 	 * Recheck the department on the allocator transaction connection.
 	 *
-	 * @param   array                $values
+	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
 	 * @return  void
 	 */
-	protected function before_insert(array $values, \Database_Connection $db)
+	protected function before_create(array $create_values, \Database_Connection $db)
 	{
-		$this->assert_active_department($values['department_id'], $db);
+		$this->assert_active_department($create_values['department_id'], $db);
 	}
 
 	/**

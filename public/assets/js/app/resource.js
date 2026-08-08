@@ -316,26 +316,26 @@
 
 		this.save = function () {
 			var row = self.editRow();
+			var isNew = row === null;
 
-			if (row === null) {
+			if (isNew) {
 				row = copyObject(config.defaults || {});
 				row.id = 0;
-				self.formFields.forEach(function (field) {
-					if ( ! field.secret) {
-						row[field.key] = self.form[field.key]();
-					}
-				});
+			}
+
+			self.formFields.forEach(function (field) {
+				if ( ! field.secret) {
+					row[field.key] = self.form[field.key]();
+				}
+			});
+
+			if (isNew) {
 				self.rows.remove(function (item) {
 					return item.id === 0;
 				});
 				self.rows.unshift(row);
 			}
 			else {
-				self.formFields.forEach(function (field) {
-					if ( ! field.secret) {
-						row[field.key] = self.form[field.key]();
-					}
-				});
 				self.rows.valueHasMutated();
 			}
 

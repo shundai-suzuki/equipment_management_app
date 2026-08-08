@@ -15,11 +15,11 @@ class Model_Table_Loan extends Model_BaseCrud
 	protected static $table_name = 'loans';
 
 	/**
-	 * Loan values accepted for a new row.
+	 * Loan create values accepted for a new row.
 	 *
 	 * @var array
 	 */
-	protected static $insert_columns = array(
+	protected static $create_columns = array(
 		'employee_id',
 		'equipment_id',
 		'due_date',

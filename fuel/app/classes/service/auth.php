@@ -61,7 +61,7 @@ class Service_Auth
 		$employee_id = $this->normalize_employee_id($employee_number);
 		$employee = $employee_id === null
 			? null
-			: $this->model->find_for_authentication($employee_id);
+			: $this->model->read_for_authentication($employee_id);
 		$password_hash = static::DUMMY_PASSWORD_HASH;
 
 		if (is_array($employee)
@@ -101,7 +101,7 @@ class Service_Auth
 			return false;
 		}
 
-		$employee = $this->model->find_for_authentication($employee_id);
+		$employee = $this->model->read_for_authentication($employee_id);
 
 		if ( ! $this->is_available_employee($employee))
 		{

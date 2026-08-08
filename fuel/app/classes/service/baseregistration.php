@@ -87,10 +87,10 @@ abstract class Service_BaseRegistration
 	/**
 	 * Allocate an ID and insert through the child Model on the same connection.
 	 *
-	 * @param   array  $values
+	 * @param   array  $create_values
 	 * @return  int
 	 */
-	protected function register(array $values)
+	protected function create_record(array $create_values)
 	{
 		if (static::$table_name === '')
 		{
@@ -99,13 +99,13 @@ abstract class Service_BaseRegistration
 
 		return $this->id_allocator->allocate(
 			static::$table_name,
-			function ($id, $db) use ($values)
+			function ($id, $db) use ($create_values)
 			{
-				$this->before_insert($values, $db);
+				$this->before_create($create_values, $db);
 
-				if ( ! $this->model->insert($id, $values, $db))
+				if ( ! $this->model->create($id, $create_values, $db))
 				{
-					throw new \RuntimeException('Failed to insert the allocated record.');
+					throw new \RuntimeException('Failed to create the allocated record.');
 				}
 			}
 		);
@@ -114,11 +114,11 @@ abstract class Service_BaseRegistration
 	/**
 	 * Let a child Service recheck table-specific rules inside the transaction.
 	 *
-	 * @param   array                $values
+	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
 	 * @return  void
 	 */
-	protected function before_insert(array $values, \Database_Connection $db)
+	protected function before_create(array $create_values, \Database_Connection $db)
 	{
 	}
 }

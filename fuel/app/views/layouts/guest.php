@@ -1,8 +1,12 @@
+<?php
+// before login layout
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>
 	<meta charset="utf-8">
 	<title><?php echo e($title); ?></title>
+	<?php echo Asset::css('bootstrap.css'); ?>
 	<?php echo Asset::css('app.css'); ?>
 </head>
 <body class="ba-background">

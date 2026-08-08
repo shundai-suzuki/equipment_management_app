@@ -4,6 +4,9 @@
 	data-resource="<?php echo e($resource); ?>"
 >
 	<header class="d-flex ai-center jc-space_between mb24">
+		<?php
+		// Page title & create button
+		?>
 		<h1 class="m0 fs30" data-bind="text: title"></h1>
 		<button
 			class="p10_18 fw700 br6 c-white ba-green bo1-green ba-green_dark-hover"
@@ -13,6 +16,9 @@
 	</header>
 
 	<section class="mb18 p18 ba-white bo1-border br8">
+		<?php
+		// Search 
+		?>
 		<div class="d-grid gtc4 g16 ai-end" data-bind="foreach: filters">
 			<!-- ko if: type === 'checkbox' -->
 			<label class="d-flex ai-center g8 fw600">
@@ -38,6 +44,9 @@
 	</section>
 
 	<div class="ba-white bo1-border br8 ov-hidden">
+		<?php
+		// Table 
+		?>
 		<table>
 			<thead>
 				<tr>
@@ -72,6 +81,9 @@
 			</tbody>
 		</table>
 		<div class="d-flex ai-center jc-space_between p14_16">
+			<?php
+			// Table action 
+			?>
 			<span data-bind="text: totalLabel"></span>
 			<div class="d-flex ai-center g12">
 				<button class="p10_18 c-green fw700 ba-white bo1-green br6 cu-default-disabled o04-disabled" type="button" data-bind="click: previousPage, enable: currentPage() > 1">前へ</button>
@@ -82,6 +94,9 @@
 	</div>
 
 	<aside class="p-fixed t68 r0 zi10 w430 h-vh68 p26 oy-auto ba-white bl1-border tr100p" data-bind="css: { tr0: drawerOpen }">
+		<?php
+		// Create or Update drawer
+		?>
 		<header class="p-sticky t0 d-flex ai-center jc-space_between mb24 p20_26 ba-white bb1-border">
 			<h2 class="m0 fs20" data-bind="text: drawerTitle"></h2>
 			<button class="p4_10 c-navy fs24 ba-transparent bo0" type="button" aria-label="閉じる" data-bind="click: closeDrawer">×</button>

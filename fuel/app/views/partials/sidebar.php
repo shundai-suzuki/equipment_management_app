@@ -7,18 +7,19 @@ $items = array(
 	'departments' => array('部署管理', 'admin/departments'),
 );
 $link_class = 'd-block mb8 p13_16 c-navy fw600 td-none br6 c-blue-hover ba-blue_light-hover';
+$active_class = $link_class.' c-blue ba-blue_light';
 ?>
 <nav class="p24_14 ba-white br1-border" aria-label="メインメニュー">
 	<?php foreach ($items as $key => $item): ?>
 		<a
-			class="<?php echo $link_class; ?><?php echo $active_page === $key ? ' c-blue ba-blue_light' : ''; ?>"
+			class="<?php echo $active_page === $key ? $active_class : $link_class; ?>"
 			href="<?php echo Uri::create($item[1]); ?>"
 		>
 			<?php echo e($item[0]); ?>
 		</a>
 	<?php endforeach; ?>
 	<a
-		class="<?php echo $link_class; ?><?php echo $active_page === 'password' ? ' c-blue ba-blue_light' : ''; ?>"
+		class="<?php echo $active_page === 'password' ? $active_class : $link_class; ?>"
 		href="<?php echo Uri::create('account/password'); ?>"
 	>
 		パスワード変更

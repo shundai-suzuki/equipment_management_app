@@ -113,17 +113,17 @@ return array(
 	 * Security settings
 	 */
 	'security' => array(
-		// 'csrf_autoload'            => false,
-		// 'csrf_autoload_methods'    => array('post', 'put', 'delete'),
-		// 'csrf_bad_request_on_fail' => false,
-		// 'csrf_auto_token'          => false,
-		// 'csrf_token_key'           => 'fuel_csrf_token',
-		// 'csrf_expiration'          => 0,
+		'csrf_autoload'            => true,
+		'csrf_autoload_methods'    => array('post', 'put', 'delete'),
+		'csrf_bad_request_on_fail' => true,
+		'csrf_auto_token'          => true,
+		'csrf_token_key'           => 'fuel_csrf_token',
+		'csrf_expiration'          => 0,
 
 		/**
 		 * A salt to make sure the generated security tokens are not predictable
 		 */
-		// 'token_salt'            => 'put your salt value here to make the token more secure',
+		'token_salt'            => getenv('FUEL_CSRF_TOKEN_SALT'),
 
 		/**
 		 * Allow the Input class to use X headers when present
@@ -131,7 +131,7 @@ return array(
 		 * Examples of these are HTTP_X_FORWARDED_FOR and HTTP_X_FORWARDED_PROTO, which
 		 * can be faked which could have security implications
 		 */
-		// 'allow_x_headers'       => false,
+		'allow_x_headers'       => false,
 
 		/**
 		 * This input filter can be any normal PHP function as well as 'xss_clean'
@@ -188,18 +188,55 @@ return array(
 	/**
 	 * Cookie settings
 	 */
-	// 'cookie' => array(
+	'cookie' => array(
 		// Number of seconds before the cookie expires
-		// 'expiration'  => 0,
+		'expiration'  => 0,
 		// Restrict the path that the cookie is available to
-		// 'path'        => '/',
+		'path'        => '/',
 		// Restrict the domain that the cookie is available to
-		// 'domain'      => null,
+		'domain'      => null,
 		// Only transmit cookies over secure connections
-		// 'secure'      => false,
+		'secure'      => \Fuel::$env === \Fuel::PRODUCTION,
 		// Only transmit cookies over HTTP, disabling Javascript access
-		// 'http_only'   => false,
-	// ),
+		'http_only'   => true,
+	),
+
+	/**
+	 * This key invalidates existing Sessions after password changes.
+	 * Use a dedicated value of at least 32 bytes; do not reuse the CSRF salt.
+	 */
+	'employee_auth' => array(
+		// How to get fingerprint key.
+		'credential_fingerprint_key' => getenv(
+			'FUEL_AUTH_FINGERPRINT_KEY'
+		),
+	),
+
+	/**
+	 * Login attempt limits stored outside the public directory.
+	 * Use a dedicated value of at least 32 bytes for the HMAC key.
+	 */
+	'login_rate_limit' => array(
+		// key used to HMAC-encode employee ID and IP address 
+		'hmac_key' => getenv('FUEL_LOGIN_RATE_LIMIT_KEY'),
+		// Storage location for JSON files containing limit conditions (Ex. number of failures)
+		'state_dir' => '/var/cache/fuel/login-rate-limit',
+		'account' => array(
+			// Number of failures.
+			'max_failures' => 5,
+			// Period during count the number of failures.
+			'window_seconds' => 900,
+			// Period during logins are prohibited after login locked.
+			'block_seconds' => 900,
+		),
+		'ip' => array(
+			'max_failures' => 30,
+			'window_seconds' => 900,
+			'block_seconds' => 900,
+		),
+		// The period until old state files are deleted.
+		'retention_seconds' => 604800,
+	),
 
 	/**
 	 * Validation settings
@@ -259,7 +296,7 @@ return array(
 	/**************************************************************************/
 	/* Always Load                                                            */
 	/**************************************************************************/
-	// 'always_load'  => array(
+	'always_load'  => array(
 
 		/**
 		 * These packages are loaded on Fuel's startup.
@@ -272,9 +309,7 @@ return array(
 		 *     array('auth'	=> PKGPATH.'auth/')
 		 * );
 		 */
-		// 'packages'  => array(
-		// 	//'orm',
-		// ),
+		'packages'  => array('auth'),
 
 		/**
 		 * These modules are always loaded on Fuel's startup. You can specify them
@@ -310,6 +345,6 @@ return array(
 		 * If you don't want the lang in a group use null as groupname.
 		 */
 		// 'language'  => array(),
-	// ),
+	),
 
 );

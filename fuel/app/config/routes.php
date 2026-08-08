@@ -27,6 +27,39 @@ return array(
 	'admin/departments' => array(
 		array('GET', new Route('page/admin/departments')),
 	),
+	'api/admin/departments/:id/archive' => array(
+		array('POST', new Route('table/department/soft_delete/$1')),
+	),
+	'api/admin/departments/:id' => array(
+		array('GET', new Route('table/department/read/$1')),
+		array('POST', new Route('table/department/update/$1')),
+	),
+	'api/admin/departments' => array(
+		array('GET', new Route('table/department/search')),
+		array('POST', new Route('table/department/create')),
+	),
+	'api/admin/employees/:id/archive' => array(
+		array('POST', new Route('table/employee/soft_delete/$1')),
+	),
+	'api/admin/employees/:id' => array(
+		array('GET', new Route('table/employee/read/$1')),
+		array('POST', new Route('table/employee/update/$1')),
+	),
+	'api/admin/employees' => array(
+		array('GET', new Route('table/employee/search')),
+		array('POST', new Route('table/employee/create')),
+	),
+	'api/admin/equipment/:id/archive' => array(
+		array('POST', new Route('table/equipment/soft_delete/$1')),
+	),
+	'api/admin/equipment/:id' => array(
+		array('GET', new Route('table/equipment/read/$1')),
+		array('POST', new Route('table/equipment/update/$1')),
+	),
+	'api/admin/equipment' => array(
+		array('GET', new Route('table/equipment/search')),
+		array('POST', new Route('table/equipment/create')),
+	),
 
 	'hello(/:name)?' => array('welcome/hello', 'name' => 'hello'),
 );

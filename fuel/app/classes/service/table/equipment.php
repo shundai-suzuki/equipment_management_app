@@ -5,13 +5,12 @@
  *
  * @package  app
  */
-class Service_Table_Equipment extends Service_BaseRegistration
+class Service_Table_Equipment extends Service_BaseCrud
 {
 	const MAX_NAME_LENGTH = 255;
 	const MAX_CATEGORY_LENGTH = 20;
 	const MAX_DESCRIPTION_LENGTH = 255;
 	const MAX_TOTAL_AMOUNT = 2147483647;
-	const CONFLICT_EXCEPTION_CODE = 409;
 
 	/**
 	 * Table registered by this Service.
@@ -64,16 +63,16 @@ class Service_Table_Equipment extends Service_BaseRegistration
 		$category = $this->normalize_required_text($category, 'The equipment category', static::MAX_CATEGORY_LENGTH);
 		$total_amount = $this->normalize_total_amount($total_amount);
 		$description = $this->normalize_description($description);
-		
-		$this->assert_active_department($department_id);
-		$equipment = $this->model->find_by_department_and_name($department_id, $name);
 
-		if ($equipment !== null)
+		$this->assert_active_department($department_id);
+		$read_equipment = $this->model->read_by_department_and_name($department_id, $name);
+
+		if ($read_equipment !== null)
 		{
-			return $this->restore_or_reject($equipment, $department_id, $name);
+			return $this->restore_or_reject($read_equipment, $department_id, $name);
 		}
 
-		$values = array(
+		$create_values = array(
 			'name' => $name,
 			'department_id' => $department_id,
 			'category' => $category,
@@ -83,12 +82,183 @@ class Service_Table_Equipment extends Service_BaseRegistration
 
 		try
 		{
-			return $this->register($values);
+			return $this->create_record($create_values);
 		}
 		catch (\Database_Exception $exception)
 		{
-			return $this->handle_insert_exception($department_id, $name, $exception);
+			return $this->handle_create_exception($department_id, $name, $exception);
 		}
+	}
+
+	/**
+	 * Create equipment after rechecking the administrator.
+	 *
+	 * @param   int          $actor_id
+	 * @param   int          $id
+	 * @param   string       $name
+	 * @param   int          $department_id
+	 * @param   string       $category
+	 * @param   int          $total_amount
+	 * @param   string|null  $description
+	 * @return  int
+	 */
+	public function create_for_admin($actor_id,	$id, $name,	$department_id,	$category, $total_amount,	$description = null)
+	{
+		$this->assert_admin_actor($actor_id);
+
+		return $this->create(
+			$id,
+			$name,
+			$department_id,
+			$category,
+			$total_amount,
+			$description
+		);
+	}
+
+	/**
+	 * Return an equipment list and its active category options.
+	 *
+	 * @param   int     $actor_id
+	 * @param   int     $page
+	 * @param   string  $keyword
+	 * @param   array   $filters
+	 * @return  array
+	 */
+	public function search_for_admin($actor_id, $page, $keyword = '', array $filters = array())
+	{
+		$search_result = parent::search_for_admin(
+			$actor_id,
+			$page,
+			$keyword,
+			$filters
+		);
+		$search_result['category_options'] = $this->model->read_category_options();
+
+		return $search_result;
+	}
+
+	/**
+	 * Update the editable equipment fields.
+	 *
+	 * @param   int          $actor_id
+	 * @param   int          $id
+	 * @param   string       $name
+	 * @param   int          $department_id
+	 * @param   string       $category
+	 * @param   int          $total_amount
+	 * @param   string|null  $description
+	 * @return  array
+	 */
+	public function update_for_admin($actor_id,	$id, $name,	$department_id,	$category, $total_amount,	$description = null)
+	{
+		$this->assert_positive_id($id, 'The equipment ID');
+		$this->assert_positive_id($department_id, 'The department ID');
+
+		$name = $this->normalize_required_text($name, 'The equipment name', static::MAX_NAME_LENGTH);
+		$category = $this->normalize_required_text($category, 'The equipment category', static::MAX_CATEGORY_LENGTH);
+		$total_amount = $this->normalize_total_amount($total_amount);
+		$description = $this->normalize_description($description);
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $id,	$name, $department_id, $category,	$total_amount, $description)
+			{
+				$this->assert_admin_actor($actor_id, $db);
+				$equipment_before_update = $this->model->read_before_update($id, false, $db);
+
+				if ($equipment_before_update === null)
+				{
+					throw new RuntimeException(
+						'The equipment was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				$this->assert_active_department($department_id, $db);
+
+				if ((int) $equipment_before_update['department_id'] !== $department_id
+					and $this->model->has_loan_history($id, $db))
+				{
+					throw new RuntimeException(
+						'Equipment with lending history cannot change departments.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				$read_duplicate = $this->model->read_by_department_and_name(
+					$department_id,
+					$name,
+					$db
+				);
+
+				if ($read_duplicate !== null and (int) $read_duplicate['id'] !== $id)
+				{
+					throw new RuntimeException(
+						'Equipment with the same department and name already exists.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				if ($total_amount < $this->model->count_active_loans($id, $db))
+				{
+					throw new RuntimeException(
+						'The total amount cannot be less than the active loan count.',
+						static::VALIDATION_EXCEPTION_CODE
+					);
+				}
+
+				return $this->update_and_read_record(
+					$id,
+					array(
+						'name' => $name,
+						'department_id' => $department_id,
+						'category' => $category,
+						'total_amount' => $total_amount,
+						'description' => $description,
+					),
+					$db
+				);
+			}
+		);
+	}
+
+	/**
+	 * Soft-delete equipment that has no active loan.
+	 *
+	 * @param   int     $actor_id
+	 * @param   int     $id
+	 * @param   string  $reason
+	 * @return  array
+	 */
+	public function soft_delete_for_admin($actor_id, $id, $reason)
+	{
+		$this->assert_positive_id($id, 'The equipment ID');
+		$this->assert_soft_delete_reason($reason);
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $id)
+			{
+				$this->assert_admin_actor($actor_id, $db);
+
+				if ($this->model->read_before_update($id, false, $db) === null)
+				{
+					throw new RuntimeException(
+						'The equipment was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($this->model->count_active_loans($id, $db) > 0)
+				{
+					throw new RuntimeException(
+						'Equipment with an active loan cannot be archived.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->soft_delete_and_read_record($id, $db);
+			}
+		);
 	}
 
 	/**
@@ -104,13 +274,13 @@ class Service_Table_Equipment extends Service_BaseRegistration
 	/**
 	 * Recheck the department on the allocator transaction connection.
 	 *
-	 * @param   array                $values
+	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
 	 * @return  void
 	 */
-	protected function before_insert(array $values, \Database_Connection $db)
+	protected function before_create(array $create_values, \Database_Connection $db)
 	{
-		$this->assert_active_department($values['department_id'], $db);
+		$this->assert_active_department($create_values['department_id'], $db);
 	}
 
 	/**
@@ -207,14 +377,14 @@ class Service_Table_Equipment extends Service_BaseRegistration
 	/**
 	 * Restore an archived match or reject an active duplicate.
 	 *
-	 * @param   array   $equipment
+	 * @param   array   $read_equipment
 	 * @param   int     $department_id
 	 * @param   string  $name
 	 * @return  int
 	 */
-	protected function restore_or_reject(array $equipment, $department_id, $name)
+	protected function restore_or_reject(array $read_equipment, $department_id, $name)
 	{
-		if ($equipment['deleted_at'] === null)
+		if ($read_equipment['deleted_at'] === null)
 		{
 			throw new \RuntimeException(
 				'Equipment with the same department and name already exists.',
@@ -222,18 +392,18 @@ class Service_Table_Equipment extends Service_BaseRegistration
 			);
 		}
 
-		$id = (int) $equipment['id'];
+		$id = (int) $read_equipment['id'];
 
 		if ($this->model->restore($id))
 		{
 			return $id;
 		}
 
-		$current = $this->model->find_by_department_and_name($department_id, $name);
+		$read_current = $this->model->read_by_department_and_name($department_id, $name);
 
-		if ($current !== null
-			and (int) $current['id'] === $id
-			and $current['deleted_at'] === null)
+		if ($read_current !== null
+			and (int) $read_current['id'] === $id
+			and $read_current['deleted_at'] === null)
 		{
 			return $id;
 		}
@@ -252,20 +422,20 @@ class Service_Table_Equipment extends Service_BaseRegistration
 	 * @param   Database_Exception  $exception
 	 * @return  int
 	 */
-	protected function handle_insert_exception($department_id, $name, \Database_Exception $exception)
+	protected function handle_create_exception($department_id, $name, \Database_Exception $exception)
 	{
 		if ((int) $exception->getCode() !== 1062)
 		{
 			throw $exception;
 		}
 
-		$equipment = $this->model->find_by_department_and_name($department_id, $name);
+		$read_equipment = $this->model->read_by_department_and_name($department_id, $name);
 
-		if ($equipment === null)
+		if ($read_equipment === null)
 		{
 			throw $exception;
 		}
 
-		return $this->restore_or_reject($equipment, $department_id, $name);
+		return $this->restore_or_reject($read_equipment, $department_id, $name);
 	}
 }

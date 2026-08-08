@@ -15,37 +15,63 @@ class Model_Table_Department extends Model_BaseCrud
 	protected static $table_name = 'departments';
 
 	/**
-	 * Department values accepted for a new row.
+	 * Department create values accepted for a new row.
 	 *
 	 * @var array
 	 */
-	protected static $insert_columns = array('name');
+	protected static $create_columns = array('name');
 
 	/**
-	 * Find a department by name, including archived rows.
+	 * Columns returned by department CRUD reads. 
+	 * 
+	 * @var array 
+	 */
+	protected static $read_columns = array(
+		'id',
+		'name',
+		'created_at',
+		'updated_at',
+		'deleted_at',
+	);
+
+	/** 
+	 * Columns accepted by department updates.
+	 * 
+	 * @var array
+	 */
+	protected static $update_columns = array('name');
+
+	/** 
+	 * Department columns included in keyword searches.
+	 * 
+	 * @var array
+	 */
+	protected static $search_columns = array('name');
+
+	/**
+	 * Read a department by name, including soft-deleted rows.
 	 *
 	 * @param   string                    $name
 	 * @param   Database_Connection|null  $db
 	 * @return  array|null
 	 */
-	public function find_by_name($name, $db = null)
+	public function read_by_name($name, $db = null)
 	{
 		$db = $this->connection($db);
-		$result = \DB::select('id', 'name', 'deleted_at')
+		$read_result = \DB::select('id', 'name', 'deleted_at')
 			->from(static::$table_name)
 			->where('name', '=', $name)
-			->limit(1)
 			->execute($db);
 
-		if (count($result) === 0)
+		if (count($read_result) === 0)
 		{
 			return null;
 		}
 
 		return array(
-			'id' => (int) $result->get('id'),
-			'name' => $result->get('name'),
-			'deleted_at' => $result->get('deleted_at'),
+			'id' => (int) $read_result->get('id'),
+			'name' => $read_result->get('name'),
+			'deleted_at' => $read_result->get('deleted_at'),
 		);
 	}
 
@@ -59,7 +85,7 @@ class Model_Table_Department extends Model_BaseCrud
 	public function is_active($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$result = \DB::select(
+		$read_result = \DB::select(
 			array(\DB::expr('1'), 'is_active')
 			)
 			->from(static::$table_name)
@@ -67,30 +93,42 @@ class Model_Table_Department extends Model_BaseCrud
 			->where('deleted_at', 'IS', null)
 			->execute($db);
 
-		return (int) $result->get('is_active', 0) === 1;
+		return (int) $read_result->get('is_active', 0) === 1;
 	}
 
 	/**
-	 * Restore an archived department without changing its ID.
+	 * Check whether active employees or equipment still use a department.
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
 	 * @return  bool
 	 */
-	public function restore($id, $db = null)
+	public function has_active_references($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$result = \DB::update(static::$table_name)
-			->set(
-				array(
-					'deleted_at' => null,
-					'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
-				)
+		$employee_result = \DB::select(
+			array(\DB::expr('1'), 'employee_exists')
 		)
-			->where('id', '=', $id)
-			->where('deleted_at', 'IS NOT', null)
+			->from('employees')
+			->where('department_id', '=', $id)
+			->where('deleted_at', 'IS', null)
+			->limit(1)
 			->execute($db);
 
-		return (int) $result === 1;
+		if ((int) $employee_result->get('employee_exists', 0) === 1)
+		{
+			return true;
+		}
+
+		$equipment_result = \DB::select(
+			array(\DB::expr('1'), 'equipment_exists')
+		)
+			->from('equipments')
+			->where('department_id', '=', $id)
+			->where('deleted_at', 'IS', null)
+			->limit(1)
+			->execute($db);
+
+		return (int) $equipment_result->get('equipment_exists', 0) === 1;
 	}
 }

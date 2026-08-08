@@ -25,7 +25,6 @@
 		this.employeeNumber = ko.observable('');
 		this.password = ko.observable('');
 		this.submit = function () {
-			return false;
 		};
 	}
 
@@ -37,7 +36,6 @@
 			{ label: '新しいパスワード（確認）', value: ko.observable('') }
 		];
 		this.submit = function () {
-			return false;
 		};
 	}
 

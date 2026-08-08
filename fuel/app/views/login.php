@@ -18,7 +18,10 @@
 					autocomplete="current-password"
 					data-bind="textInput: password, attr: { type: passwordType }"
 				>
-				<button class="p8_16 c-navy ba-white bo1-border br6" type="button" data-bind="click: togglePassword, text: passwordToggleLabel"></button>
+				<button 
+					class="p8_16 c-navy ba-white bo1-border br6" type="button" 
+					data-bind="click: togglePassword, text: passwordToggleLabel"
+				></button>
 			</span>
 		</label>
 		<button class="w100p p10_18 fw700 br6 c-white ba-green bo1-green ba-green_dark-hover" type="submit">ログイン</button>

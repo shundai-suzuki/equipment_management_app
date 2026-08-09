@@ -4,7 +4,7 @@
 	</a>
 	<?php if ( ! $guest): ?>
 		<div class="d-flex ai-center g20 fw600">
-			<span>管理者</span>
+			<span><?php echo $is_admin ? '管理者' : '社員'; ?></span>
 			<button class="p8_16 c-white ba-transparent bo1-white br6" type="button">ログアウト</button>
 		</div>
 	<?php endif; ?>

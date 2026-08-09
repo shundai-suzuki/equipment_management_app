@@ -119,16 +119,14 @@ class Service_Table_Equipment extends Service_BaseCrud
 	/**
 	 * Return an equipment list and its active category options.
 	 *
-	 * @param   int     $actor_id
 	 * @param   int     $page
 	 * @param   string  $keyword
 	 * @param   array   $filters
 	 * @return  array
 	 */
-	public function search_for_admin($actor_id, $page, $keyword = '', array $filters = array())
+	public function search($page, $keyword = '', array $filters = array())
 	{
-		$search_result = parent::search_for_admin(
-			$actor_id,
+		$search_result = parent::search(
 			$page,
 			$keyword,
 			$filters

@@ -65,15 +65,21 @@ return array(
 		array('POST', new Route('table/employee/create')),
 	),
 	'api/admin/equipment/:id/archive' => array(
-		array('POST', new Route('table/equipment/soft_delete/$1')),
+		array('POST', new Route('table/equipmentforadmin/soft_delete/$1')),
 	),
 	'api/admin/equipment/:id' => array(
-		array('GET', new Route('table/equipment/read/$1')),
-		array('POST', new Route('table/equipment/update/$1')),
+		array('GET', new Route('table/equipmentforadmin/read/$1')),
+		array('POST', new Route('table/equipmentforadmin/update/$1')),
 	),
 	'api/admin/equipment' => array(
+		array('GET', new Route('table/equipmentforadmin/search')),
+		array('POST', new Route('table/equipmentforadmin/create')),
+	),
+	'api/equipment/:id' => array(
+		array('GET', new Route('table/equipment/read/$1')),
+	),
+	'api/equipment' => array(
 		array('GET', new Route('table/equipment/search')),
-		array('POST', new Route('table/equipment/create')),
 	),
 	'api/admin/loans/:id/return' => array(
 		array('POST', new Route('adminloans/return/$1')),

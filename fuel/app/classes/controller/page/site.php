@@ -8,6 +8,13 @@
  */
 class Controller_Page_Site extends Controller_Page_Base
 {
+	/** 
+	 * Login is the only page available without authentication. 
+	 * 
+	 * @var array
+	 */
+	protected $guest_actions = array('login');
+
 	public function action_login()
 	{
 		$this->render_page(

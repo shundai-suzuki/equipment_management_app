@@ -279,6 +279,10 @@ table {
 	grid-template-columns: repeat(4, 1fr);
 }
 
+.gtc3 {
+	grid-template-columns: repeat(3, 1fr);
+}
+
 .gtc230 {
 	grid-template-columns: 230px minmax(0, 1fr);
 }

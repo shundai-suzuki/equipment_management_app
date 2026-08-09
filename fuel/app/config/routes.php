@@ -11,6 +11,7 @@ return array(
 	),
 	'account/password' => array(
 		array('GET', new Route('page/site/password')),
+		array('POST', new Route('account/password')),
 	),
 	'dashboard' => array(
 		array('GET', new Route('page/site/dashboard')),

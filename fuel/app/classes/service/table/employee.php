@@ -376,6 +376,69 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
+	 * Change the authenticated employee's password.
+	 *
+	 * @param   int    $actor_id
+	 * @param   mixed  $current_password
+	 * @param   mixed  $password
+	 * @param   mixed  $password_confirmation
+	 * @return  array
+	 */
+	public function change_own_password($actor_id, $current_password, $password, $password_confirmation)
+	{
+		$this->assert_positive_id($actor_id, 'The employee ID');
+
+		if ( ! is_string($current_password)
+			or $current_password === ''
+			or strlen($current_password) > static::MAX_PASSWORD_BYTES)
+		{
+			throw new \InvalidArgumentException('The current password is invalid.');
+		}
+
+		$password_hash = $this->create_hash_password(
+			$password,
+			$password_confirmation
+		);
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $current_password, $password_hash)
+			{
+				$locked_employee = $this->model->read_for_update(
+					$actor_id,
+					false,
+					$db
+				);
+				$employee = $this->model->read_for_authentication(
+					$actor_id,
+					$db
+				);
+
+				if ($locked_employee === null
+					or $employee === null
+					or (int) $employee['is_active'] !== 1
+					or $employee['deleted_at'] !== null
+					or ! password_verify($current_password, $employee['password_hash']))
+				{
+					throw new \RuntimeException(
+						'The current password is invalid.',
+						static::FORBIDDEN_EXCEPTION_CODE
+					);
+				}
+
+				if ($this->model->update_password_hash($actor_id,	$password_hash,	$db) !== 1)
+				{
+					throw new \RuntimeException(
+						'The employee password changed during the update.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->read_required_record($actor_id, $db);
+			}
+		);
+	}
+
+	/**
 	 * Reset one employee password after verifying the administrator password.
 	 *
 	 * @param   int    $actor_id

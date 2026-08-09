@@ -1,14 +1,14 @@
 <?php
 
 /**
- * Administrator HTML pages.
+ * 管理者用HTML画面。
  *
  * @package  app
  * @extends  Controller_Page_Base
  */
 class Controller_Page_Admin extends Controller_Page_Base
 {
-	/** Reject non-administrators before an action runs. */
+	/** アクション実行前に管理者以外を拒否する。 */
 	public function before()
 	{
 		parent::before();

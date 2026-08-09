@@ -1,22 +1,22 @@
 <?php
 
 /**
- * Administrator-only loan and return API Controller.
+ * 管理者専用の貸出・返却APIコントローラ。
  *
  * @package  app
  */
 class Controller_AdminLoans extends Controller_Admin
 {
-	/** 
-	 * Loan Service. 
-	 * 
+	/**
+	 * 貸出サービス。
+	 *
 	 * @var Service_Table_Loan
 	 */
 	protected $service;
 
-	/** 
-	 * Initialize the Service after administrator authorization. 
-	 * 
+	/**
+	 * 管理者認可後にサービスを初期化する。
+	 *
 	 * @return void
 	 */
 	public function before()
@@ -32,7 +32,7 @@ class Controller_AdminLoans extends Controller_Admin
 	}
 
 	/**
-	 * Register one loan.
+	 * 貸出を1件登録する。
 	 *
 	 * @return  Response
 	 */
@@ -59,7 +59,7 @@ class Controller_AdminLoans extends Controller_Admin
 	}
 
 	/**
-	 * Mark one active loan as returned.
+	 * 貸出中の1件を返却済みにする。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response

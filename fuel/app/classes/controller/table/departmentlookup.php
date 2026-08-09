@@ -1,20 +1,20 @@
 <?php
 
 /**
- * Authenticated read-only department API Controller.
+ * 認証済み利用者向け部署参照専用APIコントローラ。
  *
  * @package  app
  */
 class Controller_Table_DepartmentLookup extends Controller_Base
 {
 	/**
-	 * Department Service shared with the administrator CRUD Controller.
+	 * 管理者CRUDコントローラと共有する部署サービス。
 	 *
 	 * @var Service_Table_Department
 	 */
 	protected $service;
 
-	/** Initialize the Service after authentication. */
+	/** 認証後にサービスを初期化する。 */
 	public function before()
 	{
 		parent::before();
@@ -28,7 +28,7 @@ class Controller_Table_DepartmentLookup extends Controller_Base
 	}
 
 	/**
-	 * Search active departments visible to every authenticated role.
+	 * すべての認証済み権限が参照できる有効な部署を検索する。
 	 *
 	 * @return  Response
 	 */

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Administrator CRUD endpoints for equipment.
+ * 管理者用備品CRUDエンドポイント。
  *
  * @package  app
  */
@@ -10,7 +10,7 @@ class Controller_Table_EquipmentForAdmin extends Controller_AdminCrud
 	const MAX_CATEGORY_LENGTH = 20;
 
 	/**
-	 * Create the equipment Service.
+	 * 備品サービスを生成する。
 	 *
 	 * @return  Service_Table_Equipment
 	 */
@@ -20,7 +20,7 @@ class Controller_Table_EquipmentForAdmin extends Controller_AdminCrud
 	}
 
 	/**
-	 * Create equipment from allowed POST inputs.
+	 * 許可したPOST入力から備品を登録する。
 	 *
 	 * @param   int  $actor_id
 	 * @return  int
@@ -39,7 +39,7 @@ class Controller_Table_EquipmentForAdmin extends Controller_AdminCrud
 	}
 
 	/**
-	 * Update equipment from allowed POST inputs.
+	 * 許可したPOST入力から備品を更新する。
 	 *
 	 * @param   int  $actor_id
 	 * @param   int  $id
@@ -59,7 +59,7 @@ class Controller_Table_EquipmentForAdmin extends Controller_AdminCrud
 	}
 
 	/**
-	 * Validate equipment list filters.
+	 * 備品一覧の検索条件を検証する。
 	 *
 	 * @return  array
 	 */

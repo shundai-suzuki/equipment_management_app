@@ -1,14 +1,14 @@
 <?php
 
 /**
- * Administrator CRUD endpoints for employees.
+ * 管理者用社員CRUDエンドポイント。
  *
  * @package  app
  */
 class Controller_Table_Employee extends Controller_AdminCrud
 {
 	/**
-	 * Temporarily disable one employee account.
+	 * 社員アカウントを1件一時的に無効化する。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -29,7 +29,7 @@ class Controller_Table_Employee extends Controller_AdminCrud
 	}
 
 	/**
-	 * Re-enable one inactive employee account.
+	 * 無効な社員アカウントを1件再有効化する。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -50,7 +50,7 @@ class Controller_Table_Employee extends Controller_AdminCrud
 	}
 
 	/**
-	 * Restore one archived employee.
+	 * 論理削除済み社員を1件復元する。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -71,7 +71,7 @@ class Controller_Table_Employee extends Controller_AdminCrud
 	}
 
 	/**
-	 * Reset one employee password.
+	 * 社員のパスワードを1件再設定する。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -95,7 +95,7 @@ class Controller_Table_Employee extends Controller_AdminCrud
 	}
 
 	/**
-	 * Create the employee Service.
+	 * 社員サービスを生成する。
 	 *
 	 * @return  Service_Table_Employee
 	 */
@@ -105,7 +105,7 @@ class Controller_Table_Employee extends Controller_AdminCrud
 	}
 
 	/**
-	 * Create an employee from allowed POST inputs.
+	 * 許可したPOST入力から社員を登録する。
 	 *
 	 * @param   int  $actor_id
 	 * @return  int
@@ -124,7 +124,7 @@ class Controller_Table_Employee extends Controller_AdminCrud
 	}
 
 	/**
-	 * Update an employee from allowed POST inputs.
+	 * 許可したPOST入力から社員を更新する。
 	 *
 	 * @param   int  $actor_id
 	 * @param   int  $id
@@ -142,7 +142,7 @@ class Controller_Table_Employee extends Controller_AdminCrud
 	}
 
 	/**
-	 * Validate employee list filters.
+	 * 社員一覧の検索条件を検証する。
 	 *
 	 * @return  array
 	 */

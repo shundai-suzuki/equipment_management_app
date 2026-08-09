@@ -1,20 +1,20 @@
 <?php
 
 /**
- * Authenticated loan-history API Controller.
+ * 認証済み利用者向け貸出履歴APIコントローラ。
  *
  * @package  app
  */
 class Controller_Table_Loan extends Controller_Base
 {
 	/** 
-	 * Loan Service.
+	 * 貸出サービス。
 	 * 
 	 * @var Service_Table_Loan
 	 */
 	protected $service;
 
-	/** Initialize the Service after authentication. */
+	/** 認証後にサービスを初期化する。 */
 	public function before()
 	{
 		parent::before();
@@ -28,7 +28,7 @@ class Controller_Table_Loan extends Controller_Base
 	}
 
 	/**
-	 * Search the current employee's visible loan history.
+	 * 現在の社員が参照できる貸出履歴を検索する。
 	 *
 	 * @return  Response
 	 */
@@ -65,7 +65,7 @@ class Controller_Table_Loan extends Controller_Base
 	}
 
 	/**
-	 * Return only documented loan filters.
+	 * 仕様で定義した貸出検索条件だけを返す。
 	 *
 	 * @return  array
 	 */

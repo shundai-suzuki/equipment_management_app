@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Applies loan and return business rules.
+ * 貸出・返却の業務規則を適用する。
  *
  * @package  app
  */
@@ -17,20 +17,20 @@ class Service_Table_Loan extends Service_BaseRegistration
 	const VALIDATION_EXCEPTION_CODE = 422;
 
 	/**
-	 * Table registered by this Service.
+	 * このサービスが登録するテーブル。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = 'loans';
 
 	/**
-	 * Employee Model used to validate the borrower and operator.
+	 * 借用者と担当者の検証に使用する社員モデル。
 	 *
 	 * @var Model_Table_Employee
 	 */
 	protected $employee_model;
 
-	/** @var Model_Table_Equipment Equipment inventory reader. */
+	/** @var Model_Table_Equipment 備品在庫の読取モデル。 */
 	protected $equipment_model;
 
 	/**
@@ -58,7 +58,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Search the actor's visible loan history.
+	 * 実行者が参照できる貸出履歴を検索する。
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $page
@@ -104,7 +104,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Read one loan after rechecking the administrator.
+	 * 管理者を再確認してから貸出を1件取得する。
 	 *
 	 * @param   int  $actor_id
 	 * @param   int  $id
@@ -137,7 +137,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Register one loan for an active borrower and available equipment.
+	 * 有効な借用者と利用可能な備品に対して貸出を1件登録する。
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $id
@@ -170,7 +170,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Return one active loan without deleting its history.
+	 * 履歴を削除せず、貸出中の1件を返却する。
 	 *
 	 * @param   int         $actor_id
 	 * @param   int         $id
@@ -279,7 +279,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/** 
-	 * Default loan Model.
+	 * 標準の貸出モデル。
 	 * 
 	 * @return Model_Table_Loan
 	 */
@@ -289,7 +289,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Recheck participants and inventory during ID allocation.
+	 * ID採番中に関係者と在庫を再確認する。
 	 *
 	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
@@ -336,7 +336,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Validate active borrower and administrator records before allocation.
+	 * 採番前に有効な借用者行と管理者行を検証する。
 	 *
 	 * @param   int  $employee_id
 	 * @param   int  $actor_id
@@ -362,7 +362,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/** 
-	 * Current business date in Asia/Tokyo.
+	 * Asia/Tokyo基準の現在業務日。
 	 * 
 	 * @return string 
 	 */
@@ -372,7 +372,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Validate a due date from the loan date through 90 days later.
+	 * 貸出日から90日後までの返却期限を検証する。
 	 *
 	 * @param   mixed   $due_date
 	 * @param   string  $loaned_at
@@ -410,7 +410,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Normalize an optional return note.
+	 * 任意の返却メモを正規化する。
 	 *
 	 * @param   mixed  $note
 	 * @return  string|null
@@ -438,7 +438,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Validate fixed pagination.
+	 * 固定ページングを検証する。
 	 *
 	 * @param   mixed  $page
 	 * @return  void
@@ -452,7 +452,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Normalize the equipment-name keyword.
+	 * 備品名のキーワードを正規化する。
 	 *
 	 * @param   mixed  $keyword
 	 * @return  string
@@ -475,7 +475,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Accept only the documented loan filters.
+	 * 仕様で定義した貸出検索条件だけを受け付ける。
 	 *
 	 * @param   array  $filters
 	 * @return  void
@@ -517,7 +517,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Add calculated states to search rows.
+	 * 検索行へ算出した状態を追加する。
 	 *
 	 * @param   array   $rows
 	 * @param   string  $today
@@ -534,7 +534,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Calculate one loan state without storing a state column.
+	 * 状態列を保存せずに貸出状態を1件算出する。
 	 *
 	 * @param   array   $loan
 	 * @param   string  $today

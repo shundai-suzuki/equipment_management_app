@@ -1,5 +1,5 @@
 <?php
-// before login layout
+// ログイン前のレイアウト
 ?>
 <!DOCTYPE html>
 <html lang="ja">

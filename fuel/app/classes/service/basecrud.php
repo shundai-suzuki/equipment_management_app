@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Provides administrator checks and common CRUD steps for table Services.
+ * テーブルサービス向けに管理者確認と共通CRUD手順を提供する。
  *
  * @package  app
  */
@@ -15,14 +15,14 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	const MAX_KEYWORD_LENGTH = 255;
 
 	/**
-	 * Employee Model for checking the administrator performing an operation.
+	 * 操作を実行する管理者の確認に使用する社員モデル。
 	 *
 	 * @var Model_Table_Employee|null
 	 */
 	protected $actor_model;
 
 	/**
-	 * Return one active row.
+	 * 有効な1行を返す。
 	 *
 	 * @param   int  $id
 	 * @return  array
@@ -35,7 +35,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Return one active row after rechecking the administrator.
+	 * 管理者を再確認してから有効な1行を返す。
 	 *
 	 * @param   int  $actor_id
 	 * @param   int  $id
@@ -49,7 +49,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Return an active-row list with validated pagination.
+	 * 検証済みページングで有効な行一覧を返す。
 	 *
 	 * @param   int     $page
 	 * @param   string  $keyword
@@ -79,7 +79,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Return an active-row list with validated pagination.
+	 * 検証済みページングで有効な行一覧を返す。
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $page
@@ -95,7 +95,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Require an active row.
+	 * 有効な行が存在することを必須とする。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -117,7 +117,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Update an already locked row and return its current representation.
+	 * ロック済み行を更新し、現在の内容を返す。
 	 *
 	 * @param   int                       $id
 	 * @param   array                     $update_values
@@ -141,7 +141,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Soft-delete an already locked row and return its current representation.
+	 * ロック済み行を論理削除し、現在の内容を返す。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -171,7 +171,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Restore an already locked row and return its active representation.
+	 * ロック済み行を復元し、有効な内容を返す。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -191,7 +191,7 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Recheck that the actor remains an active administrator.
+	 * 実行者が引き続き有効な管理者であることを再確認する。
 	 *
 	 * @param   int                       $actor_id
 	 * @param   Database_Connection|null  $db

@@ -1,10 +1,10 @@
 <?php
 
 /**
- * Base Controller for create actions that need application-managed IDs.
+ * アプリケーション管理IDが必要な登録処理用の基底コントローラ。
  *
- * This Controller does not expose an ID allocation action. Concrete create
- * Controllers call allocate_id(), which delegates only to the Service layer.
+ * このコントローラはID採番アクションを公開しない。具体的な登録用
+ * コントローラがallocate_id()を呼び、サービス層だけへ処理を委譲する。
  *
  * @package  app
  * @extends  Controller
@@ -12,14 +12,14 @@
 abstract class Controller_IdAllocator extends Controller
 {
 	/**
-	 * Service used to allocate IDs.
+	 * ID採番に使用するサービス。
 	 *
 	 * @var Service_IdAllocator
 	 */
 	protected $id_allocator_service;
 
 	/**
-	 * Prepare the Service dependency before a create action is dispatched.
+	 * 登録処理を振り分ける前にサービス依存を準備する。
 	 *
 	 * @return  void
 	 */
@@ -31,8 +31,8 @@ abstract class Controller_IdAllocator extends Controller
 	}
 
 	/**
-	 * Delegate ID allocation to the Service layer.
-	 * Controller(INSERT -> operation) -> Service -> Model -> DB
+	 * ID採番をサービス層へ委譲する。
+	 * コントローラ（INSERT処理）→サービス→モデル→DB
 	 *
 	 * @param   string   $table
 	 * @param   Closure  $operation

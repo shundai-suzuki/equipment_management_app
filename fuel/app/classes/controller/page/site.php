@@ -1,7 +1,7 @@
 <?php
 
 /**
- * HTML pages available to all application roles.
+ * すべてのアプリケーション権限で利用できるHTML画面。
  *
  * @package  app
  * @extends  Controller_Page_Base
@@ -9,7 +9,7 @@
 class Controller_Page_Site extends Controller_Page_Base
 {
 	/**
-	 * Login is the only page available without authentication.
+	 * ログインだけを認証なしで利用できる画面とする。
 	 *
 	 * @var array
 	 */

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Common JSON API Controller.
+ * JSON APIの共通コントローラ。
  *
  * @package  app
  * @extends  Controller_Rest
@@ -12,35 +12,35 @@ abstract class Controller_Base extends Controller_Rest
 	const MAX_INTEGER = 2147483647;
 
 	/**
-	 * Always return JSON without relying on an AJAX-only header.
+	 * AJAX専用ヘッダに依存せず、常にJSONを返す。
 	 *
 	 * @var string
 	 */
 	protected $rest_format = 'json';
 
 	/**
-	 * true => need authentication, false => can be done without logging in.
+	 * trueの場合は認証必須、falseの場合は未ログインでも実行可能。
 	 *
 	 * @var bool
 	 */
 	protected $authentication_required = true;
 
 	/**
-	 * Identifier shared by the response and server-side logs.
+	 * レスポンスとサーバ側ログで共有する識別子。
 	 *
 	 * @var string
 	 */
 	protected $request_id;
 
 	/**
-	 * Response prepared before an action when access must stop.
+	 * アクセスを停止する場合にアクション実行前に用意するレスポンス。
 	 *
 	 * @var Response|null
 	 */
 	protected $before_response;
 
 	/**
-	 * Initialize the request identifier and continued authentication.
+	 * リクエスト識別子と継続認証を初期化する。
 	 *
 	 * @return  void
 	 */
@@ -61,7 +61,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Stop dispatch when before() prepared an error response.
+	 * before()がエラーレスポンスを用意した場合は振り分け処理を停止する。
 	 *
 	 * @param   string  $resource
 	 * @param   array   $arguments
@@ -89,7 +89,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Build a successful response with optional list metadata.
+	 * 任意の一覧メタデータを含む成功レスポンスを生成する。
 	 *
 	 * @param   array       $data
 	 * @param   int         $status
@@ -111,7 +111,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Build an error response with optional field messages.
+	 * 任意の項目別メッセージを含むエラーレスポンスを生成する。
 	 *
 	 * @param   string      $code
 	 * @param   string      $message
@@ -141,7 +141,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Return the authenticated employee fields allowed in Controllers.
+	 * コントローラで使用を許可する認証済み社員項目を返す。
 	 *
 	 * @return  array|null
 	 */
@@ -173,7 +173,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Return the authenticated employee ID.
+	 * 認証済み社員のIDを返す。
 	 *
 	 * @return  int
 	 */
@@ -193,7 +193,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Read and convert a required POST integer.
+	 * 必須のPOST整数値を取得して変換する。
 	 *
 	 * @param   string  $name
 	 * @param   int     $minimum
@@ -205,7 +205,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Read an optional positive query integer.
+	 * 任意の正のクエリ整数値を取得する。
 	 *
 	 * @param   string  $name
 	 * @return  int|null
@@ -220,7 +220,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Convert an unsigned decimal input to an integer.
+	 * 符号なし10進数の入力を整数へ変換する。
 	 *
 	 * @param   mixed   $value
 	 * @param   string  $name
@@ -252,7 +252,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Convert the query strings true and false to a boolean.
+	 * クエリ文字列のtrueとfalseを真偽値へ変換する。
 	 *
 	 * @param   mixed   $value
 	 * @param   string  $name
@@ -274,7 +274,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Execute a JSON API operation and hide internal exception details.
+	 * JSON API処理を実行し、内部例外の詳細を隠す。
 	 *
 	 * @param   Closure  $operation
 	 * @return  Response
@@ -317,7 +317,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Map allowed Service exception codes to generic responses.
+	 * 許可したサービス例外コードを共通レスポンスへ変換する。
 	 *
 	 * @param   RuntimeException  $exception
 	 * @return  Response
@@ -345,7 +345,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Log safe correlation data and return a generic server error.
+	 * 安全な追跡情報を記録し、共通のサーバエラーを返す。
 	 *
 	 * @param   Throwable  $exception
 	 * @return  Response
@@ -361,7 +361,7 @@ abstract class Controller_Base extends Controller_Rest
 		}
 		catch (\Throwable $logging_exception)
 		{
-			// Keep the client response generic even when logging fails.
+			// ログ出力に失敗しても、クライアントへのレスポンスを共通形式に保つ。
 		}
 
 		return $this->json_error(
@@ -372,7 +372,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * Encode the common body and attach the JSON content type.
+	 * 共通本文を符号化し、JSONのContent-Typeを付与する。
 	 *
 	 * @param   array  $body
 	 * @param   int    $status

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * JSON endpoints for employee login and logout.
+ * 社員のログイン・ログアウト用JSONエンドポイント。
  *
  * @package  app
  * @extends  Controller_Base
@@ -9,21 +9,21 @@
 class Controller_Auth extends Controller_Base
 {
 	/**
-	 * Allow the login action to run without an existing Session.
+	 * 既存のセッションがなくてもログイン処理を実行できるようにする。
 	 *
 	 * @var bool
 	 */
 	protected $authentication_required = false;
 
 	/**
-	 * File-backed login attempt limiter created only when required.
+	 * 必要な場合だけ生成するファイル保存型ログイン試行制限。
 	 *
 	 * @var Security_LoginRateLimit|null
 	 */
 	protected $login_rate_limit;
 
 	/**
-	 * Authenticate an employee and return only safe employee fields.
+	 * 社員を認証し、安全な社員項目だけを返す。
 	 *
 	 * @return  Response
 	 */
@@ -102,7 +102,7 @@ class Controller_Auth extends Controller_Base
 	}
 
 	/**
-	 * Destroy the authenticated Session and return a JSON result.
+	 * 認証済みセッションを破棄し、JSON結果を返す。
 	 *
 	 * @return  Response
 	 */
@@ -125,7 +125,7 @@ class Controller_Auth extends Controller_Base
 	}
 
 	/**
-	 * Create the local rate limiter only for login requests.
+	 * ログインリクエストの場合だけローカル試行制限を生成する。
 	 *
 	 * @return  Security_LoginRateLimit
 	 */
@@ -140,7 +140,7 @@ class Controller_Auth extends Controller_Base
 	}
 
 	/**
-	 * Return the same response for an account or IP block.
+	 * アカウント制限とIP制限に同じレスポンスを返す。
 	 *
 	 * @return  Response
 	 */
@@ -154,7 +154,7 @@ class Controller_Auth extends Controller_Base
 	}
 
 	/**
-	 * Fail closed without exposing state-file details.
+	 * 状態ファイルの詳細を公開せず、安全側に処理を失敗させる。
 	 *
 	 * @return  Response
 	 */
@@ -169,7 +169,7 @@ class Controller_Auth extends Controller_Base
 		}
 		catch (\Throwable $logging_exception)
 		{
-			// Keep the client response closed even when fallback logging fails.
+			// 代替ログ出力に失敗しても、クライアントへの情報公開を防ぐ。
 		}
 
 		return $this->json_error(

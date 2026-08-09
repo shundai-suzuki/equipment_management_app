@@ -1,30 +1,30 @@
 <?php
 
 /**
- * Provides database operations for departments.
+ * 部署のデータベース操作を提供する。
  *
  * @package  app
  */
 class Model_Table_Department extends Model_BaseCrud
 {
 	/**
-	 * Table operated by this Model.
+	 * このモデルが操作するテーブル。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = 'departments';
 
 	/**
-	 * Department create values accepted for a new row.
+	 * 部署の新規行で受け付ける登録値。
 	 *
 	 * @var array
 	 */
 	protected static $create_columns = array('name');
 
 	/**
-	 * Columns returned by department CRUD reads. 
-	 * 
-	 * @var array 
+	 * 部署CRUDの読取処理が返す列。
+	 *
+	 * @var array
 	 */
 	protected static $read_columns = array(
 		'id',
@@ -34,22 +34,22 @@ class Model_Table_Department extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/** 
-	 * Columns accepted by department updates.
-	 * 
+	/**
+	 * 部署更新で受け付ける列。
+	 *
 	 * @var array
 	 */
 	protected static $update_columns = array('name');
 
-	/** 
-	 * Department columns included in keyword searches.
-	 * 
+	/**
+	 * キーワード検索の対象となる部署列。
+	 *
 	 * @var array
 	 */
 	protected static $search_columns = array('name');
 
 	/**
-	 * Read a department by name, including soft-deleted rows.
+	 * 論理削除済み行を含め、名称で部署を取得する。
 	 *
 	 * @param   string                    $name
 	 * @param   Database_Connection|null  $db
@@ -76,7 +76,7 @@ class Model_Table_Department extends Model_BaseCrud
 	}
 
 	/**
-	 * Check whether a department can be used by a new record.
+	 * 部署を新しい行から使用できるか確認する。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -97,7 +97,7 @@ class Model_Table_Department extends Model_BaseCrud
 	}
 
 	/**
-	 * Check whether active employees or equipment still use a department.
+	 * 有効な社員または備品が部署を使用中か確認する。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db

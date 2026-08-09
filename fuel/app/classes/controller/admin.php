@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Common Controller for administrator-only JSON APIs.
+ * 管理者専用JSON APIの共通コントローラ。
  *
  * @package  app
  * @extends  Controller_Base
@@ -9,7 +9,7 @@
 abstract class Controller_Admin extends Controller_Base
 {
 	/**
-	 * Reject authenticated employees who do not have the ADMIN role.
+	 * ADMIN権限を持たない認証済み社員を拒否する。
 	 *
 	 * @return  void
 	 */

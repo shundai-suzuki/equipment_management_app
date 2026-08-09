@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Applies equipment registration rules and delegates persistence.
+ * 備品登録規則を適用し、永続化を委譲する。
  *
  * @package  app
  */
@@ -13,14 +13,14 @@ class Service_Table_Equipment extends Service_BaseCrud
 	const MAX_TOTAL_AMOUNT = 2147483647;
 
 	/**
-	 * Table registered by this Service.
+	 * このサービスが登録するテーブル。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = 'equipments';
 
 	/**
-	 * Department Model used to validate the managing department.
+	 * 管理部署の検証に使用する部署モデル。
 	 *
 	 * @var Model_Table_Department
 	 */
@@ -44,7 +44,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Register equipment or restore an archived matching inventory row.
+	 * 備品を登録するか、一致する論理削除済み在庫行を復元する。
 	 *
 	 * @param   int          $id
 	 * @param   string       $name
@@ -91,7 +91,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Create equipment after rechecking the administrator.
+	 * 管理者を再確認してから備品を登録する。
 	 *
 	 * @param   int          $actor_id
 	 * @param   int          $id
@@ -117,7 +117,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Return an equipment list and its active category options.
+	 * 備品一覧と有効なカテゴリ候補を返す。
 	 *
 	 * @param   int     $page
 	 * @param   string  $keyword
@@ -137,7 +137,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Update the editable equipment fields.
+	 * 更新可能な備品項目を更新する。
 	 *
 	 * @param   int          $actor_id
 	 * @param   int          $id
@@ -221,7 +221,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Soft-delete equipment that has no active loan.
+	 * 貸出中データがない備品を論理削除する。
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $id
@@ -268,7 +268,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Create the equipment Model used by this Service.
+	 * このサービスで使用する備品モデルを生成する。
 	 *
 	 * @return  Model_Table_Equipment
 	 */
@@ -278,7 +278,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Recheck the department on the allocator transaction connection.
+	 * 採番用トランザクション接続上で部署を再確認する。
 	 *
 	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
@@ -290,7 +290,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize a required text field with a table-specific limit.
+	 * テーブル固有の上限で必須テキスト項目を正規化する。
 	 *
 	 * @param   mixed   $value
 	 * @param   string  $name
@@ -315,7 +315,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize the optional equipment description.
+	 * 任意の備品説明を正規化する。
 	 *
 	 * @param   mixed  $description
 	 * @return  string|null
@@ -348,7 +348,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Require a positive signed INT equipment total.
+	 * 備品総数が符号付きINT範囲の正の整数であることを必須とする。
 	 *
 	 * @param   mixed  $total_amount
 	 * @return  int
@@ -366,7 +366,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Require and lock a department during transactional writes.
+	 * トランザクション更新中に部署を必須としてロックする。
 	 *
 	 * @param   int                       $department_id
 	 * @param   Database_Connection|null  $db
@@ -392,7 +392,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore an archived match or reject an active duplicate.
+	 * 一致する論理削除済み行を復元するか、有効な重複行を拒否する。
 	 *
 	 * @param   array  $read_equipment
 	 * @return  int
@@ -443,7 +443,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Convert a duplicate department and name pair into a conflict.
+	 * 部署・名称の組み合わせの重複を競合へ変換する。
 	 *
 	 * @param   int                 $department_id
 	 * @param   string              $name

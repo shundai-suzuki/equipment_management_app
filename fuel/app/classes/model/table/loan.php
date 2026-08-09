@@ -1,21 +1,21 @@
 <?php
 
 /**
- * Provides database operations for loans and returns.
+ * 貸出・返却のデータベース操作を提供する。
  *
  * @package  app
  */
 class Model_Table_Loan extends Model_BaseCrud
 {
 	/**
-	 * Table operated by this Model.
+	 * このモデルが操作するテーブル。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = 'loans';
 
 	/**
-	 * Columns inserted for a new loan.
+	 * 新規貸出で登録する列。
 	 *
 	 * @var array
 	 */
@@ -30,10 +30,10 @@ class Model_Table_Loan extends Model_BaseCrud
 		'note',
 	);
 
-	/** 
-	 * Loan columns safe to return or lock. 
-	 * 
-	 * @var array 
+	/**
+	 * 返却またはロックしても安全な貸出列。
+	 *
+	 * @var array
 	 */
 	protected static $read_columns = array(
 		'id',
@@ -49,10 +49,10 @@ class Model_Table_Loan extends Model_BaseCrud
 		'updated_at',
 	);
 
-	/** 
-	 * Database integer columns. 
-	 * 
-	 * @var array 
+	/**
+	 * データベースの整数列。
+	 *
+	 * @var array
 	 */
 	protected static $integer_columns = array(
 		'id',
@@ -63,7 +63,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	);
 
 	/**
-	 * Search loans without applying the common deleted_at condition.
+	 * 共通のdeleted_at条件を適用せずに貸出を検索する。
 	 *
 	 * @param   int       $page
 	 * @param   int       $per_page
@@ -113,7 +113,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Read one loan including borrower and equipment names.
+	 * 借用者名と備品名を含む貸出を1件取得する。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -131,7 +131,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Lock one loan before changing it to returned.
+	 * 返却済みへ変更する前に貸出を1件ロックする。
 	 *
 	 * @param   int                  $id
 	 * @param   Database_Connection  $db
@@ -160,7 +160,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Set the return fields only while the loan is still active.
+	 * 貸出中の場合だけ返却項目を設定する。
 	 *
 	 * @param   int                  $id
 	 * @param   string               $returned_at
@@ -184,7 +184,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Build the fixed joins shared by loan reads.
+	 * 貸出の読取処理で共有する固定結合を生成する。
 	 *
 	 * @param   array  $columns
 	 * @return  Database_Query_Builder_Select
@@ -200,7 +200,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Return the fixed columns exposed by the loan API.
+	 * 貸出APIが公開する固定列を返す。
 	 *
 	 * @return  array
 	 */
@@ -224,7 +224,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Apply ownership, keyword and state filters to a loan query.
+	 * 貸出クエリに所有者、キーワード、状態の条件を適用する。
 	 *
 	 * @param   Database_Query_Builder_Select  $query
 	 * @param   int|null                       $employee_id

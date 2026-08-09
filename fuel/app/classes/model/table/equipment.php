@@ -1,21 +1,21 @@
 <?php
 
 /**
- * Provides database operations for equipment inventory.
+ * 備品在庫のデータベース操作を提供する。
  *
  * @package  app
  */
 class Model_Table_Equipment extends Model_BaseCrud
 {
 	/**
-	 * Table operated by this Model.
+	 * このモデルが操作するテーブル。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = 'equipments';
 
 	/**
-	 * Equipment create values accepted for a new row.
+	 * 備品の新規行で受け付ける登録値。
 	 *
 	 * @var array
 	 */
@@ -28,9 +28,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 	);
 
 	/**
-	 * Equipment columns returned by CRUD reads. 
-	 * 
-	 * @var array 
+	 * 備品CRUDの読取処理が返す列。
+	 *
+	 * @var array
 	 */
 	protected static $read_columns = array(
 		'id',
@@ -44,9 +44,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/** 
-	 * Columns accepted by equipment updates. 
-	 * 
+	/**
+	 * 備品更新で受け付ける列。
+	 *
 	 * @var array
 	 */
 	protected static $update_columns = array(
@@ -57,16 +57,16 @@ class Model_Table_Equipment extends Model_BaseCrud
 		'description',
 	);
 
-	/** 
-	 * Equipment columns included in keyword searches. 
-	 * 
-	 * @var array 
+	/**
+	 * キーワード検索の対象となる備品列。
+	 *
+	 * @var array
 	 */
 	protected static $search_columns = array('name');
 
 	/**
-	 * Exact-match equipment search filters. 
-	 * 
+	 * 備品検索で完全一致させる条件。
+	 *
 	 * @var array
 	 */
 	protected static $filter_columns = array(
@@ -74,9 +74,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 		'category' => 'category',
 	);
 
-	/** 
-	 * Equipment columns returned as integers. 
-	 * 
+	/**
+	 * 整数として返す備品列。
+	 *
 	 * @var array
 	 */
 	protected static $integer_columns = array(
@@ -88,7 +88,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	);
 
 	/**
-	 * Read equipment by its unique department and name pair.
+	 * 一意な部署・名称の組み合わせで備品を取得する。
 	 *
 	 * @param   int                       $department_id
 	 * @param   string                    $name
@@ -118,7 +118,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Return active equipment categories for the list filter.
+	 * 一覧検索用に有効な備品カテゴリを返す。
 	 *
 	 * @return  array
 	 */
@@ -135,7 +135,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Search equipment with calculated lending quantities.
+	 * 算出した貸出数量を含めて備品を検索する。
 	 *
 	 * @param   int     $page
 	 * @param   int     $per_page
@@ -177,7 +177,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Build the fixed active-loan aggregate join.
+	 * 貸出中件数を集計する固定結合を生成する。
 	 *
 	 * @param   array  $columns
 	 * @return  Database_Query_Builder_Select
@@ -199,7 +199,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Return fixed equipment columns and calculated quantities.
+	 * 固定の備品列と算出数量を返す。
 	 *
 	 * @return  array
 	 */
@@ -226,7 +226,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Apply active-row, keyword and exact equipment filters.
+	 * 有効行、キーワード、備品の完全一致条件を適用する。
 	 *
 	 * @param   Database_Query_Builder_Select  $query
 	 * @param   string                         $keyword
@@ -301,7 +301,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Count unreturned loans for an equipment row.
+	 * 備品1件の未返却貸出数を数える。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -320,7 +320,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Check whether an equipment row has lending history.
+	 * 備品1件に貸出履歴があるか確認する。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -341,7 +341,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Lock active equipment and calculate its current available amount.
+	 * 有効な備品をロックし、現在の利用可能数を算出する。
 	 *
 	 * @param   int                  $id
 	 * @param   Database_Connection  $db
@@ -393,7 +393,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * Lock the equipment row required by a return operation.
+	 * 返却処理に必要な備品行をロックする。
 	 *
 	 * @param   int                  $id
 	 * @param   Database_Connection  $db

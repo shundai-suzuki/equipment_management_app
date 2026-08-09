@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Calculates and allocates positive IDs for the business tables.
+ * 業務テーブル用の正のIDを計算して採番する。
  *
  * @package  app
  */
@@ -13,7 +13,7 @@ class Service_IdAllocator
 	const CONFLICT_EXCEPTION_CODE = 409;
 
 	/**
-	 * Tables whose IDs may be allocated by this service.
+	 * このサービスでIDを採番できるテーブル。
 	 *
 	 * @var array
 	 */
@@ -25,14 +25,14 @@ class Service_IdAllocator
 	);
 
 	/**
-	 * Model used for every database operation.
+	 * すべてのデータベース操作に使用するモデル。
 	 *
 	 * @var Model_IdAllocator
 	 */
 	protected $model;
 
 	/**
-	 * Whether the current attempt discarded its database connection.
+	 * 現在の試行でデータベース接続を破棄したかどうか。
 	 *
 	 * @var bool
 	 */
@@ -52,11 +52,11 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Allocate an ID and execute the Model insert operation in one transaction.
+	 * 1つのトランザクションでIDを採番し、モデルの登録処理を実行する。
 	 *
-	 * The operation receives the allocated ID and the database connection. The
-	 * callback must delegate the insert to a Model and must not commit or roll
-	 * back the transaction itself.
+	 * 処理は採番済みIDとデータベース接続を受け取る。
+	 * コールバックは登録をモデルへ委譲し、自身でトランザクションをコミットまたは
+	 * ロールバックしてはならない。
 	 *
 	 * @param   string   $table
 	 * @param   Closure  $operation
@@ -107,7 +107,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Execute one allocation attempt inside a transaction.
+	 * トランザクション内で採番を1回試行する。
 	 *
 	 * @param   string   $table
 	 * @param   Closure  $operation
@@ -144,7 +144,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Execute the insert and report whether the attempt may be committed.
+	 * 登録を実行し、試行をコミットできるか返す。
 	 *
 	 * @param   string   $table
 	 * @param   int      $id
@@ -167,8 +167,8 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Handle a database exception raised by the insert operation.
-	 * Except for exception 1062, simply pass it up the chain
+	 * 登録処理で発生したデータベース例外を処理する。
+	 * 例外コード1062以外はそのまま上位へ渡す。
 	 *
 	 * @param   string              $table
 	 * @param   int                 $id
@@ -203,7 +203,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Validate and commit the completed ID allocation.
+	 * 完了したID採番を検証してコミットする。
 	 *
 	 * @param   string  $table
 	 * @param   int     $id
@@ -231,7 +231,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Acquire the named ID allocation lock.
+	 * 名前付きID採番ロックを取得する。
 	 *
 	 * @param   string  $lock_name
 	 * @return  void
@@ -248,7 +248,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Ensure that the target table supports ID allocation.
+	 * 対象テーブルがID採番に対応していることを確認する。
 	 *
 	 * @param   string  $table
 	 * @return  void
@@ -263,7 +263,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Calculate the next positive ID from the current maximum ID.
+	 * 現在の最大IDから次の正のIDを計算する。
 	 *
 	 * @param   int|string  $max_id
 	 * @return  int
@@ -294,7 +294,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Roll back the active ID allocation transaction.
+	 * 実行中のID採番トランザクションをロールバックする。
 	 *
 	 * @return  void
 	 * @throws  RuntimeException
@@ -319,7 +319,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Commit the active transaction or discard its uncertain connection.
+	 * 実行中のトランザクションをコミットし、結果が不確実な場合は接続を破棄する。
 	 *
 	 * @return  void
 	 * @throws  RuntimeException
@@ -344,7 +344,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Discard a connection whose transaction could not be ended safely.
+	 * トランザクションを安全に終了できなかった接続を破棄する。
 	 *
 	 * @return  void
 	 * @throws  RuntimeException
@@ -360,7 +360,7 @@ class Service_IdAllocator
 	}
 
 	/**
-	 * Release the named ID allocation lock.
+	 * 名前付きID採番ロックを解放する。
 	 *
 	 * @param   string  $lock_name
 	 * @return  void

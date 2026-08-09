@@ -1,20 +1,20 @@
 <?php
 
 /**
- * Authenticated account-management API Controller.
+ * 認証済みアカウント管理APIのコントローラ。
  *
  * @package  app
  */
 class Controller_Account extends Controller_Base
 {
 	/**
-	 * Employee Service used for the authenticated account.
+	 * 認証済みアカウントに使用する社員サービス。
 	 *
 	 * @var Service_Table_Employee
 	 */
 	protected $service;
 
-	/** Initialize the Service after authentication. */
+	/** 認証後にサービスを初期化する。 */
 	public function before()
 	{
 		parent::before();
@@ -28,7 +28,7 @@ class Controller_Account extends Controller_Base
 	}
 
 	/**
-	 * Change only the authenticated employee's password.
+	 * 認証済み社員本人のパスワードだけを変更する。
 	 *
 	 * @return  Response
 	 */

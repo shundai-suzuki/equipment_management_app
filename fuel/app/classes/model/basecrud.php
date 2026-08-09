@@ -1,63 +1,63 @@
 <?php
 
 /**
- * Provides the database operations shared by table Models.
+ * テーブルモデル間で共有するデータベース操作を提供する。
  *
  * @package  app
  */
 abstract class Model_BaseCrud extends \Model
 {
 	/**
-	 * Physical table name declared by the child Model.
+	 * 子モデルが宣言する物理テーブル名。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = '';
 
 	/**
-	 * Columns accepted when the child Model creates a row.
+	 * 子モデルが行を登録するときに受け付ける列。
 	 *
 	 * @var array
 	 */
 	protected static $create_columns = array();
 
 	/**
-	 * Columns returned by common read operations.
+	 * 共通読取処理が返す列。
 	 *
 	 * @var array
 	 */
 	protected static $read_columns = array();
 
 	/**
-	 * Columns accepted by the common update operation.
+	 * 共通更新処理が受け付ける列。
 	 *
 	 * @var array
 	 */
 	protected static $update_columns = array();
 
 	/**
-	 * Text columns included in keyword searches.
+	 * キーワード検索の対象となるテキスト列。
 	 *
 	 * @var array
 	 */
 	protected static $search_columns = array();
 
 	/**
-	 * Request filter names mapped to fixed database columns.
+	 * 固定のデータベース列に対応付けるリクエスト検索条件名。
 	 *
 	 * @var array
 	 */
 	protected static $filter_columns = array();
 
 	/**
-	 * Read columns converted from database strings to integers.
+	 * データベース文字列から整数へ変換する読取列。
 	 *
 	 * @var array
 	 */
 	protected static $integer_columns = array('id');
 
 	/**
-	 * Default database connection for reads and standalone updates.
+	 * 読取処理と単独更新処理に使用する標準データベース接続。
 	 *
 	 * @var Database_Connection
 	 */
@@ -74,7 +74,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Create a row with an allocated ID on the supplied transaction connection.
+	 * 指定されたトランザクション接続で採番済みIDを使用して1行登録する。
 	 *
 	 * @param   int                  $id
 	 * @param   array                $create_values
@@ -113,7 +113,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Read one row using only the child Model's allowed read columns.
+	 * 子モデルが許可した読取列だけを使用して1行取得する。
 	 *
 	 * @param   int                       $id
 	 * @param   bool                      $include_soft_deleted
@@ -141,7 +141,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Search active rows with fixed filters and pagination.
+	 * 固定の検索条件とページングで有効な行を検索する。
 	 *
 	 * @param   int     $page
 	 * @param   int     $per_page
@@ -180,7 +180,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Update exactly the columns allowed by the child Model.
+	 * 子モデルが許可した列だけを更新する。
 	 *
 	 * @param   int                       $id
 	 * @param   array                     $update_values
@@ -206,7 +206,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Soft-delete one active row.
+	 * 有効な1行を論理削除する。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -228,7 +228,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Restore one archived row.
+	 * 論理削除済みの1行を復元する。
 	 *
 	 * @param   int                       $id
 	 * @param   Database_Connection|null  $db
@@ -250,7 +250,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Read one row before a table-specific business update.
+	 * テーブル固有の業務更新前に1行取得する。
 	 *
 	 * @param   int                  $id
 	 * @param   bool                 $include_soft_deleted
@@ -285,7 +285,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Run a table-specific business update in one transaction.
+	 * テーブル固有の業務更新を1つのトランザクションで実行する。
 	 *
 	 * @param   Closure  $operation
 	 * @return  mixed
@@ -325,7 +325,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Apply 1.active-row, 2.search ID & name by keyword, 3.exact-match (Department, permissions, category).
+	 * 1.有効行、2.キーワードによるID・名称検索、3.完全一致（部署、権限、カテゴリ）を適用する。
 	 *
 	 * @param   Database_Query_Builder_Where  $search_query
 	 * @param   string                        $keyword
@@ -379,7 +379,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Convert database scalar types for a list of rows.
+	 * 行一覧のデータベーススカラー型を変換する。
 	 *
 	 * @param   array  $read_rows
 	 * @return  array
@@ -395,7 +395,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Convert integer columns returned as database strings.
+	 * データベース文字列として返された整数列を変換する。
 	 *
 	 * @param   array  $read_row
 	 * @return  array
@@ -414,7 +414,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Validate the fixed CRUD metadata declared by a child Model.
+	 * 子モデルが宣言した固定CRUDメタデータを検証する。
 	 *
 	 * @return  void
 	 */
@@ -434,7 +434,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Require exactly the columns declared for a CRUD operation.
+	 * CRUD処理で宣言された列だけが含まれることを必須とする。
 	 *
 	 * @param   array   $values
 	 * @param   array   $allowed_columns
@@ -460,7 +460,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Use a supplied transaction connection when one is available.
+	 * トランザクション接続が指定された場合はその接続を使用する。
 	 *
 	 * @param   Database_Connection|null  $db
 	 * @return  Database_Connection
@@ -471,7 +471,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Quote the child Model's fixed table name.
+	 * 子モデルの固定テーブル名を引用符で囲む。
 	 *
 	 * @param   Database_Connection  $db
 	 * @return  string
@@ -484,7 +484,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Quote a fixed column name declared by a Model.
+	 * モデルが宣言した固定列名を引用符で囲む。
 	 *
 	 * @param   string               $column
 	 * @param   Database_Connection  $db
@@ -498,7 +498,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * Ensure table and column identifiers come from safe class definitions.
+	 * テーブル・列識別子が安全なクラス定義に由来することを確認する。
 	 *
 	 * @param   string  $identifier
 	 * @return  void

@@ -1,14 +1,14 @@
 <?php
 
 /**
- * Provides database operations used by the ID allocation service.
+ * ID採番サービスが使用するデータベース操作を提供する。
  *
  * @package  app
  */
 class Model_IdAllocator extends Model
 {
 	/**
-	 * Database connection used for locking, allocation and insertion.
+	 * ロック、採番、登録に使用するデータベース接続。
 	 *
 	 * @var Database_Connection
 	 */
@@ -95,7 +95,7 @@ class Model_IdAllocator extends Model
 	}
 
 	/**
-	 * Discard the database connection after transaction cleanup fails.
+	 * トランザクション終了処理に失敗した場合はデータベース接続を破棄する。
 	 *
 	 * @return  bool
 	 */
@@ -124,7 +124,7 @@ class Model_IdAllocator extends Model
 	}
 
 	/**
-	 * Execute an insert callback on this Model's transaction connection.
+	 * このモデルのトランザクション接続で登録コールバックを実行する。
 	 *
 	 * @param   Closure  $operation
 	 * @param   int      $id

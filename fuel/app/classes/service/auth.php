@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Applies authentication rules for employees.
+ * 社員の認証規則を適用する。
  *
  * @package  app
  */
@@ -13,14 +13,14 @@ class Service_Auth
 	const DUMMY_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
 
 	/**
-	 * Employee Model used for authentication lookups.
+	 * 認証時の取得に使用する社員モデル。
 	 *
 	 * @var Model_Table_Employee
 	 */
 	protected $model;
 
 	/**
-	 * Secret used only for credential fingerprints.
+	 * 認証情報フィンガープリントだけに使用する秘密値。
 	 *
 	 * @var string
 	 */
@@ -50,7 +50,7 @@ class Service_Auth
 	}
 
 	/**
-	 * Authenticate one active employee.
+	 * 有効な社員を1件認証する。
 	 *
 	 * @param   int|string  $employee_number
 	 * @param   mixed       $password
@@ -86,7 +86,7 @@ class Service_Auth
 	}
 
 	/**
-	 * Validate the employee stored in the current Session.
+	 * 現在のセッションに保存された社員を検証する。
 	 *
 	 * @param   int|string  $employee_number
 	 * @param   mixed       $credential_fingerprint
@@ -119,7 +119,7 @@ class Service_Auth
 	}
 
 	/**
-	 * Normalize a positive signed-INT employee number.
+	 * 符号付きINT範囲の正の社員番号を正規化する。
 	 *
 	 * @param   mixed  $employee_number
 	 * @return  int|null
@@ -155,7 +155,7 @@ class Service_Auth
 	}
 
 	/**
-	 * Check the DB state required for login and continued access.
+	 * ログインと継続アクセスに必要なDB状態を確認する。
 	 *
 	 * @param   mixed  $employee
 	 * @return  bool
@@ -179,7 +179,7 @@ class Service_Auth
 	}
 
 	/**
-	 * Derive a Session fingerprint without exposing the password hash.
+	 * パスワードハッシュを公開せずにセッション用フィンガープリントを導出する。
 	 *
 	 * @param   array  $employee
 	 * @return  string
@@ -194,7 +194,7 @@ class Service_Auth
 	}
 
 	/**
-	 * Return only employee fields that Controllers may consume.
+	 * コントローラが使用できる社員項目だけを返す。
 	 *
 	 * @param   array  $employee
 	 * @return  array

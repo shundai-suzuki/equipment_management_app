@@ -1,14 +1,14 @@
 <?php
 
 /**
- * Administrator CRUD endpoints for departments.
+ * 管理者用部署CRUDエンドポイント。
  *
  * @package  app
  */
 class Controller_Table_Department extends Controller_AdminCrud
 {
 	/**
-	 * Restore one archived department.
+	 * 論理削除済み部署を1件復元する。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -29,7 +29,7 @@ class Controller_Table_Department extends Controller_AdminCrud
 	}
 
 	/**
-	 * Create the department Service.
+	 * 部署サービスを生成する。
 	 *
 	 * @return  Service_Table_Department
 	 */
@@ -39,7 +39,7 @@ class Controller_Table_Department extends Controller_AdminCrud
 	}
 
 	/**
-	 * Create a department from allowed POST inputs.
+	 * 許可したPOST入力から部署を登録する。
 	 *
 	 * @param   int  $actor_id
 	 * @return  int
@@ -54,7 +54,7 @@ class Controller_Table_Department extends Controller_AdminCrud
 	}
 
 	/**
-	 * Update a department from allowed POST inputs.
+	 * 許可したPOST入力から部署を更新する。
 	 *
 	 * @param   int  $actor_id
 	 * @param   int  $id

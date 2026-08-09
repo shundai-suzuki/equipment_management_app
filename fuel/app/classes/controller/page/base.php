@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Common Controller for HTML application pages.
+ * HTMLアプリケーション画面の共通コントローラ。
  *
  * @package  app
  * @extends  Controller_Template
@@ -11,21 +11,21 @@ abstract class Controller_Page_Base extends Controller_Template
 	public $template = 'layouts/application';
 
 	/**
-	 * Actions that may render without authentication.
+	 * 認証なしで表示できるアクション。
 	 *
 	 * @var array
 	 */
 	protected $guest_actions = array();
 
 	/**
-	 * Whether the authenticated employee is an administrator.
+	 * 認証済み社員が管理者かどうか。
 	 *
 	 * @var bool
 	 */
 	protected $is_admin = false;
 
 	/**
-	 * Authenticate HTML pages before their action runs.
+	 * HTML画面のアクション実行前に認証する。
 	 *
 	 * @return  void
 	 */
@@ -40,7 +40,7 @@ abstract class Controller_Page_Base extends Controller_Template
 	}
 
 	/**
-	 * Render one authenticated page or the guest login page.
+	 * 認証済み画面または未認証用ログイン画面を1つ表示する。
 	 *
 	 * @param   string  $view
 	 * @param   string  $title
@@ -66,7 +66,7 @@ abstract class Controller_Page_Base extends Controller_Template
 	}
 
 	/**
-	 * Return the current role or redirect an unauthenticated request.
+	 * 現在の権限を返し、未認証リクエストはログイン画面へ移動する。
 	 *
 	 * @return  string
 	 */
@@ -91,7 +91,7 @@ abstract class Controller_Page_Base extends Controller_Template
 	}
 
 	/**
-	 * Render the shared API-backed list and form page.
+	 * API連携された共通一覧・フォーム画面を表示する。
 	 *
 	 * @param   string  $resource
 	 * @param   string  $title

@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Applies department registration rules and delegates persistence.
+ * 部署登録規則を適用し、永続化を委譲する。
  *
  * @package  app
  */
@@ -10,14 +10,14 @@ class Service_Table_Department extends Service_BaseCrud
 	const MAX_NAME_LENGTH = 255;
 
 	/**
-	 * Table registered by this Service.
+	 * このサービスが登録するテーブル。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = 'departments';
 
 	/**
-	 * Create a department or restore an archived department with the same name.
+	 * 部署を登録するか、同名の論理削除済み部署を復元する。
 	 *
 	 * @param   int     $id
 	 * @param   string  $name
@@ -45,7 +45,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Create a department after rechecking the administrator.
+	 * 管理者を再確認してから部署を登録する。
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $id
@@ -60,7 +60,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Update a department name.
+	 * 部署名を更新する。
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $id
@@ -102,7 +102,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Soft-delete an unused department.
+	 * 未使用の部署を論理削除する。
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $id
@@ -149,7 +149,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore one archived department.
+	 * 論理削除済み部署を1件復元する。
 	 *
 	 * @param   int  $actor_id
 	 * @param   int  $id
@@ -191,7 +191,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Create the department Model used by this Service.
+	 * このサービスで使用する部署モデルを生成する。
 	 *
 	 * @return  Model_Table_Department
 	 */
@@ -201,7 +201,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize and validate a department name.
+	 * 部署名を正規化して検証する。
 	 *
 	 * @param   mixed  $name
 	 * @return  string
@@ -229,7 +229,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore an archived match or reject an active duplicate.
+	 * 一致する論理削除済み行を復元するか、有効な重複行を拒否する。
 	 *
 	 * @param   array  $read_department
 	 * @return  int
@@ -276,7 +276,7 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Convert a duplicate department name into a conflict.
+	 * 部署名の重複を競合へ変換する。
 	 *
 	 * @param   string              $name
 	 * @param   Database_Exception  $exception

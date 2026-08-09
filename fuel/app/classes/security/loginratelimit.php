@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Stores login attempt limits in HMAC-named local JSON files.
+ * HMACで命名したローカルJSONファイルにログイン試行制限を保存する。
  *
  * @package  app
  */
@@ -15,35 +15,35 @@ class Security_LoginRateLimit
 	const STATE_DIR = '/var/cache/fuel/login-rate-limit';
 
 	/**
-	 * Directory fixed by application config.
+	 * アプリケーション設定で固定するディレクトリ。
 	 *
 	 * @var string
 	 */
 	protected $state_dir;
 
 	/**
-	 * Secret used only to hide rate-limit identifiers.
+	 * 試行制限の識別子を隠すためだけに使用する秘密値。
 	 *
 	 * @var string
 	 */
 	protected $hmac_key;
 
 	/**
-	 * Failure policy for one employee number.
+	 * 社員番号1件に対する失敗時の制限方針。
 	 *
 	 * @var array
 	 */
 	protected $account_policy;
 
 	/**
-	 * Failure policy for one direct client IP.
+	 * 直接接続元IP1件に対する失敗時の制限方針。
 	 *
 	 * @var array
 	 */
 	protected $ip_policy;
 
 	/**
-	 * Seconds to retain an inactive state file.
+	 * 未使用状態ファイルを保持する秒数。
 	 *
 	 * @var int
 	 */
@@ -93,7 +93,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Check the employee-number and IP buckets before authentication.
+	 * 認証前に社員番号とIPの保存単位を確認する。
 	 *
 	 * @param   mixed  $employee_number
 	 * @param   mixed  $ip_address
@@ -113,11 +113,11 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Add one failure to each applicable bucket.
+	 * 対象となる各保存単位へ失敗を1回追加する。
 	 *
 	 * @param   mixed  $employee_number
 	 * @param   mixed  $ip_address
-	 * @return  bool  Whether either bucket is now blocked
+	 * @return  bool  いずれかの保存単位が制限中かどうか
 	 */
 	public function record_failure($employee_number, $ip_address)
 	{
@@ -135,7 +135,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Clear only the employee-number bucket after successful login.
+	 * ログイン成功後に社員番号の保存単位だけを消去する。
 	 *
 	 * @param   mixed  $employee_number
 	 * @return  void
@@ -155,9 +155,9 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Delete inactive state files whose retention period has elapsed.
+	 * 保持期間を過ぎた未使用状態ファイルを削除する。
 	 *
-	 * @return  int  Number of deleted files
+	 * @return  int  削除したファイル数
 	 */
 	public function cleanup()
 	{
@@ -202,7 +202,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Accept only one fixed absolute directory outside the public tree.
+	 * 公開ディレクトリ外の固定絶対パスだけを受け付ける。
 	 *
 	 * @param   mixed  $state_dir
 	 * @return  string
@@ -220,7 +220,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Validate one positive integer failure policy.
+	 * 正の整数で構成された失敗時の制限方針を検証する。
 	 *
 	 * @param   mixed  $policy
 	 * @return  array
@@ -256,7 +256,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Accept one positive cleanup retention period.
+	 * 正の整数である清掃保持期間を受け付ける。
 	 *
 	 * @param   mixed  $retention_seconds
 	 * @return  int
@@ -274,7 +274,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Create the private state directory when it does not exist.
+	 * 非公開状態ディレクトリが存在しない場合は生成する。
 	 *
 	 * @return  void
 	 */
@@ -314,7 +314,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Build the optional account bucket and required direct-IP bucket.
+	 * 任意のアカウント保存単位と必須の直接接続元IP保存単位を生成する。
 	 *
 	 * @param   mixed  $employee_number
 	 * @param   mixed  $ip_address
@@ -343,7 +343,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Normalize a valid signed-INT employee number for HMAC input.
+	 * HMAC入力用に符号付きINT範囲の有効な社員番号を正規化する。
 	 *
 	 * @param   mixed  $employee_number
 	 * @return  int|null
@@ -382,7 +382,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Canonicalize only the direct connection IP.
+	 * 直接接続元IPだけを正規化する。
 	 *
 	 * @param   mixed  $ip_address
 	 * @return  string
@@ -411,7 +411,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Create a fixed filename containing no request value.
+	 * リクエスト値を含まない固定ファイル名を生成する。
 	 *
 	 * @param   string  $type
 	 * @param   string  $value
@@ -425,7 +425,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Read one bucket under an exclusive lock and inspect its deadline.
+	 * 排他ロック中に保存単位を1件読み、制限期限を確認する。
 	 *
 	 * @param   string  $path
 	 * @return  bool
@@ -451,7 +451,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Update one bucket and return its resulting block state.
+	 * 保存単位を1件更新し、更新後の制限状態を返す。
 	 *
 	 * @param   string  $path
 	 * @param   array   $policy
@@ -504,7 +504,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Delete one validated bucket while holding its lock.
+	 * ロック保持中に検証済みの保存単位を1件削除する。
 	 *
 	 * @param   string  $path
 	 * @return  void
@@ -536,7 +536,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Delete one expired bucket after validating it under its lock.
+	 * ロック中に検証した期限切れ保存単位を1件削除する。
 	 *
 	 * @param   string  $path
 	 * @param   int     $now
@@ -578,7 +578,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Open one regular state file and acquire its exclusive lock.
+	 * 通常の状態ファイルを1件開き、排他ロックを取得する。
 	 *
 	 * @param   string  $path
 	 * @param   bool    $create
@@ -639,7 +639,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Read and validate one bounded JSON state document.
+	 * サイズ制限内のJSON状態文書を1件読み取り、検証する。
 	 *
 	 * @param   resource  $handle
 	 * @param   bool      $allow_empty
@@ -690,7 +690,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Validate the exact stored state schema.
+	 * 保存状態の厳密な構造を検証する。
 	 *
 	 * @param   mixed  $state
 	 * @return  bool
@@ -724,7 +724,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Replace one state document and verify every written byte.
+	 * 状態文書を1件置き換え、全バイトが書き込まれたことを検証する。
 	 *
 	 * @param   resource  $handle
 	 * @param   array     $state
@@ -774,7 +774,7 @@ class Security_LoginRateLimit
 	}
 
 	/**
-	 * Release one state lock and close its handle.
+	 * 状態ロックを1件解放し、ハンドルを閉じる。
 	 *
 	 * @param   resource  $handle
 	 * @return  void

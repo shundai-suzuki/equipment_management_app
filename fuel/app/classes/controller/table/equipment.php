@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Authenticated read-only equipment API Controller.
+ * 認証済み利用者向け備品参照専用APIコントローラ。
  *
  * @package  app
  */
@@ -10,13 +10,13 @@ class Controller_Table_Equipment extends Controller_Base
 	const MAX_CATEGORY_LENGTH = 20;
 
 	/**
-	 * Equipment Service shared with the administrator CRUD Controller.
+	 * 管理者CRUDコントローラと共有する備品サービス。
 	 *
 	 * @var Service_Table_Equipment
 	 */
 	protected $service;
 
-	/** Initialize the Service after authentication. */
+	/** 認証後にサービスを初期化する。 */
 	public function before()
 	{
 		parent::before();
@@ -30,7 +30,7 @@ class Controller_Table_Equipment extends Controller_Base
 	}
 
 	/**
-	 * Search equipment visible to every authenticated role.
+	 * すべての認証済み権限が参照できる備品を検索する。
 	 *
 	 * @return  Response
 	 */
@@ -67,7 +67,7 @@ class Controller_Table_Equipment extends Controller_Base
 	}
 
 	/**
-	 * Return one active equipment row.
+	 * 有効な備品を1件返す。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -87,7 +87,7 @@ class Controller_Table_Equipment extends Controller_Base
 	}
 
 	/**
-	 * Return validated equipment search filters.
+	 * 検証済みの備品検索条件を返す。
 	 *
 	 * @return  array
 	 */

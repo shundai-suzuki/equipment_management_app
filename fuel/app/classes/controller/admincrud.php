@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Common Controller for administrator table CRUD APIs.
+ * 管理者用テーブルCRUD APIの共通コントローラ。
  *
  * @package  app
  * @extends  Controller_Admin
@@ -9,14 +9,14 @@
 abstract class Controller_AdminCrud extends Controller_Admin
 {
 	/**
-	 * Table Service selected by the child Controller.
+	 * 子コントローラが選択するテーブルサービス。
 	 *
 	 * @var Service_BaseCrud
 	 */
 	protected $service;
 
 	/**
-	 * Initialize the table Service only after Controller authorization.
+	 * コントローラでの認可後にだけテーブルサービスを初期化する。
 	 *
 	 * @return  void
 	 */
@@ -33,7 +33,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Search active rows.
+	 * 有効な行を検索する。
 	 *
 	 * @return  Response
 	 */
@@ -80,7 +80,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Create one row from the child Controller's allowed inputs.
+	 * 子コントローラが許可した入力から1行を登録する。
 	 *
 	 * @return  Response
 	 */
@@ -101,7 +101,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Return one active row.
+	 * 有効な1行を返す。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -122,7 +122,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Update one row from the child Controller's allowed inputs.
+	 * 子コントローラが許可した入力から1行を更新する。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -143,7 +143,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Soft-delete one row.
+	 * 1行を論理削除する。
 	 *
 	 * @param   mixed  $id
 	 * @return  Response
@@ -164,14 +164,14 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Create the table-specific Service.
+	 * テーブル専用サービスを生成する。
 	 *
 	 * @return  Service_BaseCrud
 	 */
 	abstract protected function new_service();
 
 	/**
-	 * Pass only table-specific create inputs to the Service.
+	 * テーブル専用の登録入力だけをサービスへ渡す。
 	 *
 	 * @param   int  $actor_id
 	 * @return  int
@@ -179,7 +179,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	abstract protected function create_from_post($actor_id);
 
 	/**
-	 * Pass only table-specific update inputs to the Service.
+	 * テーブル専用の更新入力だけをサービスへ渡す。
 	 *
 	 * @param   int  $actor_id
 	 * @param   int  $id
@@ -188,7 +188,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	abstract protected function update_from_post($actor_id, $id);
 
 	/**
-	 * Return validated exact-match search filters.
+	 * 検証済みの完全一致検索条件を返す。
 	 *
 	 * @return  array
 	 */
@@ -198,7 +198,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Return the authenticated administrator ID.
+	 * 認証済み管理者のIDを返す。
 	 *
 	 * @return  int
 	 */
@@ -208,7 +208,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	}
 
 	/**
-	 * Execute an action and hide internal exception details.
+	 * アクションを実行し、内部例外の詳細を隠す。
 	 *
 	 * @param   Closure  $operation
 	 * @return  Response

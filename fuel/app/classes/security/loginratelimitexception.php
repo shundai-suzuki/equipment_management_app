@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Signals that login rate-limit state cannot be used safely.
+ * ログイン試行制限の状態を安全に使用できないことを示す。
  *
  * @package  app
  */

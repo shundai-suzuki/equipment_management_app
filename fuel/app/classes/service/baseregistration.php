@@ -1,28 +1,28 @@
 <?php
 
 /**
- * Coordinates the registration steps shared by table Services.
+ * テーブルサービス間で共有する登録手順を調整する。
  *
  * @package  app
  */
 abstract class Service_BaseRegistration
 {
 	/**
-	 * Physical table name declared by the child Service.
+	 * 子サービスが宣言する物理テーブル名。
 	 *
 	 * @var string
 	 */
 	protected static $table_name = '';
 
 	/**
-	 * Table Model used for database operations.
+	 * データベース操作に使用するテーブルモデル。
 	 *
 	 * @var Model_BaseCrud
 	 */
 	protected $model;
 
 	/**
-	 * Service used to allocate application-managed IDs.
+	 * アプリケーション管理IDの採番に使用するサービス。
 	 *
 	 * @var Service_IdAllocator
 	 */
@@ -49,14 +49,14 @@ abstract class Service_BaseRegistration
 	}
 
 	/**
-	 * Create the default table Model for the child Service.
+	 * 子サービス用の標準テーブルモデルを生成する。
 	 *
 	 * @return  Model_BaseCrud
 	 */
 	abstract protected function new_model();
 
 	/**
-	 * Require the client-side sentinel used for a new row.
+	 * 新規行を示すクライアント側の識別値を必須とする。
 	 *
 	 * @param   mixed  $id
 	 * @return  void
@@ -70,7 +70,7 @@ abstract class Service_BaseRegistration
 	}
 
 	/**
-	 * Require a positive integer foreign key or actor ID.
+	 * 外部キーまたは実行者IDが正の整数であることを必須とする。
 	 *
 	 * @param   mixed   $id
 	 * @param   string  $name
@@ -85,7 +85,7 @@ abstract class Service_BaseRegistration
 	}
 
 	/**
-	 * Allocate an ID and insert through the child Model on the same connection.
+	 * 同じ接続上でIDを採番し、子モデルを通して登録する。
 	 *
 	 * @param   array  $create_values
 	 * @return  int
@@ -112,7 +112,7 @@ abstract class Service_BaseRegistration
 	}
 
 	/**
-	 * Let a child Service recheck table-specific rules inside the transaction.
+	 * 子サービスがトランザクション内でテーブル固有規則を再確認できるようにする。
 	 *
 	 * @param   array                $create_values
 	 * @param   Database_Connection  $db

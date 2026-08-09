@@ -1,15 +1,24 @@
 <?php
 
 /**
- * Administrator HTML prototype pages.
- *
- * Authentication is added when the prototype is connected to the backend.
+ * Administrator HTML pages.
  *
  * @package  app
  * @extends  Controller_Page_Base
  */
 class Controller_Page_Admin extends Controller_Page_Base
 {
+	/** Reject non-administrators before an action runs. */
+	public function before()
+	{
+		parent::before();
+
+		if ( ! $this->is_admin)
+		{
+			throw new \HttpNoAccessException();
+		}
+	}
+
 	public function action_employees()
 	{
 		$this->render_resource('employees', '社員管理');

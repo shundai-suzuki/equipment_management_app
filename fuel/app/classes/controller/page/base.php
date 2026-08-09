@@ -13,14 +13,14 @@ abstract class Controller_Page_Base extends Controller_Template
 	/**
 	 * Actions that may render without authentication.
 	 *
-	 * @var  array
+	 * @var array
 	 */
 	protected $guest_actions = array();
 
 	/**
 	 * Whether the authenticated employee is an administrator.
 	 *
-	 * @var  bool
+	 * @var bool
 	 */
 	protected $is_admin = false;
 
@@ -91,7 +91,7 @@ abstract class Controller_Page_Base extends Controller_Template
 	}
 
 	/**
-	 * Render the shared list and form page.
+	 * Render the shared API-backed list and form page.
 	 *
 	 * @param   string  $resource
 	 * @param   string  $title
@@ -99,12 +99,38 @@ abstract class Controller_Page_Base extends Controller_Template
 	 */
 	protected function render_resource($resource, $title)
 	{
+		$search_paths = array(
+			'equipment' => 'api/equipment',
+			'loans' => 'api/loans',
+			'employees' => 'api/admin/employees',
+			'departments' => 'api/admin/departments',
+		);
+		$write_paths = array(
+			'equipment' => 'api/admin/equipment',
+			'loans' => 'api/admin/loans',
+			'employees' => 'api/admin/employees',
+			'departments' => 'api/admin/departments',
+		);
+
+		if ( ! isset($search_paths[$resource], $write_paths[$resource]))
+		{
+			throw new \LogicException('The page resource is not configured.');
+		}
+
 		$this->render_page(
 			'resource',
 			$title,
 			$resource,
 			'app/resource.js',
-			array('resource' => $resource)
+			array(
+				'resource' => $resource,
+				'search_url' => \Uri::create($search_paths[$resource]),
+				'write_url' => $this->is_admin
+					? \Uri::create($write_paths[$resource])
+					: '',
+				'departments_url' => \Uri::create('api/departments'),
+				'login_url' => \Uri::create('login'),
+			)
 		);
 	}
 }

@@ -5,7 +5,15 @@
 	<?php if ( ! $guest): ?>
 		<div class="d-flex ai-center g20 fw600">
 			<span><?php echo $is_admin ? '管理者' : '社員'; ?></span>
-			<button class="p8_16 c-white ba-transparent bo1-white br6" type="button">ログアウト</button>
+			<form
+				class="m0"
+				data-logout-form
+				data-logout-url="<?php echo e(Uri::create('logout')); ?>"
+				data-login-url="<?php echo e(Uri::create('login')); ?>"
+			>
+				<?php echo Form::csrf(); ?>
+				<button class="p8_16 c-white ba-transparent bo1-white br6" type="submit">ログアウト</button>
+			</form>
 		</div>
 	<?php endif; ?>
 </header>

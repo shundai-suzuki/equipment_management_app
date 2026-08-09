@@ -15,6 +15,7 @@
 		<?php echo $content; ?>
 	</main>
 	<?php echo Asset::js('knockout-3.5.3.js'); ?>
+	<?php echo Asset::js('app/api.js'); ?>
 	<?php echo Asset::js($page_script); ?>
 </body>
 </html>

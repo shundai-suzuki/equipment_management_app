@@ -1,22 +1,27 @@
 <?php
 
 /**
- * HTML prototype pages available to all application roles.
+ * HTML pages available to all application roles.
  *
  * @package  app
  * @extends  Controller_Page_Base
  */
 class Controller_Page_Site extends Controller_Page_Base
 {
-	/** 
-	 * Login is the only page available without authentication. 
-	 * 
+	/**
+	 * Login is the only page available without authentication.
+	 *
 	 * @var array
 	 */
 	protected $guest_actions = array('login');
 
 	public function action_login()
 	{
+		if (\Auth::check())
+		{
+			\Response::redirect('dashboard');
+		}
+
 		$this->render_page(
 			'login',
 			'ログイン',

@@ -1,6 +1,6 @@
 <?php
 return array(
-	'_root_'  => 'welcome/index',  // The default route
+	'_root_'  => 'page/site/login',  // The default route
 	'_404_'   => 'welcome/404',    // The main 404 route
 	'login' => array(
 		array('GET', new Route('page/site/login')),
@@ -27,6 +27,9 @@ return array(
 	),
 	'admin/departments' => array(
 		array('GET', new Route('page/admin/departments')),
+	),
+	'api/departments' => array(
+		array('GET', new Route('table/departmentlookup/search')),
 	),
 	'api/admin/departments/:id/restore' => array(
 		array('POST', new Route('table/department/restore/$1')),

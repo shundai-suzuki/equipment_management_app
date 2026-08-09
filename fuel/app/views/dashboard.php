@@ -5,6 +5,7 @@ $loan_column_count = $is_admin ? 5 : 4;
 	class="maw1440 m-0_auto"
 	data-page="dashboard"
 	data-loans-url="<?php echo e(Uri::create('api/loans')); ?>"
+	data-login-url="<?php echo e(Uri::create('login')); ?>"
 >
 	<header class="d-flex ai-center jc-space_between mb24">
 		<h1 class="m0 fs30">ダッシュボード</h1>
@@ -57,10 +58,10 @@ $loan_column_count = $is_admin ? 5 : 4;
 					</tr>
 				</thead>
 				<tbody aria-live="polite">
-					<tr style="display: none;" data-bind="visible: isLoading">
+					<tr hidden data-bind="attr: { hidden: ! isLoading() }">
 						<td class="p40 c-muted ta-center bb1-border" colspan="<?php echo $loan_column_count; ?>">貸出情報を読み込んでいます。</td>
 					</tr>
-					<tr style="display: none;" data-bind="visible: errorMessage">
+					<tr hidden data-bind="attr: { hidden: ! errorMessage() }">
 						<td class="p40 c-red ta-center bb1-border" colspan="<?php echo $loan_column_count; ?>">
 							<span class="d-block mb12" data-bind="text: errorMessage"></span>
 							<button class="p8_16 c-green fw700 ba-white bo1-green br6" type="button" data-bind="click: loadLoans">再読み込み</button>
@@ -77,7 +78,7 @@ $loan_column_count = $is_admin ? 5 : 4;
 						<td class="p13_14 ta-left va-middle bb1-border"><span class="d-inline_block p4_9 c-green fs13 fw700 ba-green_light br999" data-bind="text: status, css: statusClass"></span></td>
 					</tr>
 					<!-- /ko -->
-					<tr style="display: none;" data-bind="visible: showEmpty">
+					<tr hidden data-bind="attr: { hidden: ! showEmpty() }">
 						<td class="p40 c-muted ta-center bb1-border" colspan="<?php echo $loan_column_count; ?>">貸出中の備品はありません。</td>
 					</tr>
 				</tbody>

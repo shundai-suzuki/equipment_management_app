@@ -451,6 +451,10 @@ table {
 	border: 1px solid var(--green);
 }
 
+.bo1-red {
+	border: 1px solid var(--red);
+}
+
 .bo1-border {
 	border: 1px solid var(--border);
 }

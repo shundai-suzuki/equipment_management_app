@@ -79,7 +79,13 @@ class Model_Table_Equipment extends Model_BaseCrud
 	 * 
 	 * @var array
 	 */
-	protected static $integer_columns = array('id', 'department_id', 'total_amount');
+	protected static $integer_columns = array(
+		'id',
+		'department_id',
+		'total_amount',
+		'loaned_amount',
+		'available_amount',
+	);
 
 	/**
 	 * Read equipment by its unique department and name pair.
@@ -118,7 +124,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	 */
 	public function read_category_options()
 	{
-		$read_rows = DB::select('category')
+		$read_rows = \DB::select('category')
 			->distinct()
 			->from(static::$table_name)
 			->where('deleted_at', 'IS', null)
@@ -126,6 +132,172 @@ class Model_Table_Equipment extends Model_BaseCrud
 			->execute($this->db)
 			->as_array();
 		return array_column($read_rows, 'category');
+	}
+
+	/**
+	 * Search equipment with calculated lending quantities.
+	 *
+	 * @param   int     $page
+	 * @param   int     $per_page
+	 * @param   string  $keyword
+	 * @param   array   $filters
+	 * @return  array
+	 */
+	public function search($page, $per_page, $keyword = '', array $filters = array())
+	{
+		$search_offset = ($page - 1) * $per_page;
+		$search_count_query = $this->equipment_query(
+			array(array(\DB::expr('COUNT(*)'), 'total'))
+		);
+		$this->apply_equipment_conditions(
+			$search_count_query,
+			$keyword,
+			$filters
+		);
+		$search_total = (int) $search_count_query
+			->execute($this->db)
+			->get('total', 0);
+
+		$search_query = $this->equipment_query(
+			$this->equipment_select_columns()
+		);
+		$this->apply_equipment_conditions($search_query, $keyword, $filters);
+		$search_rows = $search_query
+			->order_by('equipments.updated_at', 'DESC')
+			->order_by('equipments.id', 'DESC')
+			->limit($per_page)
+			->offset($search_offset)
+			->execute($this->db)
+			->as_array();
+
+		return array(
+			'rows' => $this->format_rows($search_rows),
+			'total' => $search_total,
+		);
+	}
+
+	/**
+	 * Build the fixed active-loan aggregate join.
+	 *
+	 * @param   array  $columns
+	 * @return  Database_Query_Builder_Select
+	 */
+	protected function equipment_query(array $columns)
+	{
+		$active_loans = \DB::select(
+			'equipment_id',
+			array(\DB::expr('COUNT(*)'), 'loaned_amount')
+		)
+			->from('loans')
+			->where('returned_at', 'IS', null)
+			->group_by('equipment_id');
+
+		return \DB::select_array($columns)
+			->from('equipments')
+			->join(array($active_loans, 'active_loans'), 'LEFT')
+			->on('equipments.id', '=', 'active_loans.equipment_id');
+	}
+
+	/**
+	 * Return fixed equipment columns and calculated quantities.
+	 *
+	 * @return  array
+	 */
+	protected function equipment_select_columns()
+	{
+		$loaned_amount = 'COALESCE(active_loans.loaned_amount, 0)';
+
+		return array(
+			array('equipments.id', 'id'),
+			array('equipments.name', 'name'),
+			array('equipments.department_id', 'department_id'),
+			array('equipments.category', 'category'),
+			array('equipments.total_amount', 'total_amount'),
+			array(\DB::expr($loaned_amount), 'loaned_amount'),
+			array(
+				\DB::expr('equipments.total_amount - '.$loaned_amount),
+				'available_amount'
+			),
+			array('equipments.description', 'description'),
+			array('equipments.created_at', 'created_at'),
+			array('equipments.updated_at', 'updated_at'),
+			array('equipments.deleted_at', 'deleted_at'),
+		);
+	}
+
+	/**
+	 * Apply active-row, keyword and exact equipment filters.
+	 *
+	 * @param   Database_Query_Builder_Select  $query
+	 * @param   string                         $keyword
+	 * @param   array                          $filters
+	 * @return  void
+	 */
+	protected function apply_equipment_conditions($query, $keyword, array $filters)
+	{
+		$allowed_filters = array('department_id', 'category', 'available_only');
+
+		if (array_diff(array_keys($filters), $allowed_filters))
+		{
+			throw new \InvalidArgumentException(
+				'The equipment search filter is not allowed.'
+			);
+		}
+
+		$query->where('equipments.deleted_at', 'IS', null);
+
+		if ($keyword !== '')
+		{
+			$query->and_where_open();
+
+			if (preg_match('/\A[1-9][0-9]*\z/', $keyword) === 1)
+			{
+				$query->where('equipments.id', '=', (int) $keyword)
+					->or_where('equipments.name', 'LIKE', '%'.$keyword.'%');
+			}
+			else
+			{
+				$query->where('equipments.name', 'LIKE', '%'.$keyword.'%');
+			}
+
+			$query->and_where_close();
+		}
+
+		if (isset($filters['department_id']))
+		{
+			$query->where(
+				'equipments.department_id',
+				'=',
+				$filters['department_id']
+			);
+		}
+
+		if (isset($filters['category']))
+		{
+			$query->where('equipments.category', '=', $filters['category']);
+		}
+
+		if (isset($filters['available_only']))
+		{
+			if ( ! is_bool($filters['available_only']))
+			{
+				throw new \InvalidArgumentException(
+					'available_only must be a boolean.'
+				);
+			}
+
+			if ($filters['available_only'])
+			{
+				$query->where(
+					\DB::expr(
+						'equipments.total_amount'
+						.' - COALESCE(active_loans.loaned_amount, 0)'
+					),
+					'>',
+					0
+				);
+			}
+		}
 	}
 
 	/**

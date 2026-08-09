@@ -1,16 +1,14 @@
-(function (window, document, ko) {
+(function (window, document, ko, api) {
 	'use strict';
 
 	var root = document.querySelector('[data-page="dashboard"]');
 
-	if ( ! root || ! ko) {
+	if ( ! root || ! ko || ! api) {
 		return;
 	}
 
-	function formatDate(date) {
-		return typeof date === 'string' 
-			? date.replace(/-/g, '/') 
-			: '';
+	function formatDate(value) {
+		return typeof value === 'string' ? value.replace(/-/g, '/') : '';
 	}
 
 	function loanRow(row) {
@@ -29,6 +27,7 @@
 	function DashboardViewModel() {
 		var self = this;
 		var loansUrl = root.getAttribute('data-loans-url');
+		var loginUrl = root.getAttribute('data-login-url');
 
 		self.loans = ko.observableArray([]);
 		self.isLoading = ko.observable(false);
@@ -43,28 +42,19 @@
 			self.isLoading(true);
 			self.errorMessage('');
 
-			window.fetch(loansUrl + '?page=1&active_only=true', {
-				method: 'GET',
-				credentials: 'same-origin',
-				headers: { Accept: 'application/json' }
-			})
-				.then(function (response) {
-					if ( ! response.ok) {
-						throw new Error('request_failed');
-					}
-
-					return response.json();
-				})
+			api.get(loansUrl, { page: 1, active_only: true })
 				.then(function (body) {
-					if ( ! body || ! Array.isArray(body.data)) {
-						throw new Error('invalid_response');
+					if ( ! Array.isArray(body.data)) {
+						throw new api.ApiError(500, null);
 					}
-
 					self.loans(body.data.slice(0, 6).map(loanRow));
 				})
-				.catch(function () {
-					self.loans([]);
-					self.errorMessage('貸出情報を取得できませんでした。');
+				.catch(function (error) {
+					if (api.isUnauthorized(error)) {
+						window.location.assign(loginUrl);
+						return;
+					}
+					self.errorMessage(api.message(error, '貸出情報を取得できませんでした。'));
 				})
 				.then(function () {
 					self.isLoading(false);
@@ -76,4 +66,4 @@
 
 	ko.applyBindings(viewModel, root);
 	viewModel.loadLoans();
-}(window, document, window.ko));
+}(window, document, window.ko, window.InventoryApi));

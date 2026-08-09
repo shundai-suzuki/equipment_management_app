@@ -27,6 +27,9 @@ return array(
 	'admin/departments' => array(
 		array('GET', new Route('page/admin/departments')),
 	),
+	'api/admin/departments/:id/restore' => array(
+		array('POST', new Route('table/department/restore/$1')),
+	),
 	'api/admin/departments/:id/archive' => array(
 		array('POST', new Route('table/department/soft_delete/$1')),
 	),
@@ -37,6 +40,18 @@ return array(
 	'api/admin/departments' => array(
 		array('GET', new Route('table/department/search')),
 		array('POST', new Route('table/department/create')),
+	),
+	'api/admin/employees/:id/deactivate' => array(
+		array('POST', new Route('table/employee/deactivate/$1')),
+	),
+	'api/admin/employees/:id/activate' => array(
+		array('POST', new Route('table/employee/activate/$1')),
+	),
+	'api/admin/employees/:id/restore' => array(
+		array('POST', new Route('table/employee/restore/$1')),
+	),
+	'api/admin/employees/:id/password' => array(
+		array('POST', new Route('table/employee/password/$1')),
 	),
 	'api/admin/employees/:id/archive' => array(
 		array('POST', new Route('table/employee/soft_delete/$1')),
@@ -50,15 +65,30 @@ return array(
 		array('POST', new Route('table/employee/create')),
 	),
 	'api/admin/equipment/:id/archive' => array(
-		array('POST', new Route('table/equipment/soft_delete/$1')),
+		array('POST', new Route('table/equipmentforadmin/soft_delete/$1')),
 	),
 	'api/admin/equipment/:id' => array(
-		array('GET', new Route('table/equipment/read/$1')),
-		array('POST', new Route('table/equipment/update/$1')),
+		array('GET', new Route('table/equipmentforadmin/read/$1')),
+		array('POST', new Route('table/equipmentforadmin/update/$1')),
 	),
 	'api/admin/equipment' => array(
+		array('GET', new Route('table/equipmentforadmin/search')),
+		array('POST', new Route('table/equipmentforadmin/create')),
+	),
+	'api/equipment/:id' => array(
+		array('GET', new Route('table/equipment/read/$1')),
+	),
+	'api/equipment' => array(
 		array('GET', new Route('table/equipment/search')),
-		array('POST', new Route('table/equipment/create')),
+	),
+	'api/admin/loans/:id/return' => array(
+		array('POST', new Route('adminloans/return/$1')),
+	),
+	'api/admin/loans' => array(
+		array('POST', new Route('adminloans/create')),
+	),
+	'api/loans' => array(
+		array('GET', new Route('table/loan/search')),
 	),
 
 	'hello(/:name)?' => array('welcome/hello', 'name' => 'hello'),

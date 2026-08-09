@@ -1,16 +1,20 @@
 <?php
 
 /**
- * Applies loan registration rules and delegates persistence.
+ * Applies loan and return business rules.
  *
  * @package  app
  */
 class Service_Table_Loan extends Service_BaseRegistration
 {
+	const PER_PAGE = 10;
 	const MAX_LOAN_DAYS = 90;
+	const MAX_KEYWORD_LENGTH = 255;
+	const MAX_NOTE_LENGTH = 255;
 	const FORBIDDEN_EXCEPTION_CODE = 403;
-	const VALIDATION_EXCEPTION_CODE = 422;
+	const NOT_FOUND_EXCEPTION_CODE = 404;
 	const CONFLICT_EXCEPTION_CODE = 409;
+	const VALIDATION_EXCEPTION_CODE = 422;
 
 	/**
 	 * Table registered by this Service.
@@ -26,11 +30,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	 */
 	protected $employee_model;
 
-	/**
-	 * Equipment Model used to lock and validate inventory.
-	 *
-	 * @var Model_Table_Equipment
-	 */
+	/** @var Model_Table_Equipment Equipment inventory reader. */
 	protected $equipment_model;
 
 	/**
@@ -53,37 +53,116 @@ class Service_Table_Loan extends Service_BaseRegistration
 			throw new \InvalidArgumentException('The equipment model must be an object.');
 		}
 
-		$this->employee_model = $employee_model ? $employee_model : new Model_Table_Employee();
-		$this->equipment_model = $equipment_model ? $equipment_model : new Model_Table_Equipment();
+		$this->employee_model = $employee_model ?: new Model_Table_Employee();
+		$this->equipment_model = $equipment_model ?: new Model_Table_Equipment();
 	}
 
 	/**
-	 * Register a loan after validating the actor, borrower and inventory.
+	 * Search the actor's visible loan history.
 	 *
+	 * @param   int     $actor_id
+	 * @param   int     $page
+	 * @param   string  $keyword
+	 * @param   array   $filters
+	 * @return  array
+	 */
+	public function search_for_actor($actor_id, $page, $keyword = '', array $filters = array())
+	{
+		$this->assert_positive_id($actor_id, 'The employee ID');
+		$this->assert_page($page);
+		$keyword = $this->normalize_keyword($keyword);
+		$this->assert_search_filters($filters);
+
+		$actor = $this->employee_model->read_for_authentication($actor_id);
+
+		if ($actor === null
+			or $actor['is_active'] !== 1
+			or $actor['deleted_at'] !== null)
+		{
+			throw new \RuntimeException(
+				'The employee is not available.',
+				static::FORBIDDEN_EXCEPTION_CODE
+			);
+		}
+
+		$employee_scope = $actor['role'] === 'ADMIN' ? null : $actor_id;
+		$today = $this->current_loan_date();
+		$search_result = $this->model->search_loans(
+			$page,
+			static::PER_PAGE,
+			$employee_scope,
+			$keyword,
+			$filters,
+			$today
+		);
+		$search_result['rows'] = $this->add_loan_states(
+			$search_result['rows'],
+			$today
+		);
+
+		return $search_result;
+	}
+
+	/**
+	 * Read one loan after rechecking the administrator.
+	 *
+	 * @param   int  $actor_id
+	 * @param   int  $id
+	 * @return  array
+	 */
+	public function read_for_admin($actor_id, $id)
+	{
+		$this->assert_positive_id($actor_id, 'The administrator employee ID');
+		$this->assert_positive_id($id, 'The loan ID');
+
+		if ( ! $this->employee_model->is_active_admin($actor_id))
+		{
+			throw new \RuntimeException(
+				'The actor is not an active administrator.',
+				static::FORBIDDEN_EXCEPTION_CODE
+			);
+		}
+
+		$loan = $this->model->read_loan($id);
+
+		if ($loan === null)
+		{
+			throw new \RuntimeException(
+				'The loan was not found.',
+				static::NOT_FOUND_EXCEPTION_CODE
+			);
+		}
+
+		return $this->add_loan_state($loan, $this->current_loan_date());
+	}
+
+	/**
+	 * Register one loan for an active borrower and available equipment.
+	 *
+	 * @param   int     $actor_id
 	 * @param   int     $id
 	 * @param   int     $employee_id
 	 * @param   int     $equipment_id
 	 * @param   string  $due_date
-	 * @param   int     $loaned_by
 	 * @return  int
 	 */
-	public function create($id, $employee_id, $equipment_id, $due_date, $loaned_by)
+	public function create_for_admin($actor_id, $id, $employee_id, $equipment_id, $due_date)
 	{
 		$this->assert_new_id($id);
+		$this->assert_positive_id($actor_id, 'The loan operator employee ID');
 		$this->assert_positive_id($employee_id, 'The borrower employee ID');
 		$this->assert_positive_id($equipment_id, 'The equipment ID');
-		$this->assert_positive_id($loaned_by, 'The loan operator employee ID');
 
 		$loaned_at = $this->current_loan_date();
 		$due_date = $this->normalize_due_date($due_date, $loaned_at);
-		$this->assert_employee_states($employee_id, $loaned_by);
+		$this->assert_employee_states($employee_id, $actor_id);
 
 		return $this->create_record(array(
 			'employee_id' => $employee_id,
 			'equipment_id' => $equipment_id,
 			'due_date' => $due_date,
 			'loaned_at' => $loaned_at,
-			'loaned_by' => $loaned_by,
+			'loaned_by' => $actor_id,
 			'returned_at' => null,
 			'returned_by' => null,
 			'note' => null,
@@ -91,9 +170,118 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Create the loan Model used by this Service.
+	 * Return one active loan without deleting its history.
 	 *
-	 * @return  Model_Table_Loan
+	 * @param   int         $actor_id
+	 * @param   int         $id
+	 * @param   string|null $note
+	 * @return  array
+	 */
+	public function return_for_admin($actor_id, $id, $note = null)
+	{
+		$this->assert_positive_id($actor_id, 'The return operator employee ID');
+		$this->assert_positive_id($id, 'The loan ID');
+		$note = $this->normalize_note($note);
+
+		if ( ! $this->employee_model->is_active_admin($actor_id))
+		{
+			throw new \RuntimeException(
+				'The return operator is not an active administrator.',
+				static::FORBIDDEN_EXCEPTION_CODE
+			);
+		}
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $id, $note)
+			{
+				$this->employee_model->lock_active_admin_count($db);
+
+				if ( ! $this->employee_model->is_active_admin($actor_id, $db))
+				{
+					throw new \RuntimeException(
+						'The return operator is not an active administrator.',
+						static::FORBIDDEN_EXCEPTION_CODE
+					);
+				}
+
+				$loan_before_lock = $this->model->read_loan($id, $db);
+
+				if ($loan_before_lock === null)
+				{
+					throw new \RuntimeException(
+						'The loan was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				$equipment_locked = $this->equipment_model->lock_for_return(
+					$loan_before_lock['equipment_id'],
+					$db
+				);
+
+				if ( ! $equipment_locked)
+				{
+					throw new \RuntimeException(
+						'The loan equipment is not available.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				$loan = $this->model->lock_for_return($id, $db);
+
+				if ($loan === null)
+				{
+					throw new \RuntimeException(
+						'The loan was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($loan['equipment_id'] !== $loan_before_lock['equipment_id']
+					or $loan['returned_at'] !== null)
+				{
+					throw new \RuntimeException(
+						'The loan cannot be returned in its current state.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				if ($this->model->mark_returned(
+					$id,
+					$this->current_loan_date(),
+					$actor_id,
+					$note,
+					$db
+				) !== 1)
+				{
+					throw new \RuntimeException(
+						'The loan changed during the return operation.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				$returned_loan = $this->model->read_loan($id, $db);
+
+				if ($returned_loan === null)
+				{
+					throw new \RuntimeException(
+						'The returned loan could not be read.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->add_loan_state(
+					$returned_loan,
+					$this->current_loan_date()
+				);
+			}
+		);
+	}
+
+	/** 
+	 * Default loan Model.
+	 * 
+	 * @return Model_Table_Loan
 	 */
 	protected function new_model()
 	{
@@ -101,7 +289,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Recheck participants and inventory inside the allocation transaction.
+	 * Recheck participants and inventory during ID allocation.
 	 *
 	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
@@ -109,11 +297,30 @@ class Service_Table_Loan extends Service_BaseRegistration
 	 */
 	protected function before_create(array $create_values, \Database_Connection $db)
 	{
-		$this->assert_employee_states(
+		$this->employee_model->lock_active_admin_count($db);
+
+		if ( ! $this->employee_model->is_active_admin($create_values['loaned_by'], $db))
+		{
+			throw new \RuntimeException(
+				'The loan operator is not an active administrator.',
+				static::FORBIDDEN_EXCEPTION_CODE
+			);
+		}
+
+		$borrower = $this->employee_model->read_for_update(
 			$create_values['employee_id'],
-			$create_values['loaned_by'],
+			false,
 			$db
 		);
+
+		if ($borrower === null or $borrower['is_active'] !== 1)
+		{
+			throw new \RuntimeException(
+				'The selected borrower is not available.',
+				static::VALIDATION_EXCEPTION_CODE
+			);
+		}
+
 		$inventory = $this->equipment_model->lock_available(
 			$create_values['equipment_id'],
 			$db
@@ -129,16 +336,15 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * Validate active borrower and administrator records.
+	 * Validate active borrower and administrator records before allocation.
 	 *
-	 * @param   int                       $employee_id
-	 * @param   int                       $loaned_by
-	 * @param   Database_Connection|null  $db
+	 * @param   int  $employee_id
+	 * @param   int  $actor_id
 	 * @return  void
 	 */
-	protected function assert_employee_states($employee_id, $loaned_by, $db = null)
+	protected function assert_employee_states($employee_id, $actor_id)
 	{
-		if ( ! $this->employee_model->is_active($employee_id, $db))
+		if ( ! $this->employee_model->is_active($employee_id))
 		{
 			throw new \RuntimeException(
 				'The selected borrower is not available.',
@@ -146,7 +352,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 			);
 		}
 
-		if ( ! $this->employee_model->is_active_admin($loaned_by, $db))
+		if ( ! $this->employee_model->is_active_admin($actor_id))
 		{
 			throw new \RuntimeException(
 				'The loan operator is not an active administrator.',
@@ -155,20 +361,18 @@ class Service_Table_Loan extends Service_BaseRegistration
 		}
 	}
 
-	/**
-	 * Return the current business date in Asia/Tokyo.
-	 *
-	 * @return  string
+	/** 
+	 * Current business date in Asia/Tokyo.
+	 * 
+	 * @return string 
 	 */
 	protected function current_loan_date()
 	{
-		$timezone = new \DateTimeZone('Asia/Tokyo');
-
-		return (new \DateTimeImmutable('now', $timezone))->format('Y-m-d');
+		return \Date::time('Asia/Tokyo')->format('%Y-%m-%d');
 	}
 
 	/**
-	 * Validate a due date between the loan date and 90 days later.
+	 * Validate a due date from the loan date through 90 days later.
 	 *
 	 * @param   mixed   $due_date
 	 * @param   string  $loaned_at
@@ -197,9 +401,160 @@ class Service_Table_Loan extends Service_BaseRegistration
 
 		if ($date < $start or $date > $last_due_date)
 		{
-			throw new \InvalidArgumentException('The due date must be within 90 days of the loan date.');
+			throw new \InvalidArgumentException(
+				'The due date must be within 90 days of the loan date.'
+			);
 		}
 
 		return $due_date;
+	}
+
+	/**
+	 * Normalize an optional return note.
+	 *
+	 * @param   mixed  $note
+	 * @return  string|null
+	 */
+	protected function normalize_note($note)
+	{
+		if ($note === null)
+		{
+			return null;
+		}
+
+		if ( ! is_string($note))
+		{
+			throw new \InvalidArgumentException('The return note must be a string.');
+		}
+
+		$note = trim($note);
+
+		if (mb_strlen($note, 'UTF-8') > static::MAX_NOTE_LENGTH)
+		{
+			throw new \InvalidArgumentException('The return note is too long.');
+		}
+
+		return $note === '' ? null : $note;
+	}
+
+	/**
+	 * Validate fixed pagination.
+	 *
+	 * @param   mixed  $page
+	 * @return  void
+	 */
+	protected function assert_page($page)
+	{
+		if ( ! is_int($page) or $page < 1)
+		{
+			throw new \InvalidArgumentException('The page must be a positive integer.');
+		}
+	}
+
+	/**
+	 * Normalize the equipment-name keyword.
+	 *
+	 * @param   mixed  $keyword
+	 * @return  string
+	 */
+	protected function normalize_keyword($keyword)
+	{
+		if ( ! is_string($keyword))
+		{
+			throw new \InvalidArgumentException('The keyword must be a string.');
+		}
+
+		$keyword = trim($keyword);
+
+		if (mb_strlen($keyword, 'UTF-8') > static::MAX_KEYWORD_LENGTH)
+		{
+			throw new \InvalidArgumentException('The keyword is too long.');
+		}
+
+		return $keyword;
+	}
+
+	/**
+	 * Accept only the documented loan filters.
+	 *
+	 * @param   array  $filters
+	 * @return  void
+	 */
+	protected function assert_search_filters(array $filters)
+	{
+		$allowed = array('loan_id', 'equipment_id', 'active_only', 'loan_state');
+
+		if (array_diff(array_keys($filters), $allowed))
+		{
+			throw new \InvalidArgumentException('The loan search filter is not allowed.');
+		}
+
+		foreach (array('loan_id', 'equipment_id') as $name)
+		{
+			if (isset($filters[$name]))
+			{
+				$this->assert_positive_id($filters[$name], $name);
+			}
+		}
+
+		if (isset($filters['active_only']) and ! is_bool($filters['active_only']))
+		{
+			throw new \InvalidArgumentException('active_only must be a boolean.');
+		}
+
+		if (isset($filters['loan_state'])
+			and ! in_array($filters['loan_state'], array('ON_LOAN', 'OVERDUE', 'RETURNED'), true))
+		{
+			throw new \InvalidArgumentException('The loan state is invalid.');
+		}
+
+		if (isset($filters['active_only'], $filters['loan_state'])
+			and $filters['active_only']
+			and $filters['loan_state'] === 'RETURNED')
+		{
+			throw new \InvalidArgumentException('The loan filters conflict.');
+		}
+	}
+
+	/**
+	 * Add calculated states to search rows.
+	 *
+	 * @param   array   $rows
+	 * @param   string  $today
+	 * @return  array
+	 */
+	protected function add_loan_states(array $rows, $today)
+	{
+		foreach ($rows as $key => $row)
+		{
+			$rows[$key] = $this->add_loan_state($row, $today);
+		}
+
+		return $rows;
+	}
+
+	/**
+	 * Calculate one loan state without storing a state column.
+	 *
+	 * @param   array   $loan
+	 * @param   string  $today
+	 * @return  array
+	 */
+	protected function add_loan_state(array $loan, $today)
+	{
+		if ($loan['returned_at'] !== null)
+		{
+			$loan['loan_state'] = 'RETURNED';
+		}
+		elseif ($loan['due_date'] < $today)
+		{
+			$loan['loan_state'] = 'OVERDUE';
+		}
+		else
+		{
+			$loan['loan_state'] = 'ON_LOAN';
+		}
+
+		return $loan;
 	}
 }

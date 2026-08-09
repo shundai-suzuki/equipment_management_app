@@ -8,6 +8,27 @@
 class Controller_Table_Department extends Controller_AdminCrud
 {
 	/**
+	 * Restore one archived department.
+	 *
+	 * @param   mixed  $id
+	 * @return  Response
+	 */
+	public function post_restore($id)
+	{
+		return $this->execute_crud(
+			function () use ($id)
+			{
+				return $this->json_success(
+					$this->service->restore_for_admin(
+						$this->actor_id(),
+						$this->integer_value($id, 'id')
+					)
+				);
+			}
+		);
+	}
+
+	/**
 	 * Create the department Service.
 	 *
 	 * @return  Service_Table_Department

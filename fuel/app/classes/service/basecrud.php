@@ -13,7 +13,6 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	const CONFLICT_EXCEPTION_CODE = 409;
 	const PER_PAGE = 10;
 	const MAX_KEYWORD_LENGTH = 255;
-	const MAX_SOFT_DELETE_REASON_LENGTH = 255;
 
 	/**
 	 * Employee Model for checking the administrator performing an operation.
@@ -21,6 +20,19 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	 * @var Model_Table_Employee|null
 	 */
 	protected $actor_model;
+
+	/**
+	 * Return one active row.
+	 *
+	 * @param   int  $id
+	 * @return  array
+	 */
+	public function read($id)
+	{
+		$this->assert_positive_id($id, 'The record ID');
+
+		return $this->read_required_record($id);
+	}
 
 	/**
 	 * Return one active row after rechecking the administrator.
@@ -32,24 +44,20 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	public function read_for_admin($actor_id, $id)
 	{
 		$this->assert_admin_actor($actor_id);
-		$this->assert_positive_id($id, 'The record ID');
 
-		return $this->read_required_record($id);
+		return $this->read($id);
 	}
 
 	/**
 	 * Return an active-row list with validated pagination.
 	 *
-	 * @param   int     $actor_id
 	 * @param   int     $page
 	 * @param   string  $keyword
 	 * @param   array   $filters
 	 * @return  array
 	 */
-	public function search_for_admin($actor_id, $page, $keyword = '', array $filters = array())
+	public function search($page, $keyword = '', array $filters = array())
 	{
-		$this->assert_admin_actor($actor_id);
-
 		if ( ! is_int($page) or $page < 1)
 		{
 			throw new \InvalidArgumentException('The page must be a positive integer.');
@@ -67,7 +75,23 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 			throw new \InvalidArgumentException('The keyword is too long.');
 		}
 
-		return $this->model->search($page, self::PER_PAGE, $keyword, $filters);
+		return $this->model->search($page, static::PER_PAGE, $keyword, $filters);
+	}
+
+	/**
+	 * Return an active-row list with validated pagination.
+	 *
+	 * @param   int     $actor_id
+	 * @param   int     $page
+	 * @param   string  $keyword
+	 * @param   array   $filters
+	 * @return  array
+	 */
+	public function search_for_admin($actor_id, $page, $keyword = '', array $filters = array())
+	{
+		$this->assert_admin_actor($actor_id);
+
+		return $this->search($page, $keyword, $filters);
 	}
 
 	/**
@@ -147,25 +171,23 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Require a reason suitable for the later audit event.
+	 * Restore an already locked row and return its active representation.
 	 *
-	 * @param   mixed  $reason
-	 * @return  void
+	 * @param   int                       $id
+	 * @param   Database_Connection|null  $db
+	 * @return  array
 	 */
-	protected function assert_soft_delete_reason($reason)
+	protected function restore_and_read_record($id, $db = null)
 	{
-		if ( ! is_string($reason))
+		if ($this->model->restore($id, $db) !== 1)
 		{
-			throw new \InvalidArgumentException('The soft-delete reason must be a string.');
+			throw new \RuntimeException(
+				'The record changed during the restore operation.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
 		}
 
-		$reason = trim($reason);
-
-		if ($reason === ''
-			or mb_strlen($reason, 'UTF-8') > static::MAX_SOFT_DELETE_REASON_LENGTH)
-		{
-			throw new \InvalidArgumentException('The soft-delete reason is invalid.');
-		}
+		return $this->read_required_record($id, $db);
 	}
 
 	/**

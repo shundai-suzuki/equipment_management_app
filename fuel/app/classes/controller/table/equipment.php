@@ -1,65 +1,93 @@
 <?php
 
 /**
- * Administrator CRUD endpoints for equipment.
+ * Authenticated read-only equipment API Controller.
  *
  * @package  app
  */
-class Controller_Table_Equipment extends Controller_AdminCrud
+class Controller_Table_Equipment extends Controller_Base
 {
 	const MAX_CATEGORY_LENGTH = 20;
 
 	/**
-	 * Create the equipment Service.
+	 * Equipment Service shared with the administrator CRUD Controller.
 	 *
-	 * @return  Service_Table_Equipment
+	 * @var Service_Table_Equipment
 	 */
-	protected function new_service()
+	protected $service;
+
+	/** Initialize the Service after authentication. */
+	public function before()
 	{
-		return new Service_Table_Equipment();
+		parent::before();
+
+		if ($this->before_response instanceof \Response)
+		{
+			return;
+		}
+
+		$this->service = new Service_Table_Equipment();
 	}
 
 	/**
-	 * Create equipment from allowed POST inputs.
+	 * Search equipment visible to every authenticated role.
 	 *
-	 * @param   int  $actor_id
-	 * @return  int
+	 * @return  Response
 	 */
-	protected function create_from_post($actor_id)
+	public function get_search()
 	{
-		return $this->service->create_for_admin(
-			$actor_id,
-			$this->post_integer('id', 0),
-			Input::post('name'),
-			$this->post_integer('department_id'),
-			Input::post('category'),
-			$this->post_integer('total_amount'),
-			Input::post('description')
+		return $this->execute_api(
+			function ()
+			{
+				$page = $this->integer_value(\Input::get('page', 1), 'page');
+				$search_result = $this->service->search(
+					$page,
+					\Input::get('q', ''),
+					$this->search_filters()
+				);
+				$search_total = (int) $search_result['total'];
+
+				return $this->json_success(
+					$search_result['rows'],
+					200,
+					array(
+						'pagination' => array(
+							'page' => $page,
+							'per_page' => Service_Table_Equipment::PER_PAGE,
+							'total' => $search_total,
+							'total_pages' => $search_total === 0
+								? 0
+								: (int) ceil($search_total / Service_Table_Equipment::PER_PAGE),
+						),
+						'category_options' => $search_result['category_options'],
+					)
+				);
+			}
 		);
 	}
 
 	/**
-	 * Update equipment from allowed POST inputs.
+	 * Return one active equipment row.
 	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
+	 * @param   mixed  $id
+	 * @return  Response
 	 */
-	protected function update_from_post($actor_id, $id)
+	public function get_read($id)
 	{
-		return $this->service->update_for_admin(
-			$actor_id,
-			$id,
-			Input::post('name'),
-			$this->post_integer('department_id'),
-			Input::post('category'),
-			$this->post_integer('total_amount'),
-			Input::post('description')
+		return $this->execute_api(
+			function () use ($id)
+			{
+				return $this->json_success(
+					$this->service->read(
+						$this->integer_value($id, 'id')
+					)
+				);
+			}
 		);
 	}
 
 	/**
-	 * Validate equipment list filters.
+	 * Return validated equipment search filters.
 	 *
 	 * @return  array
 	 */
@@ -67,7 +95,7 @@ class Controller_Table_Equipment extends Controller_AdminCrud
 	{
 		$filters = array();
 		$department_id = $this->optional_query_integer('department_id');
-		$category = Input::get('category');
+		$category = \Input::get('category');
 
 		if ($department_id !== null)
 		{
@@ -78,7 +106,7 @@ class Controller_Table_Equipment extends Controller_AdminCrud
 		{
 			if ( ! is_string($category))
 			{
-				throw new InvalidArgumentException('category must be a string.');
+				throw new \InvalidArgumentException('category must be a string.');
 			}
 
 			$category = trim($category);
@@ -86,7 +114,7 @@ class Controller_Table_Equipment extends Controller_AdminCrud
 			if ($category === ''
 				or mb_strlen($category, 'UTF-8') > static::MAX_CATEGORY_LENGTH)
 			{
-				throw new InvalidArgumentException('category is invalid.');
+				throw new \InvalidArgumentException('category is invalid.');
 			}
 
 			$filters['category'] = $category;
@@ -94,5 +122,4 @@ class Controller_Table_Equipment extends Controller_AdminCrud
 
 		return $filters;
 	}
-
 }

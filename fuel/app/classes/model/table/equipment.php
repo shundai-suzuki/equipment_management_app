@@ -219,4 +219,26 @@ class Model_Table_Equipment extends Model_BaseCrud
 			'available_amount' => $available,
 		);
 	}
+
+	/**
+	 * Lock the equipment row required by a return operation.
+	 *
+	 * @param   int                  $id
+	 * @param   Database_Connection  $db
+	 * @return  bool
+	 */
+	public function lock_for_return($id, \Database_Connection $db)
+	{
+		$id_column = $this->quoted_column('id', $db);
+		$read_result = \DB::query(
+			'SELECT '.$id_column
+			.' FROM '.$this->quoted_table($db)
+			.' WHERE '.$id_column.' = :id FOR UPDATE',
+			\DB::SELECT
+		)
+			->param('id', $id)
+			->execute($db);
+
+		return count($read_result) === 1;
+	}
 }

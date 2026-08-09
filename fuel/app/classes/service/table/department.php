@@ -31,7 +31,7 @@ class Service_Table_Department extends Service_BaseCrud
 
 		if ($read_department !== null)
 		{
-			return $this->restore_or_reject($read_department, $name);
+			return $this->restore_or_reject($read_department);
 		}
 
 		try
@@ -76,7 +76,7 @@ class Service_Table_Department extends Service_BaseCrud
 			function ($db) use ($actor_id, $id, $name)
 			{
 				$this->assert_admin_actor($actor_id, $db);
-				$department_before_update = $this->model->read_before_update($id, false, $db);
+				$department_before_update = $this->model->read_for_update($id, false, $db);
 
 				if ($department_before_update === null)
 				{
@@ -106,24 +106,32 @@ class Service_Table_Department extends Service_BaseCrud
 	 *
 	 * @param   int     $actor_id
 	 * @param   int     $id
-	 * @param   string  $reason
 	 * @return  array
 	 */
-	public function soft_delete_for_admin($actor_id, $id, $reason)
+	public function soft_delete_for_admin($actor_id, $id)
 	{
 		$this->assert_positive_id($id, 'The department ID');
-		$this->assert_soft_delete_reason($reason);
 
 		return $this->model->transaction(
 			function ($db) use ($actor_id, $id)
 			{
 				$this->assert_admin_actor($actor_id, $db);
 
-				if ($this->model->read_before_update($id, false, $db) === null)
+				$department_before_delete = $this->model->read_for_update($id, true, $db);
+
+				if ($department_before_delete === null)
 				{
 					throw new \RuntimeException(
 						'The department was not found.',
 						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($department_before_delete['deleted_at'] !== null)
+				{
+					throw new \RuntimeException(
+						'The department is already archived.',
+						static::CONFLICT_EXCEPTION_CODE
 					);
 				}
 
@@ -136,6 +144,48 @@ class Service_Table_Department extends Service_BaseCrud
 				}
 
 				return $this->soft_delete_and_read_record($id, $db);
+			}
+		);
+	}
+
+	/**
+	 * Restore one archived department.
+	 *
+	 * @param   int  $actor_id
+	 * @param   int  $id
+	 * @return  array
+	 */
+	public function restore_for_admin($actor_id, $id)
+	{
+		$this->assert_positive_id($id, 'The department ID');
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $id)
+			{
+				$this->assert_admin_actor($actor_id, $db);
+				$department_before_restore = $this->model->read_for_update(
+					$id,
+					true,
+					$db
+				);
+
+				if ($department_before_restore === null)
+				{
+					throw new \RuntimeException(
+						'The department was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($department_before_restore['deleted_at'] === null)
+				{
+					throw new \RuntimeException(
+						'The department is not archived.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->restore_and_read_record($id, $db);
 			}
 		);
 	}
@@ -181,11 +231,10 @@ class Service_Table_Department extends Service_BaseCrud
 	/**
 	 * Restore an archived match or reject an active duplicate.
 	 *
-	 * @param   array   $read_department
-	 * @param   string  $name
+	 * @param   array  $read_department
 	 * @return  int
 	 */
-	protected function restore_or_reject(array $read_department, $name)
+	protected function restore_or_reject(array $read_department)
 	{
 		if ($read_department['deleted_at'] === null)
 		{
@@ -197,23 +246,32 @@ class Service_Table_Department extends Service_BaseCrud
 
 		$id = (int) $read_department['id'];
 
-		if ($this->model->restore($id))
-		{
-			return $id;
-		}
+		return $this->model->transaction(
+			function ($db) use ($id)
+			{
+				$department_before_restore = $this->model->read_for_update(
+					$id,
+					true,
+					$db
+				);
 
-		$read_current = $this->model->read_by_name($name);
+				if ($department_before_restore === null)
+				{
+					throw new \RuntimeException(
+						'The archived department could not be read.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
 
-		if ($read_current !== null
-			and (int) $read_current['id'] === $id
-			and $read_current['deleted_at'] === null)
-		{
-			return $id;
-		}
+				if ($department_before_restore['deleted_at'] === null)
+				{
+					return $id;
+				}
 
-		throw new \RuntimeException(
-			'Failed to restore the archived department.',
-			static::CONFLICT_EXCEPTION_CODE
+				$this->restore_and_read_record($id, $db);
+
+				return $id;
+			}
 		);
 	}
 
@@ -238,6 +296,6 @@ class Service_Table_Department extends Service_BaseCrud
 			throw $exception;
 		}
 
-		return $this->restore_or_reject($read_department, $name);
+		return $this->restore_or_reject($read_department);
 	}
 }

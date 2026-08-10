@@ -7,6 +7,7 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 {
 	/** @var string 認証済み社員IDを保存するSessionキー */
 	const SESSION_EMPLOYEE_ID = 'employee_auth.employee_id';
+	
 	/** @var string 認証情報フィンガープリントを保存するSessionキー */
 	const SESSION_CREDENTIAL_FINGERPRINT = 'employee_auth.credential_fingerprint';
 

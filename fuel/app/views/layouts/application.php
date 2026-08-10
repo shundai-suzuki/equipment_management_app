@@ -1,3 +1,6 @@
+<?php
+// ログイン後のレイアウト
+?>
 <!DOCTYPE html>
 <html lang="ja">
 <head>

@@ -1,38 +1,33 @@
 <?php
 
 /**
- * Applies employee registration rules and delegates persistence.
- *
- * @package  app
+ * 社員登録規則を適用し、永続化を委譲する。
  */
 class Service_Table_Employee extends Service_BaseCrud
 {
+	/** @var int 名前の最大文字数 */
 	const MAX_NAME_LENGTH = 30;
+	/** @var int パスワードの最小バイト数 */
 	const MIN_PASSWORD_BYTES = 12;
+	/** @var int パスワードの最大バイト数 */
 	const MAX_PASSWORD_BYTES = 72;
 
-	/**
-	 * Table registered by this Service.
-	 *
-	 * @var string
-	 */
+	/** @var string このサービスが登録するテーブル */
 	protected static $table_name = 'employees';
 
-	/**
-	 * Department Model used to validate the selected department.
-	 *
-	 * @var Model_Table_Department
-	 */
+	/** @var Model_Table_Department 選択された部署の検証に使用する部署モデル */
 	protected $department_model;
 
 	/**
-	 * @param  object|null  $model
-	 * @param  object|null  $id_allocator
-	 * @param  object|null  $department_model
+	 * 社員操作に使用するModelを初期化する。
+	 *
+	 * @param  object|null $model            使用する操作対象Model
+	 * @param  object|null $department_model 使用する部署Model
+	 * @return void
 	 */
-	public function __construct($model = null, $id_allocator = null, $department_model = null)
+	public function __construct($model = null, $department_model = null)
 	{
-		parent::__construct($model, $id_allocator);
+		parent::__construct($model);
 
 		if ($department_model !== null and ! is_object($department_model))
 		{
@@ -43,19 +38,17 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Register an employee with an application-managed employee number.
+	 * アプリケーション管理の社員番号で社員を登録する。
 	 *
-	 * @param   int     $id
-	 * @param   string  $employee_name
-	 * @param   int     $department_id
-	 * @param   string  $role
-	 * @param   string  $password
-	 * @param   string  $password_confirmation
-	 * @return  int
+	 * @param  string $employee_name         社員名
+	 * @param  int    $department_id         部署ID
+	 * @param  string $role                  社員権限
+	 * @param  string $password              パスワード
+	 * @param  string $password_confirmation 確認用パスワード
+	 * @return int
 	 */
-	public function create($id, $employee_name, $department_id, $role, $password, $password_confirmation)
+	public function create($employee_name, $department_id, $role, $password, $password_confirmation)
 	{
-		$this->assert_new_id($id);
 		$this->assert_positive_id($department_id, 'The department ID');
 
 		$employee_name = $this->normalize_name($employee_name);
@@ -72,24 +65,21 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Create an employee after rechecking the administrator.
+	 * 管理者を再確認してから社員を登録する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @param   string  $employee_name
-	 * @param   int     $department_id
-	 * @param   string  $role
-	 * @param   string  $password
-	 * @param   string  $password_confirmation
-	 * @return  int
+	 * @param  int    $actor_id              操作する管理者の社員ID
+	 * @param  string $employee_name         社員名
+	 * @param  int    $department_id         部署ID
+	 * @param  string $role                  社員権限
+	 * @param  string $password              パスワード
+	 * @param  string $password_confirmation 確認用パスワード
+	 * @return int
 	 */
-	public function create_for_admin($actor_id,	$id, $employee_name, $department_id, $role, $password, $password_confirmation)
+	public function create_for_admin($actor_id, $employee_name, $department_id, $role, $password, $password_confirmation)
 	{
 		$this->assert_admin_actor($actor_id);
 
-		return $this->create(
-			$id,
-			$employee_name,
+		return $this->create($employee_name,
 			$department_id,
 			$role,
 			$password,
@@ -98,14 +88,14 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Update the editable employee fields.
+	 * 更新可能な社員項目を更新する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @param   string  $employee_name
-	 * @param   int     $department_id
-	 * @param   string  $role
-	 * @return  array
+	 * @param  int    $actor_id      操作する管理者の社員ID
+	 * @param  int    $id            対象レコードのID
+	 * @param  string $employee_name 社員名
+	 * @param  int    $department_id 部署ID
+	 * @param  string $role          社員権限
+	 * @return array
 	 */
 	public function update_for_admin($actor_id, $id, $employee_name, $department_id, $role)
 	{
@@ -165,11 +155,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Soft-delete an employee who has no active loan.
+	 * 貸出中データがない社員を論理削除する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function soft_delete_for_admin($actor_id, $id)
 	{
@@ -222,11 +212,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Temporarily disable one employee account.
+	 * 社員アカウントを1件一時的に無効化する。
 	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function deactivate_for_admin($actor_id, $id)
 	{
@@ -282,11 +272,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Re-enable one inactive employee account.
+	 * 無効な社員アカウントを1件再有効化する。
 	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function activate_for_admin($actor_id, $id)
 	{
@@ -329,11 +319,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore one archived employee without reactivating the account.
+	 * アカウントを再有効化せずに論理削除済み社員を1件復元する。
 	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function restore_for_admin($actor_id, $id)
 	{
@@ -376,14 +366,77 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Reset one employee password after verifying the administrator password.
+	 * 認証済み社員本人のパスワードを変更する。
 	 *
-	 * @param   int    $actor_id
-	 * @param   int    $id
-	 * @param   mixed  $admin_password
-	 * @param   mixed  $password
-	 * @param   mixed  $password_confirmation
-	 * @return  array
+	 * @param  int   $actor_id              操作する管理者の社員ID
+	 * @param  mixed $current_password      現在のパスワード
+	 * @param  mixed $password              パスワード
+	 * @param  mixed $password_confirmation 確認用パスワード
+	 * @return array
+	 */
+	public function change_own_password($actor_id, $current_password, $password, $password_confirmation)
+	{
+		$this->assert_positive_id($actor_id, 'The employee ID');
+
+		if ( ! is_string($current_password)
+			or $current_password === ''
+			or strlen($current_password) > static::MAX_PASSWORD_BYTES)
+		{
+			throw new \InvalidArgumentException('The current password is invalid.');
+		}
+
+		$password_hash = $this->create_hash_password(
+			$password,
+			$password_confirmation
+		);
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $current_password, $password_hash)
+			{
+				$locked_employee = $this->model->read_for_update(
+					$actor_id,
+					false,
+					$db
+				);
+				$employee = $this->model->read_for_authentication(
+					$actor_id,
+					$db
+				);
+
+				if ($locked_employee === null
+					or $employee === null
+					or (int) $employee['is_active'] !== 1
+					or $employee['deleted_at'] !== null
+					or ! password_verify($current_password, $employee['password_hash']))
+				{
+					throw new \RuntimeException(
+						'The current password is invalid.',
+						static::FORBIDDEN_EXCEPTION_CODE
+					);
+				}
+
+				if ($this->model->update_password_hash($actor_id,	$password_hash,	$db) !== 1)
+				{
+					throw new \RuntimeException(
+						'The employee password changed during the update.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->read_required_record($actor_id, $db);
+			}
+		);
+	}
+
+	/**
+	 * 管理者パスワードを確認してから社員のパスワードを1件再設定する。
+	 *
+	 * @param  int   $actor_id              操作する管理者の社員ID
+	 * @param  int   $id                    対象レコードのID
+	 * @param  mixed $admin_password        管理者確認用パスワード
+	 * @param  mixed $password              パスワード
+	 * @param  mixed $password_confirmation 確認用パスワード
+	 * @return array
 	 */
 	public function reset_password_for_admin($actor_id, $id, $admin_password,	$password, $password_confirmation)
 	{
@@ -451,12 +504,12 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Change an already locked account state and return the safe employee row.
+	 * ロック済みアカウントの状態を変更し、安全な社員行を返す。
 	 *
-	 * @param   int                  $id
-	 * @param   int                  $is_active
-	 * @param   Database_Connection  $db
-	 * @return  array
+	 * @param  int                 $id        対象レコードのID
+	 * @param  int                 $is_active 社員の有効状態
+	 * @param  Database_Connection $db        使用するDB接続
+	 * @return array
 	 */
 	protected function update_active_state_and_read($id, $is_active, \Database_Connection $db)
 	{
@@ -472,9 +525,9 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Create the employee Model used by this Service.
+	 * このサービスで使用する社員モデルを生成する。
 	 *
-	 * @return  Model_Table_Employee
+	 * @return Model_Table_Employee
 	 */
 	protected function new_model()
 	{
@@ -482,11 +535,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Recheck the department on the allocator transaction connection.
+	 * 登録トランザクション内で部署を再確認する。
 	 *
-	 * @param   array                $create_values
-	 * @param   Database_Connection  $db
-	 * @return  void
+	 * @param  array               $create_values 登録する値
+	 * @param  Database_Connection $db            使用するDB接続
+	 * @return void
 	 */
 	protected function before_create(array $create_values, \Database_Connection $db)
 	{
@@ -494,10 +547,10 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize and validate an employee name.
+	 * 社員名を正規化して検証する。
 	 *
-	 * @param   mixed  $name
-	 * @return  string
+	 * @param  mixed $name 対象の名前
+	 * @return string
 	 */
 	protected function normalize_name($name)
 	{
@@ -517,10 +570,10 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Accept only the roles stored by the employees table.
+	 * employeesテーブルに保存する権限だけを受け付ける。
 	 *
-	 * @param   mixed  $role
-	 * @return  string
+	 * @param  mixed $role 社員権限
+	 * @return string
 	 */
 	protected function normalize_role($role)
 	{
@@ -540,11 +593,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Validate matching passwords and return only their hash.
+	 * パスワードの一致を検証し、そのハッシュだけを返す。
 	 *
-	 * @param   mixed  $password
-	 * @param   mixed  $confirmation
-	 * @return  string
+	 * @param  mixed $password     パスワード
+	 * @param  mixed $confirmation 確認用パスワード
+	 * @return string
 	 */
 	protected function create_hash_password($password, $confirmation)
 	{
@@ -576,11 +629,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * Require and lock a department during transactional writes.
+	 * トランザクション更新中に部署を必須としてロックする。
 	 *
-	 * @param   int                       $department_id
-	 * @param   Database_Connection|null  $db
-	 * @return  void
+	 * @param  int                      $department_id 部署ID
+	 * @param  Database_Connection|null $db            使用するDB接続
+	 * @return void
 	 */
 	protected function assert_active_department($department_id, $db = null)
 	{

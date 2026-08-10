@@ -1,31 +1,24 @@
 <?php
 
 /**
- * Applies department registration rules and delegates persistence.
- *
- * @package  app
+ * 部署登録規則を適用し、永続化を委譲する。
  */
 class Service_Table_Department extends Service_BaseCrud
 {
+	/** @var int 名前の最大文字数 */
 	const MAX_NAME_LENGTH = 255;
 
-	/**
-	 * Table registered by this Service.
-	 *
-	 * @var string
-	 */
+	/** @var string このサービスが登録するテーブル */
 	protected static $table_name = 'departments';
 
 	/**
-	 * Create a department or restore an archived department with the same name.
+	 * 部署を登録するか、同名の論理削除済み部署を復元する。
 	 *
-	 * @param   int     $id
-	 * @param   string  $name
-	 * @return  int
+	 * @param  string $name 対象の名前
+	 * @return int
 	 */
-	public function create($id, $name)
+	public function create($name)
 	{
-		$this->assert_new_id($id);
 		$name = $this->normalize_name($name);
 		$read_department = $this->model->read_by_name($name);
 
@@ -45,27 +38,26 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Create a department after rechecking the administrator.
+	 * 管理者を再確認してから部署を登録する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @param   string  $name
-	 * @return  int
+	 * @param  int    $actor_id 操作する管理者の社員ID
+	 * @param  string $name     対象の名前
+	 * @return int
 	 */
-	public function create_for_admin($actor_id, $id, $name)
+	public function create_for_admin($actor_id, $name)
 	{
 		$this->assert_admin_actor($actor_id);
 
-		return $this->create($id, $name);
+		return $this->create($name);
 	}
 
 	/**
-	 * Update a department name.
+	 * 部署名を更新する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @param   string  $name
-	 * @return  array
+	 * @param  int    $actor_id 操作する管理者の社員ID
+	 * @param  int    $id       対象レコードのID
+	 * @param  string $name     対象の名前
+	 * @return array
 	 */
 	public function update_for_admin($actor_id, $id, $name)
 	{
@@ -102,11 +94,11 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Soft-delete an unused department.
+	 * 未使用の部署を論理削除する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function soft_delete_for_admin($actor_id, $id)
 	{
@@ -149,11 +141,11 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore one archived department.
+	 * 論理削除済み部署を1件復元する。
 	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function restore_for_admin($actor_id, $id)
 	{
@@ -191,9 +183,9 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Create the department Model used by this Service.
+	 * このサービスで使用する部署モデルを生成する。
 	 *
-	 * @return  Model_Table_Department
+	 * @return Model_Table_Department
 	 */
 	protected function new_model()
 	{
@@ -201,10 +193,10 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize and validate a department name.
+	 * 部署名を正規化して検証する。
 	 *
-	 * @param   mixed  $name
-	 * @return  string
+	 * @param  mixed $name 対象の名前
+	 * @return string
 	 */
 	protected function normalize_name($name)
 	{
@@ -229,10 +221,10 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore an archived match or reject an active duplicate.
+	 * 一致する論理削除済み行を復元するか、有効な重複行を拒否する。
 	 *
-	 * @param   array  $read_department
-	 * @return  int
+	 * @param  array $read_department 取得した部署情報
+	 * @return int
 	 */
 	protected function restore_or_reject(array $read_department)
 	{
@@ -276,11 +268,11 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Convert a duplicate department name into a conflict.
+	 * 部署名の重複を競合へ変換する。
 	 *
-	 * @param   string              $name
-	 * @param   Database_Exception  $exception
-	 * @return  int
+	 * @param  string             $name      対象の名前
+	 * @param  Database_Exception $exception 発生した例外
+	 * @return int
 	 */
 	protected function handle_create_exception($name, \Database_Exception $exception)
 	{

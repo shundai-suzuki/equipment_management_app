@@ -1,50 +1,34 @@
 <?php
 
 /**
- * Connects FuelPHP Auth to employee authentication.
- *
- * @package  app
+ * FuelPHP Authと社員認証を接続する。
  */
 class Auth_Login_Employee extends \Auth_Login_Driver
 {
+	/** @var string 認証済み社員IDを保存するSessionキー */
 	const SESSION_EMPLOYEE_ID = 'employee_auth.employee_id';
+	/** @var string 認証情報フィンガープリントを保存するSessionキー */
 	const SESSION_CREDENTIAL_FINGERPRINT = 'employee_auth.credential_fingerprint';
 
-	/**
-	 * Current authenticated employee without credential data.
-	 *
-	 * @var array|null
-	 */
+	/** @var array|null 認証情報を除いた現在の認証済み社員 */
 	protected $user;
 
-	/**
-	 * Authentication Service created only when required.
-	 *
-	 * @var Service_Auth|null
-	 */
+	/** @var Service_Auth|null 必要な場合だけ生成する認証Service */
 	protected $service;
 
-	/**
-	 * Fingerprint held only between validation and Session creation.
-	 *
-	 * @var string|null
-	 */
+	/** @var string|null 検証後からSession生成までの間だけ保持するフィンガープリント */
 	protected $pending_fingerprint;
 
-	/**
-	 * Keep the base driver free of unused Group and ACL drivers.
-	 *
-	 * @var array
-	 */
+	/** @var array 使用しないGroup・ACLドライバを除いた設定 */
 	protected $config = array(
 		'drivers' => array(),
 		'additional_fields' => array(),
 	);
 
 	/**
-	 * Check the Session against the current employee record.
+	 * Sessionを現在の社員レコードと照合する。
 	 *
-	 * @return  bool
+	 * @return bool
 	 */
 	protected function perform_check()
 	{
@@ -76,11 +60,11 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Validate submitted credentials without changing the Session.
+	 * Sessionを変更せず、送信された認証情報を検証する。
 	 *
-	 * @param   int|string  $employee_number
-	 * @param   mixed       $password
-	 * @return  array|false
+	 * @param int|string $employee_number 認証する社員番号
+	 * @param mixed      $password        認証するパスワード
+	 * @return array|false
 	 */
 	public function validate_user($employee_number = '', $password = '')
 	{
@@ -101,11 +85,11 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Login with a newly created Session, following SimpleAuth's flow.
+	 * SimpleAuthの流れに従い、新しく生成したSessionでログインする。
 	 *
-	 * @param   int|string  $employee_number
-	 * @param   mixed       $password
-	 * @return  bool
+	 * @param int|string $employee_number 認証する社員番号
+	 * @param mixed      $password        認証するパスワード
+	 * @return bool
 	 */
 	public function login($employee_number = '', $password = '')
 	{
@@ -131,9 +115,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Logout by destroying the server-side Session.
+	 * サーバー側のSessionを破棄してログアウトする。
 	 *
-	 * @return  bool
+	 * @return bool
 	 */
 	public function logout()
 	{
@@ -145,9 +129,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Return this driver's ID and the employee number.
+	 * このドライバのIDと社員番号を返す。
 	 *
-	 * @return  array|false
+	 * @return array|false
 	 */
 	public function get_user_id()
 	{
@@ -157,9 +141,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Group drivers are intentionally not used for employee roles.
+	 * 社員権限にはGroupドライバを使用しない。
 	 *
-	 * @return  array|false
+	 * @return array|false
 	 */
 	public function get_groups()
 	{
@@ -167,9 +151,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * The employees table has no email column.
+	 * employeesテーブルにはメールアドレス列がない。
 	 *
-	 * @return  false
+	 * @return false
 	 */
 	public function get_email()
 	{
@@ -177,9 +161,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Return the employee name for display.
+	 * 表示用の社員名を返す。
 	 *
-	 * @return  string|false
+	 * @return string|false
 	 */
 	public function get_screen_name()
 	{
@@ -187,9 +171,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Return the current role reloaded from the DB.
+	 * DBから再取得した現在の権限を返す。
 	 *
-	 * @return  string|false
+	 * @return string|false
 	 */
 	public function get_role()
 	{
@@ -197,11 +181,11 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Return one allowed current-user field.
+	 * 許可された現在の社員情報を1項目返す。
 	 *
-	 * @param   string  $field
-	 * @param   mixed   $default
-	 * @return  mixed
+	 * @param string $field   取得する社員情報の項目名
+	 * @param mixed  $default 項目を取得できない場合の既定値
+	 * @return mixed
 	 */
 	public function get($field, $default = null)
 	{
@@ -215,9 +199,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Create the authentication Service only when credentials must be checked.
+	 * 認証情報を確認する場合だけ認証Serviceを生成する。
 	 *
-	 * @return  Service_Auth
+	 * @return Service_Auth
 	 */
 	protected function get_service()
 	{
@@ -233,9 +217,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Remove only authentication values after an ordinary login failure.
+	 * 通常のログイン失敗後に認証用の値だけを削除する。
 	 *
-	 * @return  void
+	 * @return void
 	 */
 	protected function clear_session_values()
 	{
@@ -244,9 +228,9 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	}
 
 	/**
-	 * Destroy a stale or invalid authenticated Session.
+	 * 古い、または無効な認証Sessionを破棄する。
 	 *
-	 * @return  void
+	 * @return void
 	 */
 	protected function invalidate_session()
 	{

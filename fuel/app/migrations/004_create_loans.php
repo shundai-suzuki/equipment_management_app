@@ -11,12 +11,12 @@ class Create_loans
 		\DBUtil::create_table(
 			'loans', 
 			array(
-				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
-				'employee_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
-				'equipment_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'auto_increment' => true),
+				'employee_id' => array('type' => 'int', 'constraint' => 11, 'null' => false),
+				'equipment_id' => array('type' => 'int', 'constraint' => 11, 'null' => false),
 				'due_date' => array('type' => 'date', 'null' => false),
 				'loaned_at' => array('type' => 'date', 'null' => false),
-				'loaned_by' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'loaned_by' => array('type' => 'int', 'constraint' => 11, 'null' => false),
 				'returned_at' => array('type' => 'date', 'null' => true),
 				'returned_by' => array('type' => 'int', 'constraint' => 11, 'null' => true),
 				'note' => array('type' => 'varchar', 'constraint' => 255, 'null' => true),
@@ -99,7 +99,6 @@ class Create_loans
 		$table = \DB::quote_identifier(\DB::table_prefix('loans'));
 		\DB::query(
 			'ALTER TABLE '.$table
-			.' ADD CONSTRAINT chk_loans_id_positive CHECK (id > 0),'
 			.' ADD CONSTRAINT chk_loans_return_pair CHECK ('
 			.'(returned_at IS NULL AND returned_by IS NULL) '
 			.'OR (returned_at IS NOT NULL AND returned_by IS NOT NULL)'

@@ -1,6 +1,6 @@
 <?php
 /**
- * Fuel is a fast, lightweight, community driven PHP5 framework.
+ * Fuelは高速で軽量なコミュニティ主導のPHP5フレームワーク。
  *
  * @package    Fuel
  * @version    1.8
@@ -11,10 +11,10 @@
  */
 
 /**
- * The Welcome Controller.
+ * Welcomeコントローラ。
  *
- * A basic controller example.  Has examples of how to set the
- * response body and status.
+ * 基本的なコントローラ例。レスポンス本文とステータスの
+ * 設定方法を示す。
  *
  * @package  app
  * @extends  Controller
@@ -22,7 +22,7 @@
 class Controller_Welcome extends Controller
 {
 	/**
-	 * The basic welcome message
+	 * 基本のウェルカムメッセージ。
 	 *
 	 * @access  public
 	 * @return  Response
@@ -33,8 +33,8 @@ class Controller_Welcome extends Controller
 	}
 
 	/**
-	 * A typical "Hello, Bob!" type example.  This uses a Presenter to
-	 * show how to use them.
+	 * 一般的な「Hello, Bob!」形式の例。Presenterの
+	 * 使用方法を示す。
 	 *
 	 * @access  public
 	 * @return  Response
@@ -45,7 +45,7 @@ class Controller_Welcome extends Controller
 	}
 
 	/**
-	 * The 404 action for the application.
+	 * アプリケーションの404アクション。
 	 *
 	 * @access  public
 	 * @return  Response

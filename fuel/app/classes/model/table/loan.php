@@ -1,24 +1,14 @@
 <?php
 
 /**
- * Provides database operations for loans and returns.
- *
- * @package  app
+ * 貸出・返却のデータベース操作を提供する。
  */
 class Model_Table_Loan extends Model_BaseCrud
 {
-	/**
-	 * Table operated by this Model.
-	 *
-	 * @var string
-	 */
+	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'loans';
 
-	/**
-	 * Columns inserted for a new loan.
-	 *
-	 * @var array
-	 */
+	/** @var array 新規貸出で登録する列 */
 	protected static $create_columns = array(
 		'employee_id',
 		'equipment_id',
@@ -30,11 +20,7 @@ class Model_Table_Loan extends Model_BaseCrud
 		'note',
 	);
 
-	/** 
-	 * Loan columns safe to return or lock. 
-	 * 
-	 * @var array 
-	 */
+	/** @var array 返却またはロックしても安全な貸出列 */
 	protected static $read_columns = array(
 		'id',
 		'employee_id',
@@ -49,11 +35,7 @@ class Model_Table_Loan extends Model_BaseCrud
 		'updated_at',
 	);
 
-	/** 
-	 * Database integer columns. 
-	 * 
-	 * @var array 
-	 */
+	/** @var array データベースの整数列 */
 	protected static $integer_columns = array(
 		'id',
 		'employee_id',
@@ -63,15 +45,15 @@ class Model_Table_Loan extends Model_BaseCrud
 	);
 
 	/**
-	 * Search loans without applying the common deleted_at condition.
+	 * 共通のdeleted_at条件を適用せずに貸出を検索する。
 	 *
-	 * @param   int       $page
-	 * @param   int       $per_page
-	 * @param   int|null  $employee_id
-	 * @param   string    $keyword
-	 * @param   array     $filters
-	 * @param   string    $today
-	 * @return  array
+	 * @param  int      $page        取得するページ番号
+	 * @param  int      $per_page    1ページ当たりの表示件数
+	 * @param  int|null $employee_id 社員ID
+	 * @param  string   $keyword     検索キーワード
+	 * @param  array    $filters     検索条件
+	 * @param  string   $today       判定基準日
+	 * @return array
 	 */
 	public function search_loans($page, $per_page, $employee_id, $keyword, array $filters, $today)
 	{
@@ -113,11 +95,11 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Read one loan including borrower and equipment names.
+	 * 借用者名と備品名を含む貸出を1件取得する。
 	 *
-	 * @param   int                       $id
-	 * @param   Database_Connection|null  $db
-	 * @return  array|null
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return array|null
 	 */
 	public function read_loan($id, $db = null)
 	{
@@ -131,11 +113,11 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Lock one loan before changing it to returned.
+	 * 返却済みへ変更する前に貸出を1件ロックする。
 	 *
-	 * @param   int                  $id
-	 * @param   Database_Connection  $db
-	 * @return  array|null
+	 * @param  int                 $id 対象レコードのID
+	 * @param  Database_Connection $db 使用するDB接続
+	 * @return array|null
 	 */
 	public function lock_for_return($id, \Database_Connection $db)
 	{
@@ -160,14 +142,14 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Set the return fields only while the loan is still active.
+	 * 貸出中の場合だけ返却項目を設定する。
 	 *
-	 * @param   int                  $id
-	 * @param   string               $returned_at
-	 * @param   int                  $returned_by
-	 * @param   string|null          $note
-	 * @param   Database_Connection  $db
-	 * @return  int
+	 * @param  int                 $id          対象レコードのID
+	 * @param  string              $returned_at 返却日
+	 * @param  int                 $returned_by 返却処理を行う社員ID
+	 * @param  string|null         $note        返却時の備考
+	 * @param  Database_Connection $db          使用するDB接続
+	 * @return int
 	 */
 	public function mark_returned($id, $returned_at, $returned_by, $note, \Database_Connection $db)
 	{
@@ -184,10 +166,10 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Build the fixed joins shared by loan reads.
+	 * 貸出の読取処理で共有する固定結合を生成する。
 	 *
-	 * @param   array  $columns
-	 * @return  Database_Query_Builder_Select
+	 * @param  array $columns 取得する列
+	 * @return Database_Query_Builder_Select
 	 */
 	protected function loan_query(array $columns)
 	{
@@ -200,9 +182,9 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Return the fixed columns exposed by the loan API.
+	 * 貸出APIが公開する固定列を返す。
 	 *
-	 * @return  array
+	 * @return array
 	 */
 	protected function loan_select_columns()
 	{
@@ -224,14 +206,14 @@ class Model_Table_Loan extends Model_BaseCrud
 	}
 
 	/**
-	 * Apply ownership, keyword and state filters to a loan query.
+	 * 貸出クエリに所有者、キーワード、状態の条件を適用する。
 	 *
-	 * @param   Database_Query_Builder_Select  $query
-	 * @param   int|null                       $employee_id
-	 * @param   string                         $keyword
-	 * @param   array                          $filters
-	 * @param   string                         $today
-	 * @return  void
+	 * @param  Database_Query_Builder_Select $query       検索クエリ
+	 * @param  int|null                      $employee_id 社員ID
+	 * @param  string                        $keyword     検索キーワード
+	 * @param  array                         $filters     検索条件
+	 * @param  string                        $today       判定基準日
+	 * @return void
 	 */
 	protected function apply_loan_conditions($query, $employee_id, $keyword, array $filters, $today)
 	{

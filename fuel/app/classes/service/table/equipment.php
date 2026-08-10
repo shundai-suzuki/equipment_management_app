@@ -1,39 +1,35 @@
 <?php
 
 /**
- * Applies equipment registration rules and delegates persistence.
- *
- * @package  app
+ * 備品登録規則を適用し、永続化を委譲する。
  */
 class Service_Table_Equipment extends Service_BaseCrud
 {
+	/** @var int 名前の最大文字数 */
 	const MAX_NAME_LENGTH = 255;
+	/** @var int カテゴリの最大文字数 */
 	const MAX_CATEGORY_LENGTH = 20;
+	/** @var int 説明の最大文字数 */
 	const MAX_DESCRIPTION_LENGTH = 255;
+	/** @var int 備品総数の最大値 */
 	const MAX_TOTAL_AMOUNT = 2147483647;
 
-	/**
-	 * Table registered by this Service.
-	 *
-	 * @var string
-	 */
+	/** @var string このサービスが登録するテーブル */
 	protected static $table_name = 'equipments';
 
-	/**
-	 * Department Model used to validate the managing department.
-	 *
-	 * @var Model_Table_Department
-	 */
+	/** @var Model_Table_Department 管理部署の検証に使用する部署モデル */
 	protected $department_model;
 
 	/**
-	 * @param  object|null  $model
-	 * @param  object|null  $id_allocator
-	 * @param  object|null  $department_model
+	 * 備品操作に使用するModelを初期化する。
+	 *
+	 * @param  object|null $model            使用する操作対象Model
+	 * @param  object|null $department_model 使用する部署Model
+	 * @return void
 	 */
-	public function __construct($model = null, $id_allocator = null, $department_model = null)
+	public function __construct($model = null, $department_model = null)
 	{
-		parent::__construct($model, $id_allocator);
+		parent::__construct($model);
 
 		if ($department_model !== null and ! is_object($department_model))
 		{
@@ -44,19 +40,17 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Register equipment or restore an archived matching inventory row.
+	 * 備品を登録するか、一致する論理削除済み在庫行を復元する。
 	 *
-	 * @param   int          $id
-	 * @param   string       $name
-	 * @param   int          $department_id
-	 * @param   string       $category
-	 * @param   int          $total_amount
-	 * @param   string|null  $description
-	 * @return  int
+	 * @param  string      $name          対象の名前
+	 * @param  int         $department_id 部署ID
+	 * @param  string      $category      備品カテゴリ
+	 * @param  int         $total_amount  備品の総数
+	 * @param  string|null $description   備品の説明
+	 * @return int
 	 */
-	public function create($id, $name, $department_id, $category, $total_amount, $description = null)
+	public function create($name, $department_id, $category, $total_amount, $description = null)
 	{
-		$this->assert_new_id($id);
 		$this->assert_positive_id($department_id, 'The department ID');
 
 		$name = $this->normalize_required_text($name, 'The equipment name', static::MAX_NAME_LENGTH);
@@ -91,24 +85,21 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Create equipment after rechecking the administrator.
+	 * 管理者を再確認してから備品を登録する。
 	 *
-	 * @param   int          $actor_id
-	 * @param   int          $id
-	 * @param   string       $name
-	 * @param   int          $department_id
-	 * @param   string       $category
-	 * @param   int          $total_amount
-	 * @param   string|null  $description
-	 * @return  int
+	 * @param  int         $actor_id      操作する管理者の社員ID
+	 * @param  string      $name          対象の名前
+	 * @param  int         $department_id 部署ID
+	 * @param  string      $category      備品カテゴリ
+	 * @param  int         $total_amount  備品の総数
+	 * @param  string|null $description   備品の説明
+	 * @return int
 	 */
-	public function create_for_admin($actor_id,	$id, $name,	$department_id,	$category, $total_amount,	$description = null)
+	public function create_for_admin($actor_id, $name, $department_id, $category, $total_amount, $description = null)
 	{
 		$this->assert_admin_actor($actor_id);
 
-		return $this->create(
-			$id,
-			$name,
+		return $this->create($name,
 			$department_id,
 			$category,
 			$total_amount,
@@ -117,12 +108,12 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Return an equipment list and its active category options.
+	 * 備品一覧と有効なカテゴリ候補を返す。
 	 *
-	 * @param   int     $page
-	 * @param   string  $keyword
-	 * @param   array   $filters
-	 * @return  array
+	 * @param  int    $page    取得するページ番号
+	 * @param  string $keyword 検索キーワード
+	 * @param  array  $filters 検索条件
+	 * @return array
 	 */
 	public function search($page, $keyword = '', array $filters = array())
 	{
@@ -137,16 +128,16 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Update the editable equipment fields.
+	 * 更新可能な備品項目を更新する。
 	 *
-	 * @param   int          $actor_id
-	 * @param   int          $id
-	 * @param   string       $name
-	 * @param   int          $department_id
-	 * @param   string       $category
-	 * @param   int          $total_amount
-	 * @param   string|null  $description
-	 * @return  array
+	 * @param  int         $actor_id      操作する管理者の社員ID
+	 * @param  int         $id            対象レコードのID
+	 * @param  string      $name          対象の名前
+	 * @param  int         $department_id 部署ID
+	 * @param  string      $category      備品カテゴリ
+	 * @param  int         $total_amount  備品の総数
+	 * @param  string|null $description   備品の説明
+	 * @return array
 	 */
 	public function update_for_admin($actor_id,	$id, $name,	$department_id,	$category, $total_amount,	$description = null)
 	{
@@ -221,11 +212,11 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Soft-delete equipment that has no active loan.
+	 * 貸出中データがない備品を論理削除する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function soft_delete_for_admin($actor_id, $id)
 	{
@@ -268,9 +259,9 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Create the equipment Model used by this Service.
+	 * このサービスで使用する備品モデルを生成する。
 	 *
-	 * @return  Model_Table_Equipment
+	 * @return Model_Table_Equipment
 	 */
 	protected function new_model()
 	{
@@ -278,11 +269,11 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Recheck the department on the allocator transaction connection.
+	 * 登録トランザクション内で部署を再確認する。
 	 *
-	 * @param   array                $create_values
-	 * @param   Database_Connection  $db
-	 * @return  void
+	 * @param  array               $create_values 登録する値
+	 * @param  Database_Connection $db            使用するDB接続
+	 * @return void
 	 */
 	protected function before_create(array $create_values, \Database_Connection $db)
 	{
@@ -290,12 +281,12 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize a required text field with a table-specific limit.
+	 * テーブル固有の上限で必須テキスト項目を正規化する。
 	 *
-	 * @param   mixed   $value
-	 * @param   string  $name
-	 * @param   int     $max_length
-	 * @return  string
+	 * @param  mixed  $value      検証する値
+	 * @param  string $name       対象の名前
+	 * @param  int    $max_length 許可する最大文字数
+	 * @return string
 	 */
 	protected function normalize_required_text($value, $name, $max_length)
 	{
@@ -315,10 +306,10 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize the optional equipment description.
+	 * 任意の備品説明を正規化する。
 	 *
-	 * @param   mixed  $description
-	 * @return  string|null
+	 * @param  mixed $description 備品の説明
+	 * @return string|null
 	 */
 	protected function normalize_description($description)
 	{
@@ -348,10 +339,10 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Require a positive signed INT equipment total.
+	 * 備品総数が符号付きINT範囲の正の整数であることを必須とする。
 	 *
-	 * @param   mixed  $total_amount
-	 * @return  int
+	 * @param  mixed $total_amount 備品の総数
+	 * @return int
 	 */
 	protected function normalize_total_amount($total_amount)
 	{
@@ -366,11 +357,11 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Require and lock a department during transactional writes.
+	 * トランザクション更新中に部署を必須としてロックする。
 	 *
-	 * @param   int                       $department_id
-	 * @param   Database_Connection|null  $db
-	 * @return  void
+	 * @param  int                      $department_id 部署ID
+	 * @param  Database_Connection|null $db            使用するDB接続
+	 * @return void
 	 */
 	protected function assert_active_department($department_id, $db = null)
 	{
@@ -392,10 +383,10 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore an archived match or reject an active duplicate.
+	 * 一致する論理削除済み行を復元するか、有効な重複行を拒否する。
 	 *
-	 * @param   array  $read_equipment
-	 * @return  int
+	 * @param  array $read_equipment 取得した備品情報
+	 * @return int
 	 */
 	protected function restore_or_reject(array $read_equipment)
 	{
@@ -443,12 +434,12 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * Convert a duplicate department and name pair into a conflict.
+	 * 部署・名称の組み合わせの重複を競合へ変換する。
 	 *
-	 * @param   int                 $department_id
-	 * @param   string              $name
-	 * @param   Database_Exception  $exception
-	 * @return  int
+	 * @param  int                $department_id 部署ID
+	 * @param  string             $name          対象の名前
+	 * @param  Database_Exception $exception     発生した例外
+	 * @return int
 	 */
 	protected function handle_create_exception($department_id, $name, \Database_Exception $exception)
 	{

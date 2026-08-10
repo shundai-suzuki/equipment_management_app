@@ -25,7 +25,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_employees()
+	public function get_employees()
 	{
 		$this->render_resource('employees', '社員管理');
 	}
@@ -35,7 +35,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_departments()
+	public function get_departments()
 	{
 		$this->render_resource('departments', '部署管理');
 	}
@@ -48,7 +48,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 	 * @param int|string|null $id         操作対象のID
 	 * @return void
 	 */
-	public function action_mutate($resource, $operation, $id = null)
+	public function post_mutate($resource, $operation, $id = null)
 	{
 		$redirects = array(
 			'departments' => 'admin/departments',

@@ -33,8 +33,7 @@ abstract class Controller_AdminCrud extends Controller_Admin
 		return $this->execute_api(function ()
 		{
 			$page = $this->integer_value(\Input::get('page', 1), 'page');
-			$result = $this->service->search_for_admin(
-				$this->employee_id(),
+			$result = $this->service->search(
 				$page,
 				\Input::get('q', ''),
 				$this->search_filters()
@@ -66,10 +65,9 @@ abstract class Controller_AdminCrud extends Controller_Admin
 	{
 		return $this->execute_api(function () use ($id)
 		{
-			return $this->json_success($this->service->read_for_admin(
-				$this->employee_id(),
-				$this->integer_value($id, 'id')
-			));
+			return $this->json_success(
+				$this->service->read($this->integer_value($id, 'id'))
+			);
 		});
 	}
 

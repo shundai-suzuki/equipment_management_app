@@ -70,20 +70,19 @@ class Controller_Page_Admin extends Controller_Page_Base
 			switch ($resource.'/'.$operation)
 			{
 				case 'departments/create':
-					(new Service_Table_Department())->create_for_admin($actor, \Input::post('name'));
+					(new Service_Table_Department())->create(\Input::post('name'));
 					break;
 				case 'departments/update':
-					(new Service_Table_Department())->update_for_admin($actor, $id, \Input::post('name'));
+					(new Service_Table_Department())->update($id, \Input::post('name'));
 					break;
 				case 'departments/archive':
-					(new Service_Table_Department())->soft_delete_for_admin($actor, $id);
+					(new Service_Table_Department())->soft_delete($id);
 					break;
 				case 'departments/restore':
-					(new Service_Table_Department())->restore_for_admin($actor, $id);
+					(new Service_Table_Department())->restore($id);
 					break;
 				case 'employees/create':
-					(new Service_Table_Employee())->create_for_admin(
-						$actor,
+					(new Service_Table_Employee())->create(
 						\Input::post('employee_name'),
 						$this->post_integer('department_id'),
 						\Input::post('role'),
@@ -92,8 +91,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 					);
 					break;
 				case 'employees/update':
-					(new Service_Table_Employee())->update_for_admin(
-						$actor,
+					(new Service_Table_Employee())->update(
 						$id,
 						\Input::post('employee_name'),
 						$this->post_integer('department_id'),
@@ -101,19 +99,19 @@ class Controller_Page_Admin extends Controller_Page_Base
 					);
 					break;
 				case 'employees/archive':
-					(new Service_Table_Employee())->soft_delete_for_admin($actor, $id);
+					(new Service_Table_Employee())->soft_delete($id);
 					break;
 				case 'employees/deactivate':
-					(new Service_Table_Employee())->deactivate_for_admin($actor, $id);
+					(new Service_Table_Employee())->deactivate($id);
 					break;
 				case 'employees/activate':
-					(new Service_Table_Employee())->activate_for_admin($actor, $id);
+					(new Service_Table_Employee())->activate($id);
 					break;
 				case 'employees/restore':
-					(new Service_Table_Employee())->restore_for_admin($actor, $id);
+					(new Service_Table_Employee())->restore($id);
 					break;
 				case 'employees/password':
-					(new Service_Table_Employee())->reset_password_for_admin(
+					(new Service_Table_Employee())->reset_password(
 						$actor,
 						$id,
 						\Input::post('admin_password'),
@@ -122,16 +120,16 @@ class Controller_Page_Admin extends Controller_Page_Base
 					);
 					break;
 				case 'equipment/create':
-					$this->save_equipment($actor);
+					$this->save_equipment();
 					break;
 				case 'equipment/update':
-					$this->save_equipment($actor, $id);
+					$this->save_equipment($id);
 					break;
 				case 'equipment/archive':
-					(new Service_Table_Equipment())->soft_delete_for_admin($actor, $id);
+					(new Service_Table_Equipment())->soft_delete($id);
 					break;
 				case 'loans/create':
-					(new Service_Table_Loan())->create_for_admin(
+					(new Service_Table_Loan())->create(
 						$actor,
 						$this->post_integer('employee_id'),
 						$this->post_integer('equipment_id'),
@@ -139,7 +137,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 					);
 					break;
 				case 'loans/return':
-					(new Service_Table_Loan())->return_for_admin($actor, $id, \Input::post('note'));
+					(new Service_Table_Loan())->return_loan($actor, $id, \Input::post('note'));
 					break;
 				default:
 					throw new \HttpNotFoundException();
@@ -150,11 +148,10 @@ class Controller_Page_Admin extends Controller_Page_Base
 	/**
 	 * 備品の登録または更新入力をServiceへ渡す。
 	 *
-	 * @param int      $actor  操作する管理者の社員ID
-	 * @param int|null $id     更新対象の備品ID
+	 * @param int|null $id 更新対象の備品ID
 	 * @return void
 	 */
-	protected function save_equipment($actor, $id = null)
+	protected function save_equipment($id = null)
 	{
 		$service = new Service_Table_Equipment();
 		$values = array(
@@ -167,10 +164,10 @@ class Controller_Page_Admin extends Controller_Page_Base
 
 		if ($id === null)
 		{
-			$service->create_for_admin($actor, $values[0], $values[1], $values[2], $values[3], $values[4]);
+			$service->create($values[0], $values[1], $values[2], $values[3], $values[4]);
 			return;
 		}
 
-		$service->update_for_admin($actor, $id, $values[0], $values[1], $values[2], $values[3], $values[4]);
+		$service->update($id, $values[0], $values[1], $values[2], $values[3], $values[4]);
 	}
 }

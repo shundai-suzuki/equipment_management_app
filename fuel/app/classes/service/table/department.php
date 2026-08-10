@@ -12,6 +12,16 @@ class Service_Table_Department extends Service_BaseCrud
 	protected static $table_name = 'departments';
 
 	/**
+	 * 有効な部署の選択肢を返す。
+	 *
+	 * @return array
+	 */
+	public function read_options()
+	{
+		return $this->model->read_options();
+	}
+
+	/**
 	 * 部署を登録するか、同名の論理削除済み部署を復元する。
 	 *
 	 * @param  string $name 対象の名前

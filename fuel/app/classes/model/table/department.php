@@ -27,6 +27,21 @@ class Model_Table_Department extends Model_BaseCrud
 	protected static $search_columns = array('name');
 
 	/**
+	 * 選択欄で使用する有効な部署一覧を返す。
+	 *
+	 * @return array
+	 */
+	public function read_options()
+	{
+		return \DB::select('id', 'name')
+			->from(static::$table_name)
+			->where('deleted_at', 'IS', null)
+			->order_by('name', 'ASC')
+			->execute($this->db)
+			->as_array();
+	}
+
+	/**
 	 * 論理削除済み行を含め、名称で部署を取得する。
 	 *
 	 * @param  string                   $name 対象の名前

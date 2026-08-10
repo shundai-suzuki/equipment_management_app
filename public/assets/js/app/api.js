@@ -40,27 +40,10 @@
 		});
 	}
 
-	// ページングされたGET APIを最終ページまで取得する。
-	function allPages(url) {
-		var rows = [];
-		// 指定ページを取得し、必要なら次ページへ進む。
-		function load(page) {
-			return get(url, { page: page }).then(function (body) {
-				rows = rows.concat(Array.isArray(body.data) ? body.data : []);
-				var pages = body.meta && body.meta.pagination
-					? Number(body.meta.pagination.total_pages)
-					: page;
-				return page < pages ? load(page + 1) : rows;
-			});
-		}
-		return load(1);
-	}
-
 	// 一覧画面から使用するGET専用APIを公開する。
 	window.InventoryApi = {
 		ApiError: ApiError,
 		get: get,
-		allPages: allPages,
 		isUnauthorized: function (error) {
 			return error instanceof ApiError && (error.status === 401 || error.status === 403);
 		},

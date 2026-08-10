@@ -28,12 +28,11 @@ class Service_Table_Equipment extends Service_BaseCrud
 
 	/**
 	 * @param  object|null  $model
-	 * @param  object|null  $id_allocator
 	 * @param  object|null  $department_model
 	 */
-	public function __construct($model = null, $id_allocator = null, $department_model = null)
+	public function __construct($model = null, $department_model = null)
 	{
-		parent::__construct($model, $id_allocator);
+		parent::__construct($model);
 
 		if ($department_model !== null and ! is_object($department_model))
 		{
@@ -46,7 +45,6 @@ class Service_Table_Equipment extends Service_BaseCrud
 	/**
 	 * 備品を登録するか、一致する論理削除済み在庫行を復元する。
 	 *
-	 * @param   int          $id
 	 * @param   string       $name
 	 * @param   int          $department_id
 	 * @param   string       $category
@@ -54,9 +52,8 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 * @param   string|null  $description
 	 * @return  int
 	 */
-	public function create($id, $name, $department_id, $category, $total_amount, $description = null)
+	public function create($name, $department_id, $category, $total_amount, $description = null)
 	{
-		$this->assert_new_id($id);
 		$this->assert_positive_id($department_id, 'The department ID');
 
 		$name = $this->normalize_required_text($name, 'The equipment name', static::MAX_NAME_LENGTH);
@@ -94,7 +91,6 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 * 管理者を再確認してから備品を登録する。
 	 *
 	 * @param   int          $actor_id
-	 * @param   int          $id
 	 * @param   string       $name
 	 * @param   int          $department_id
 	 * @param   string       $category
@@ -102,13 +98,11 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 * @param   string|null  $description
 	 * @return  int
 	 */
-	public function create_for_admin($actor_id,	$id, $name,	$department_id,	$category, $total_amount,	$description = null)
+	public function create_for_admin($actor_id, $name, $department_id, $category, $total_amount, $description = null)
 	{
 		$this->assert_admin_actor($actor_id);
 
-		return $this->create(
-			$id,
-			$name,
+		return $this->create($name,
 			$department_id,
 			$category,
 			$total_amount,
@@ -278,7 +272,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * 採番用トランザクション接続上で部署を再確認する。
+	 * 登録トランザクション内で部署を再確認する。
 	 *
 	 * @param   array                $create_values
 	 * @param   Database_Connection  $db

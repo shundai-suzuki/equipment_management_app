@@ -5,7 +5,7 @@
  *
  * @package  app
  */
-abstract class Service_BaseCrud extends Service_BaseRegistration
+abstract class Service_BaseCrud
 {
 	const NOT_FOUND_EXCEPTION_CODE = 404;
 	const FORBIDDEN_EXCEPTION_CODE = 403;
@@ -20,6 +20,49 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	 * @var Model_Table_Employee|null
 	 */
 	protected $actor_model;
+
+	/** @var Model_BaseCrud DB操作を担当するモデル。 */
+	protected $model;
+
+	/** 使用するModelを受け取り、未指定時は子Serviceの標準Modelを生成する。 */
+	public function __construct($model = null)
+	{
+		if ($model !== null and ! ($model instanceof Model_BaseCrud))
+    {
+			throw new \InvalidArgumentException(
+				'The CRUD model must extend Model_BaseCrud.'
+			);
+    }
+		$this->model = $model ?: $this->new_model();
+	}
+
+	/** 子サービス用のモデルを生成する。 */
+	abstract protected function new_model();
+
+	/** 外部キーまたは実行者IDが正の整数であることを確認する。 */
+	protected function assert_positive_id($id, $name)
+	{
+		if ( ! is_int($id) or $id < 1)
+		{
+			throw new \InvalidArgumentException($name.' must be a positive integer.');
+		}
+	}
+
+	/** 事前確認と登録を同じトランザクションで実行する。 */
+	protected function create_record(array $create_values)
+	{
+		return $this->model->transaction(function ($db) use ($create_values)
+		{
+			$this->before_create($create_values, $db);
+
+			return $this->model->create($create_values, $db);
+		});
+	}
+
+	/** 子サービスが登録直前の業務条件を再確認する。 */
+	protected function before_create(array $create_values, \Database_Connection $db)
+	{
+	}
 
 	/**
 	 * 有効な1行を返す。

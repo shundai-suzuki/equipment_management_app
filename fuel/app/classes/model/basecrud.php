@@ -73,44 +73,32 @@ abstract class Model_BaseCrud extends \Model
 			: \Database_Connection::instance($db);
 	}
 
-	/**
-	 * 指定されたトランザクション接続で採番済みIDを使用して1行登録する。
-	 *
-	 * @param   int                  $id
-	 * @param   array                $create_values
-	 * @param   Database_Connection  $db
-	 * @return  bool
-	 */
-	public function create($id, array $create_values, \Database_Connection $db)
-	{
-		if ( ! is_int($id) or $id < 1)
-		{
-			throw new \InvalidArgumentException('The allocated ID must be a positive integer.');
-		}
+    /**
+     * 許可された値を登録し、DBが生成したIDを返す。
+     *
+     * @param   array                     $create_values
+     * @param   Database_Connection|null  $db
+     * @return  int
+     */
+    public function create(array $create_values, $db = null)
+    {
+        $db = $this->connection($db);
+        $this->assert_identifier(static::$table_name);
+        $this->assert_values($create_values, static::$create_columns, 'create');
+        $create_values['created_at'] = \DB::expr('CURRENT_TIMESTAMP');
+        $create_values['updated_at'] = \DB::expr('CURRENT_TIMESTAMP');
 
-		$this->assert_identifier(static::$table_name);
-		$this->assert_values(
-			$create_values,
-			static::$create_columns,
-			'create'
-		);
+        $result = \DB::insert(static::$table_name)
+            ->set($create_values)
+            ->execute($db);
 
-		$create_values_with_id = array('id' => $id);
+        if ( ! isset($result[0], $result[1]) or (int) $result[0] < 1 or (int) $result[1] !== 1)
+        {
+            throw new \RuntimeException('Failed to create the record.');
+        }
 
-		foreach (static::$create_columns as $column)
-		{
-			$create_values_with_id[$column] = $create_values[$column];
-		}
-
-		$create_values_with_id['created_at'] = \DB::expr('CURRENT_TIMESTAMP');
-		$create_values_with_id['updated_at'] = \DB::expr('CURRENT_TIMESTAMP');
-
-		$create_result = \DB::insert(static::$table_name)
-			->set($create_values_with_id)
-			->execute($db);
-
-		return isset($create_result[1]) and (int) $create_result[1] === 1;
-	}
+        return (int) $result[0];
+    }
 
 	/**
 	 * 子モデルが許可した読取列だけを使用して1行取得する。

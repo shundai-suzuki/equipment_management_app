@@ -19,13 +19,11 @@ class Service_Table_Department extends Service_BaseCrud
 	/**
 	 * 部署を登録するか、同名の論理削除済み部署を復元する。
 	 *
-	 * @param   int     $id
 	 * @param   string  $name
 	 * @return  int
 	 */
-	public function create($id, $name)
+	public function create($name)
 	{
-		$this->assert_new_id($id);
 		$name = $this->normalize_name($name);
 		$read_department = $this->model->read_by_name($name);
 
@@ -48,15 +46,14 @@ class Service_Table_Department extends Service_BaseCrud
 	 * 管理者を再確認してから部署を登録する。
 	 *
 	 * @param   int     $actor_id
-	 * @param   int     $id
 	 * @param   string  $name
 	 * @return  int
 	 */
-	public function create_for_admin($actor_id, $id, $name)
+	public function create_for_admin($actor_id, $name)
 	{
 		$this->assert_admin_actor($actor_id);
 
-		return $this->create($id, $name);
+		return $this->create($name);
 	}
 
 	/**

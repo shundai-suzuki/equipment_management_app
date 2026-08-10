@@ -130,25 +130,25 @@
 			role="alert"
 			data-bind="attr: { hidden: ! formErrorMessage() }, text: formErrorMessage"
 		></div>
-		<form data-resource-form data-bind="submit: save">
-			<?php echo Form::csrf(); ?>
+		<form method="post" data-resource-form data-bind="submit: save, attr: { action: formAction }">
+			<?php echo \Form::csrf(); ?>
 			<div data-bind="foreach: activeFormFields">
 				<label class="d-grid g8 fw600 mb22">
 					<span data-bind="text: label"></span>
 					<!-- ko if: type === 'select' -->
 					<select
-						data-bind="options: options, optionsText: 'label', optionsValue: 'value', value: $root.formValue(key), valueAllowUnset: true, enable: ! $root.formDisabled($data), attr: { 'aria-invalid': $root.fieldError(key) ? 'true' : 'false' }"
+						data-bind="options: options, optionsText: 'label', optionsValue: 'value', value: $root.formValue(key), valueAllowUnset: true, enable: ! $root.formDisabled($data), attr: { name: key, 'aria-invalid': $root.fieldError(key) ? 'true' : 'false' }"
 					></select>
 					<!-- /ko -->
 					<!-- ko if: type === 'textarea' -->
 					<textarea
 						rows="4"
-						data-bind="value: $root.formValue(key), enable: ! $root.formDisabled($data), attr: { 'aria-invalid': $root.fieldError(key) ? 'true' : 'false' }"
+						data-bind="value: $root.formValue(key), enable: ! $root.formDisabled($data), attr: { name: key, 'aria-invalid': $root.fieldError(key) ? 'true' : 'false' }"
 					></textarea>
 					<!-- /ko -->
 					<!-- ko if: type !== 'select' && type !== 'textarea' -->
 					<input
-						data-bind="value: $root.formValue(key), enable: ! $root.formDisabled($data), attr: { type: type, autocomplete: autocomplete || 'off', min: minimum || null, 'aria-invalid': $root.fieldError(key) ? 'true' : 'false' }"
+						data-bind="value: $root.formValue(key), enable: ! $root.formDisabled($data), attr: { name: key, type: type, autocomplete: autocomplete || 'off', min: minimum || null, 'aria-invalid': $root.fieldError(key) ? 'true' : 'false' }"
 					>
 					<!-- /ko -->
 					<span class="c-red fs13" data-bind="visible: $root.fieldError(key), text: $root.fieldError(key)"></span>

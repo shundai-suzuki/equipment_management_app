@@ -5,7 +5,7 @@
  *
  * @package  app
  */
-class Service_Table_Loan extends Service_BaseRegistration
+class Service_Table_Loan extends Service_BaseCrud
 {
 	const PER_PAGE = 10;
 	const MAX_LOAN_DAYS = 90;
@@ -35,13 +35,12 @@ class Service_Table_Loan extends Service_BaseRegistration
 
 	/**
 	 * @param  object|null  $model
-	 * @param  object|null  $id_allocator
 	 * @param  object|null  $employee_model
 	 * @param  object|null  $equipment_model
 	 */
-	public function __construct($model = null, $id_allocator = null, $employee_model = null, $equipment_model = null)
+	public function __construct($model = null, $employee_model = null, $equipment_model = null)
 	{
-		parent::__construct($model, $id_allocator);
+		parent::__construct($model);
 
 		if ($employee_model !== null and ! is_object($employee_model))
 		{
@@ -140,15 +139,13 @@ class Service_Table_Loan extends Service_BaseRegistration
 	 * 有効な借用者と利用可能な備品に対して貸出を1件登録する。
 	 *
 	 * @param   int     $actor_id
-	 * @param   int     $id
 	 * @param   int     $employee_id
 	 * @param   int     $equipment_id
 	 * @param   string  $due_date
 	 * @return  int
 	 */
-	public function create_for_admin($actor_id, $id, $employee_id, $equipment_id, $due_date)
+	public function create_for_admin($actor_id, $employee_id, $equipment_id, $due_date)
 	{
-		$this->assert_new_id($id);
 		$this->assert_positive_id($actor_id, 'The loan operator employee ID');
 		$this->assert_positive_id($employee_id, 'The borrower employee ID');
 		$this->assert_positive_id($equipment_id, 'The equipment ID');
@@ -289,7 +286,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * ID採番中に関係者と在庫を再確認する。
+	 * 登録トランザクション内で関係者と在庫を再確認する。
 	 *
 	 * @param   array                $create_values
 	 * @param   Database_Connection  $db
@@ -336,7 +333,7 @@ class Service_Table_Loan extends Service_BaseRegistration
 	}
 
 	/**
-	 * 採番前に有効な借用者行と管理者行を検証する。
+	 * 登録前に有効な借用者行と管理者行を検証する。
 	 *
 	 * @param   int  $employee_id
 	 * @param   int  $actor_id

@@ -1,171 +1,71 @@
-(function (window, document) {
+(function (window) {
 	'use strict';
 
+	// HTTPエラーのステータスとJSON本文を保持する。
 	function ApiError(status, body) {
-		var error = body && body.error ? body.error : {};
-
 		this.name = 'ApiError';
 		this.status = status;
-		this.code = error.code || 'REQUEST_FAILED';
-		this.message = error.message || '通信に失敗しました。';
-		this.fields = error.fields || {};
-		this.requestId = body && body.request_id ? body.request_id : '';
+		this.body = body || null;
+		this.message = body && body.error ? body.error.message : '';
 	}
-
 	ApiError.prototype = Object.create(Error.prototype);
-	ApiError.prototype.constructor = ApiError;
 
-	function parseBody(response) {
-		return response.text().then(function (text) {
-			if (text === '') {
-				return null;
-			}
-
-			try {
-				return JSON.parse(text);
-			}
-			catch (error) {
-				throw new ApiError(response.status, null);
-			}
-		});
-	}
-
-	function request(url, options) {
-		options = options || {};
-
-		var fetchOptions = {
-			method: options.method || 'GET',
-			credentials: 'same-origin',
-			headers: { Accept: 'application/json' }
-		};
-
-		if (options.body) {
-			fetchOptions.body = options.body;
-		}
-
-		return window.fetch(url, fetchOptions)
-			.then(function (response) {
-				return parseBody(response).then(function (body) {
-					if ( ! response.ok) {
-						throw new ApiError(response.status, body);
-					}
-
-					if ( ! body || typeof body !== 'object'
-						|| ! Object.prototype.hasOwnProperty.call(body, 'data')) {
-						throw new ApiError(response.status, null);
-					}
-
-					return body;
-				});
-			});
-	}
-
-	function queryUrl(url, parameters) {
-		var parts = [];
-
+	// 検索条件をURLクエリ文字列へ変換する。
+	function query(parameters) {
+		var values = [];
 		Object.keys(parameters || {}).forEach(function (name) {
 			var value = parameters[name];
-
-			if (value !== null && typeof value !== 'undefined' && value !== '') {
-				parts.push(
-					encodeURIComponent(name) + '=' + encodeURIComponent(String(value))
-				);
+			if (value !== '' && value !== null && value !== undefined) {
+				values.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
 			}
 		});
-
-		if (parts.length === 0) {
-			return url;
-		}
-
-		return url + (url.indexOf('?') === -1 ? '?' : '&') + parts.join('&');
+		return values.length ? '?' + values.join('&') : '';
 	}
 
-	function formData(values, form) {
-		var data = form ? new window.FormData(form) : new window.FormData();
-
-		Object.keys(values || {}).forEach(function (name) {
-			data.delete(name);
-			data.append(
-				name,
-				values[name] === null || typeof values[name] === 'undefined'
-					? ''
-					: String(values[name])
-			);
+	// 同一オリジンのGET APIを呼び出してJSONを返す。
+	function get(url, parameters) {
+		return window.fetch(url + query(parameters), {
+			method: 'GET',
+			credentials: 'same-origin',
+			headers: { Accept: 'application/json' }
+		}).then(function (response) {
+			return response.json().catch(function () {
+				throw new ApiError(response.status, null);
+			}).then(function (body) {
+				if ( ! response.ok) {
+					throw new ApiError(response.status, body);
+				}
+				return body;
+			});
 		});
-
-		return data;
 	}
 
-	function allPages(url, parameters) {
+	// ページングされたGET APIを最終ページまで取得する。
+	function allPages(url) {
 		var rows = [];
-		var nextPage = 1;
-
-		function loadPage() {
-			var pageParameters = copy(parameters || {});
-			pageParameters.page = nextPage;
-
-			return get(url, pageParameters).then(function (body) {
-				var pagination = body.meta && body.meta.pagination
-					? body.meta.pagination
-					: null;
-
-				if ( ! Array.isArray(body.data) || ! pagination) {
-					throw new ApiError(500, null);
-				}
-
-				rows = rows.concat(body.data);
-
-				if (nextPage < Number(pagination.total_pages)) {
-					nextPage += 1;
-					return loadPage();
-				}
-
-				return rows;
+		// 指定ページを取得し、必要なら次ページへ進む。
+		function load(page) {
+			return get(url, { page: page }).then(function (body) {
+				rows = rows.concat(Array.isArray(body.data) ? body.data : []);
+				var pages = body.meta && body.meta.pagination
+					? Number(body.meta.pagination.total_pages)
+					: page;
+				return page < pages ? load(page + 1) : rows;
 			});
 		}
-
-		return loadPage();
+		return load(1);
 	}
 
-	function copy(source) {
-		var target = {};
-
-		Object.keys(source).forEach(function (key) {
-			target[key] = source[key];
-		});
-
-		return target;
-	}
-
-	function message(error, fallback) {
-		var result = error instanceof ApiError && error.message
-			? error.message
-			: fallback;
-
-		if (error instanceof ApiError
-			&& error.status >= 500
-			&& error.requestId !== '') {
-			result += ' 追跡ID: ' + error.requestId;
-		}
-
-		return result;
-	}
-
+	// 一覧画面から使用するGET専用APIを公開する。
 	window.InventoryApi = {
 		ApiError: ApiError,
-		get: function (url, parameters) {
-			return request(queryUrl(url, parameters || {}));
-		},
-		post: function (url, values, form) {
-			return request(url, {
-				method: 'POST',
-				body: formData(values, form)
-			});
-		},
+		get: get,
 		allPages: allPages,
-		message: message,
 		isUnauthorized: function (error) {
-			return error instanceof ApiError && error.status === 401;
+			return error instanceof ApiError && (error.status === 401 || error.status === 403);
+		},
+		message: function (error, fallback) {
+			return error instanceof ApiError && error.message ? error.message : fallback;
 		}
 	};
-}(window, document));
+}(window));

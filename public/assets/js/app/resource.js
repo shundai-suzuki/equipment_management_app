@@ -233,6 +233,8 @@
 		self.drawerOpen = ko.observable(false);
 		self.mode = ko.observable('create');
 		self.editRow = ko.observable(null);
+		// ドロワーフォームの通常POST先。
+		self.formAction = ko.observable(writeUrl + '/create');
 		self.formValues = {};
 		self.fieldErrors = {};
 
@@ -424,6 +426,7 @@
 			}
 		};
 
+		// 入力を確認し、登録・更新用の通常フォーム送信を許可する。
 		self.save = function () {
 			if (self.viewOnly() || self.isSubmitting() || ! validate()) {
 				return false;
@@ -431,14 +434,13 @@
 
 			var row = self.editRow();
 			var payload = formPayload();
-			var url = writeUrl;
-			var creating = self.mode() === 'create';
+			var action = writeUrl + '/create';
 
 			if (self.mode() === 'edit') {
-				url += '/' + row.id;
+				action = writeUrl + '/' + row.id + '/update';
 			}
 			else if (self.mode() === 'password') {
-				url += '/' + row.id + '/password';
+				action = writeUrl + '/' + row.id + '/password';
 			}
 
 			if (resource === 'loans'
@@ -452,24 +454,9 @@
 				return false;
 			}
 
+			self.formAction(action);
 			self.isSubmitting(true);
-			self.formErrorMessage('');
-
-			api.post(url, payload, form)
-				.then(function (body) {
-					if (creating && toNumber(body.data && body.data.id) < 1) {
-						throw new api.ApiError(500, null);
-					}
-					self.successMessage(creating ? '登録しました。' : '更新しました。');
-					self.drawerOpen(false);
-					self.load();
-				})
-				.catch(handleFormError)
-				.then(function () {
-					self.isSubmitting(false);
-				});
-
-			return false;
+			return true;
 		};
 
 		function departmentLabel(id) {
@@ -625,9 +612,6 @@
 			self.activeFormFields().forEach(function (item) {
 				values[item.key] = self.formValues[item.key]();
 			});
-			if (self.mode() === 'create') {
-				values.id = 0;
-			}
 			return values;
 		}
 
@@ -703,29 +687,15 @@
 			self.formErrorMessage(api.message(error, '保存できませんでした。'));
 		}
 
-		function postAction(row, suffix, confirmation, success, values) {
+		// 確認後に削除・状態変更用フォームを通常送信する。
+		function postAction(row, suffix, confirmation) {
 			if ( ! window.confirm(confirmation)) {
 				return;
 			}
 
+			self.formAction(writeUrl + '/' + row.id + suffix);
 			self.isSubmitting(true);
-			self.errorMessage('');
-
-			api.post(writeUrl + '/' + row.id + suffix, values || {}, form)
-				.then(function () {
-					self.successMessage(success);
-					self.load();
-				})
-				.catch(function (error) {
-					if (api.isUnauthorized(error)) {
-						window.location.assign(loginUrl);
-						return;
-					}
-					self.errorMessage(api.message(error, '操作を完了できませんでした。'));
-				})
-				.then(function () {
-					self.isSubmitting(false);
-				});
+			form.submit();
 		}
 
 		restoreSearch();

@@ -27,12 +27,11 @@ class Service_Table_Employee extends Service_BaseCrud
 
 	/**
 	 * @param  object|null  $model
-	 * @param  object|null  $id_allocator
 	 * @param  object|null  $department_model
 	 */
-	public function __construct($model = null, $id_allocator = null, $department_model = null)
+	public function __construct($model = null, $department_model = null)
 	{
-		parent::__construct($model, $id_allocator);
+		parent::__construct($model);
 
 		if ($department_model !== null and ! is_object($department_model))
 		{
@@ -45,7 +44,6 @@ class Service_Table_Employee extends Service_BaseCrud
 	/**
 	 * アプリケーション管理の社員番号で社員を登録する。
 	 *
-	 * @param   int     $id
 	 * @param   string  $employee_name
 	 * @param   int     $department_id
 	 * @param   string  $role
@@ -53,9 +51,8 @@ class Service_Table_Employee extends Service_BaseCrud
 	 * @param   string  $password_confirmation
 	 * @return  int
 	 */
-	public function create($id, $employee_name, $department_id, $role, $password, $password_confirmation)
+	public function create($employee_name, $department_id, $role, $password, $password_confirmation)
 	{
-		$this->assert_new_id($id);
 		$this->assert_positive_id($department_id, 'The department ID');
 
 		$employee_name = $this->normalize_name($employee_name);
@@ -75,7 +72,6 @@ class Service_Table_Employee extends Service_BaseCrud
 	 * 管理者を再確認してから社員を登録する。
 	 *
 	 * @param   int     $actor_id
-	 * @param   int     $id
 	 * @param   string  $employee_name
 	 * @param   int     $department_id
 	 * @param   string  $role
@@ -83,13 +79,11 @@ class Service_Table_Employee extends Service_BaseCrud
 	 * @param   string  $password_confirmation
 	 * @return  int
 	 */
-	public function create_for_admin($actor_id,	$id, $employee_name, $department_id, $role, $password, $password_confirmation)
+	public function create_for_admin($actor_id, $employee_name, $department_id, $role, $password, $password_confirmation)
 	{
 		$this->assert_admin_actor($actor_id);
 
-		return $this->create(
-			$id,
-			$employee_name,
+		return $this->create($employee_name,
 			$department_id,
 			$role,
 			$password,
@@ -545,7 +539,7 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * 採番用トランザクション接続上で部署を再確認する。
+	 * 登録トランザクション内で部署を再確認する。
 	 *
 	 * @param   array                $create_values
 	 * @param   Database_Connection  $db

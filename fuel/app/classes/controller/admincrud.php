@@ -5,10 +5,14 @@
  */
 abstract class Controller_AdminCrud extends Controller_Admin
 {
-	/** @var Service_BaseCrud 検索対象のテーブルサービス。 */
+	/** @var Service_BaseCrud 検索対象のテーブルサービス */
 	protected $service;
 
-	/** 認可完了後にテーブルサービスを初期化する。 */
+	/**
+	 * 認可完了後にテーブルサービスを初期化する。
+	 *
+	 * @return void
+	 */
 	public function before()
 	{
 		parent::before();
@@ -19,7 +23,11 @@ abstract class Controller_AdminCrud extends Controller_Admin
 		}
 	}
 
-	/** 検索条件とページ番号から一覧JSONを返す。 */
+	/**
+	 * 検索条件とページ番号から一覧JSONを返す。
+	 *
+	 * @return Response
+	 */
 	public function get_search()
 	{
 		return $this->execute_api(function ()
@@ -48,7 +56,12 @@ abstract class Controller_AdminCrud extends Controller_Admin
 		});
 	}
 
-	/** 指定IDの詳細JSONを返す。 */
+	/**
+	 * 指定IDの詳細JSONを返す。
+	 *
+	 * @param mixed $id 対象レコードのID
+	 * @return Response
+	 */
 	public function get_read($id)
 	{
 		return $this->execute_api(function () use ($id)
@@ -60,10 +73,18 @@ abstract class Controller_AdminCrud extends Controller_Admin
 		});
 	}
 
-	/** 子Controllerに対応するサービスを生成する。 */
+	/**
+	 * 子Controllerに対応するサービスを生成する。
+	 *
+	 * @return Service_BaseCrud
+	 */
 	abstract protected function new_service();
 
-	/** 子Controller固有の検索条件を返す。 */
+	/**
+	 * 子Controller固有の検索条件を返す。
+	 *
+	 * @return array
+	 */
 	protected function search_filters()
 	{
 		return array();

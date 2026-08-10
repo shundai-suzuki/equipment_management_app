@@ -2,21 +2,20 @@
 
 /**
  * 認証済み利用者向け備品参照専用APIコントローラ。
- *
- * @package  app
  */
 class Controller_Table_Equipment extends Controller_Base
 {
+	/** @var int カテゴリの最大文字数 */
 	const MAX_CATEGORY_LENGTH = 20;
 
-	/**
-	 * 管理者CRUDコントローラと共有する備品サービス。
-	 *
-	 * @var Service_Table_Equipment
-	 */
+	/** @var Service_Table_Equipment 管理者CRUDコントローラと共有する備品サービス */
 	protected $service;
 
-	/** 認証後にサービスを初期化する。 */
+	/**
+	 * 認証後にサービスを初期化する。
+	 *
+	 * @return void
+	 */
 	public function before()
 	{
 		parent::before();
@@ -32,7 +31,7 @@ class Controller_Table_Equipment extends Controller_Base
 	/**
 	 * すべての認証済み権限が参照できる備品を検索する。
 	 *
-	 * @return  Response
+	 * @return Response
 	 */
 	public function get_search()
 	{
@@ -69,8 +68,8 @@ class Controller_Table_Equipment extends Controller_Base
 	/**
 	 * 有効な備品を1件返す。
 	 *
-	 * @param   mixed  $id
-	 * @return  Response
+	 * @param  mixed     $id 対象レコードのID
+	 * @return Response
 	 */
 	public function get_read($id)
 	{
@@ -89,7 +88,7 @@ class Controller_Table_Equipment extends Controller_Base
 	/**
 	 * 検証済みの備品検索条件を返す。
 	 *
-	 * @return  array
+	 * @return array
 	 */
 	protected function search_filters()
 	{

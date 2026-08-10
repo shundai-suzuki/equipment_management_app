@@ -2,47 +2,30 @@
 
 /**
  * JSON APIの共通コントローラ。
- *
- * @package  app
- * @extends  Controller_Rest
  */
 abstract class Controller_Base extends Controller_Rest
 {
+	/** @var string JSONレスポンスのContent-Type */
 	const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
+	/** @var int 許可する整数の最大値 */
 	const MAX_INTEGER = 2147483647;
 
-	/**
-	 * AJAX専用ヘッダに依存せず、常にJSONを返す。
-	 *
-	 * @var string
-	 */
+	/** @var string AJAX専用ヘッダに依存せず、常にJSONを返す */
 	protected $rest_format = 'json';
 
-	/**
-	 * trueの場合は認証必須、falseの場合は未ログインでも実行可能。
-	 *
-	 * @var bool
-	 */
+	/** @var bool trueの場合は認証必須、falseの場合は未ログインでも実行可能 */
 	protected $authentication_required = true;
 
-	/**
-	 * レスポンスとサーバ側ログで共有する識別子。
-	 *
-	 * @var string
-	 */
+	/** @var string レスポンスとサーバ側ログで共有する識別子 */
 	protected $request_id;
 
-	/**
-	 * アクセスを停止する場合にアクション実行前に用意するレスポンス。
-	 *
-	 * @var Response|null
-	 */
+	/** @var Response|null アクセスを停止する場合にアクション実行前に用意するレスポンス */
 	protected $before_response;
 
 	/**
 	 * リクエスト識別子と継続認証を初期化する。
 	 *
-	 * @return  void
+	 * @return void
 	 */
 	public function before()
 	{
@@ -63,9 +46,9 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * before()がエラーレスポンスを用意した場合は振り分け処理を停止する。
 	 *
-	 * @param   string  $resource
-	 * @param   array   $arguments
-	 * @return  Response|mixed
+	 * @param  string         $resource  操作対象のリソース名
+	 * @param  array          $arguments ルーターへ渡された引数
+	 * @return Response|mixed
 	 */
 	public function router($resource, $arguments)
 	{
@@ -91,10 +74,10 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 任意の一覧メタデータを含む成功レスポンスを生成する。
 	 *
-	 * @param   array       $data
-	 * @param   int         $status
-	 * @param   array|null  $meta
-	 * @return  Response
+	 * @param  array      $data   Viewへ渡すデータ
+	 * @param  int        $status HTTPステータスコード
+	 * @param  array|null $meta   レスポンスの付加情報
+	 * @return Response
 	 */
 	protected function json_success(array $data, $status = 200, $meta = null)
 	{
@@ -113,11 +96,11 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 任意の項目別メッセージを含むエラーレスポンスを生成する。
 	 *
-	 * @param   string      $code
-	 * @param   string      $message
-	 * @param   int         $status
-	 * @param   array|null  $fields
-	 * @return  Response
+	 * @param  string     $code    エラーコード
+	 * @param  string     $message エラーメッセージ
+	 * @param  int        $status  HTTPステータスコード
+	 * @param  array|null $fields  入力項目ごとのエラー
+	 * @return Response
 	 */
 	protected function json_error($code, $message, $status, $fields = null)
 	{
@@ -143,7 +126,7 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * コントローラで使用を許可する認証済み社員項目を返す。
 	 *
-	 * @return  array|null
+	 * @return array|null
 	 */
 	protected function current_employee()
 	{
@@ -175,7 +158,7 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 認証済み社員のIDを返す。
 	 *
-	 * @return  int
+	 * @return int
 	 */
 	protected function employee_id()
 	{
@@ -195,9 +178,9 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 必須のPOST整数値を取得して変換する。
 	 *
-	 * @param   string  $name
-	 * @param   int     $minimum
-	 * @return  int
+	 * @param  string $name    対象の名前
+	 * @param  int    $minimum 許可する最小値
+	 * @return int
 	 */
 	protected function post_integer($name, $minimum = 1)
 	{
@@ -207,8 +190,8 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 任意の正のクエリ整数値を取得する。
 	 *
-	 * @param   string  $name
-	 * @return  int|null
+	 * @param  string   $name 対象の名前
+	 * @return int|null
 	 */
 	protected function optional_query_integer($name)
 	{
@@ -222,10 +205,10 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 符号なし10進数の入力を整数へ変換する。
 	 *
-	 * @param   mixed   $value
-	 * @param   string  $name
-	 * @param   int     $minimum
-	 * @return  int
+	 * @param  mixed  $value   検証する値
+	 * @param  string $name    対象の名前
+	 * @param  int    $minimum 許可する最小値
+	 * @return int
 	 */
 	protected function integer_value($value, $name, $minimum = 1)
 	{
@@ -254,9 +237,9 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * クエリ文字列のtrueとfalseを真偽値へ変換する。
 	 *
-	 * @param   mixed   $value
-	 * @param   string  $name
-	 * @return  bool
+	 * @param  mixed  $value 検証する値
+	 * @param  string $name  対象の名前
+	 * @return bool
 	 */
 	protected function boolean_value($value, $name)
 	{
@@ -276,8 +259,8 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * JSON API処理を実行し、内部例外の詳細を隠す。
 	 *
-	 * @param   Closure  $operation
-	 * @return  Response
+	 * @param  Closure $operation 実行する操作名
+	 * @return Response
 	 */
 	protected function execute_api(\Closure $operation)
 	{
@@ -319,8 +302,8 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 許可したサービス例外コードを共通レスポンスへ変換する。
 	 *
-	 * @param   RuntimeException  $exception
-	 * @return  Response
+	 * @param  RuntimeException $exception 発生した例外
+	 * @return Response
 	 */
 	protected function runtime_error(\RuntimeException $exception)
 	{
@@ -347,8 +330,8 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 安全な追跡情報を記録し、共通のサーバエラーを返す。
 	 *
-	 * @param   Throwable  $exception
-	 * @return  Response
+	 * @param  Throwable $exception 発生した例外
+	 * @return Response
 	 */
 	protected function internal_error(\Throwable $exception)
 	{
@@ -374,9 +357,9 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 共通本文を符号化し、JSONのContent-Typeを付与する。
 	 *
-	 * @param   array  $body
-	 * @param   int    $status
-	 * @return  Response
+	 * @param  array $body   レスポンス本文
+	 * @param  int   $status HTTPステータスコード
+	 * @return Response
 	 */
 	protected function json_response(array $body, $status)
 	{

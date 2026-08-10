@@ -1,18 +1,28 @@
 <?php
 
-/** 管理者用備品検索API。 */
+/**
+ * 管理者用備品検索API。
+ */
 class Controller_Table_EquipmentForAdmin extends Controller_AdminCrud
 {
 	/** @var int カテゴリの文字数(UTF-8) */
 	const MAX_CATEGORY_LENGTH = 20;
 
-	/** 備品サービスを生成する。 */
+	/**
+	 * 備品サービスを生成する。
+	 *
+	 * @return Service_Table_Equipment
+	 */
 	protected function new_service()
 	{
 		return new Service_Table_Equipment();
 	}
 
-	/** 管理者用備品一覧で許可する検索条件を返す。 */
+	/**
+	 * 管理者用備品一覧で許可する検索条件を返す。
+	 *
+	 * @return array
+	 */
 	protected function search_filters()
 	{
 		$filters = array();

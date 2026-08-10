@@ -2,23 +2,13 @@
 
 /**
  * 備品在庫のデータベース操作を提供する。
- *
- * @package  app
  */
 class Model_Table_Equipment extends Model_BaseCrud
 {
-	/**
-	 * このモデルが操作するテーブル。
-	 *
-	 * @var string
-	 */
+	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'equipments';
 
-	/**
-	 * 備品の新規行で受け付ける登録値。
-	 *
-	 * @var array
-	 */
+	/** @var array 備品の新規行で受け付ける登録値 */
 	protected static $create_columns = array(
 		'name',
 		'department_id',
@@ -27,11 +17,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 		'description',
 	);
 
-	/**
-	 * 備品CRUDの読取処理が返す列。
-	 *
-	 * @var array
-	 */
+	/** @var array 備品CRUDの読取処理が返す列 */
 	protected static $read_columns = array(
 		'id',
 		'name',
@@ -44,11 +30,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/**
-	 * 備品更新で受け付ける列。
-	 *
-	 * @var array
-	 */
+	/** @var array 備品更新で受け付ける列 */
 	protected static $update_columns = array(
 		'name',
 		'department_id',
@@ -57,28 +39,16 @@ class Model_Table_Equipment extends Model_BaseCrud
 		'description',
 	);
 
-	/**
-	 * キーワード検索の対象となる備品列。
-	 *
-	 * @var array
-	 */
+	/** @var array キーワード検索の対象となる備品列 */
 	protected static $search_columns = array('name');
 
-	/**
-	 * 備品検索で完全一致させる条件。
-	 *
-	 * @var array
-	 */
+	/** @var array 備品検索で完全一致させる条件 */
 	protected static $filter_columns = array(
 		'department_id' => 'department_id',
 		'category' => 'category',
 	);
 
-	/**
-	 * 整数として返す備品列。
-	 *
-	 * @var array
-	 */
+	/** @var array 整数として返す備品列 */
 	protected static $integer_columns = array(
 		'id',
 		'department_id',
@@ -90,10 +60,10 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 一意な部署・名称の組み合わせで備品を取得する。
 	 *
-	 * @param   int                       $department_id
-	 * @param   string                    $name
-	 * @param   Database_Connection|null  $db
-	 * @return  array|null
+	 * @param  int                      $department_id 部署ID
+	 * @param  string                   $name          対象の名前
+	 * @param  Database_Connection|null $db            使用するDB接続
+	 * @return array|null
 	 */
 	public function read_by_department_and_name($department_id, $name, $db = null)
 	{
@@ -120,7 +90,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 一覧検索用に有効な備品カテゴリを返す。
 	 *
-	 * @return  array
+	 * @return array
 	 */
 	public function read_category_options()
 	{
@@ -137,11 +107,11 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 算出した貸出数量を含めて備品を検索する。
 	 *
-	 * @param   int     $page
-	 * @param   int     $per_page
-	 * @param   string  $keyword
-	 * @param   array   $filters
-	 * @return  array
+	 * @param  int    $page     取得するページ番号
+	 * @param  int    $per_page 1ページ当たりの表示件数
+	 * @param  string $keyword  検索キーワード
+	 * @param  array  $filters  検索条件
+	 * @return array
 	 */
 	public function search($page, $per_page, $keyword = '', array $filters = array())
 	{
@@ -179,8 +149,8 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 貸出中件数を集計する固定結合を生成する。
 	 *
-	 * @param   array  $columns
-	 * @return  Database_Query_Builder_Select
+	 * @param  array $columns 取得する列
+	 * @return Database_Query_Builder_Select
 	 */
 	protected function equipment_query(array $columns)
 	{
@@ -201,7 +171,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 固定の備品列と算出数量を返す。
 	 *
-	 * @return  array
+	 * @return array
 	 */
 	protected function equipment_select_columns()
 	{
@@ -228,10 +198,10 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 有効行、キーワード、備品の完全一致条件を適用する。
 	 *
-	 * @param   Database_Query_Builder_Select  $query
-	 * @param   string                         $keyword
-	 * @param   array                          $filters
-	 * @return  void
+	 * @param  Database_Query_Builder_Select $query   検索クエリ
+	 * @param  string                        $keyword 検索キーワード
+	 * @param  array                         $filters 検索条件
+	 * @return void
 	 */
 	protected function apply_equipment_conditions($query, $keyword, array $filters)
 	{
@@ -303,9 +273,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 備品1件の未返却貸出数を数える。
 	 *
-	 * @param   int                       $id
-	 * @param   Database_Connection|null  $db
-	 * @return  int
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return int
 	 */
 	public function count_active_loans($id, $db = null)
 	{
@@ -322,9 +292,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 備品1件に貸出履歴があるか確認する。
 	 *
-	 * @param   int                       $id
-	 * @param   Database_Connection|null  $db
-	 * @return  bool
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return bool
 	 */
 	public function has_loan_history($id, $db = null)
 	{
@@ -343,9 +313,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 有効な備品をロックし、現在の利用可能数を算出する。
 	 *
-	 * @param   int                  $id
-	 * @param   Database_Connection  $db
-	 * @return  array|null
+	 * @param  int                 $id 対象レコードのID
+	 * @param  Database_Connection $db 使用するDB接続
+	 * @return array|null
 	 */
 	public function lock_available($id, \Database_Connection $db)
 	{
@@ -395,9 +365,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/**
 	 * 返却処理に必要な備品行をロックする。
 	 *
-	 * @param   int                  $id
-	 * @param   Database_Connection  $db
-	 * @return  bool
+	 * @param  int                 $id 対象レコードのID
+	 * @param  Database_Connection $db 使用するDB接続
+	 * @return bool
 	 */
 	public function lock_for_return($id, \Database_Connection $db)
 	{

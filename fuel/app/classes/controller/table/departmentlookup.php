@@ -2,19 +2,17 @@
 
 /**
  * 認証済み利用者向け部署参照専用APIコントローラ。
- *
- * @package  app
  */
 class Controller_Table_DepartmentLookup extends Controller_Base
 {
-	/**
-	 * 管理者CRUDコントローラと共有する部署サービス。
-	 *
-	 * @var Service_Table_Department
-	 */
+	/** @var Service_Table_Department 管理者CRUDコントローラと共有する部署サービス */
 	protected $service;
 
-	/** 認証後にサービスを初期化する。 */
+	/**
+	 * 認証後にサービスを初期化する。
+	 *
+	 * @return void
+	 */
 	public function before()
 	{
 		parent::before();
@@ -30,7 +28,7 @@ class Controller_Table_DepartmentLookup extends Controller_Base
 	/**
 	 * すべての認証済み権限が参照できる有効な部署を検索する。
 	 *
-	 * @return  Response
+	 * @return Response
 	 */
 	public function get_search()
 	{

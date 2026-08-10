@@ -2,30 +2,16 @@
 
 /**
  * 部署のデータベース操作を提供する。
- *
- * @package  app
  */
 class Model_Table_Department extends Model_BaseCrud
 {
-	/**
-	 * このモデルが操作するテーブル。
-	 *
-	 * @var string
-	 */
+	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'departments';
 
-	/**
-	 * 部署の新規行で受け付ける登録値。
-	 *
-	 * @var array
-	 */
+	/** @var array 部署の新規行で受け付ける登録値 */
 	protected static $create_columns = array('name');
 
-	/**
-	 * 部署CRUDの読取処理が返す列。
-	 *
-	 * @var array
-	 */
+	/** @var array 部署CRUDの読取処理が返す列 */
 	protected static $read_columns = array(
 		'id',
 		'name',
@@ -34,26 +20,18 @@ class Model_Table_Department extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/**
-	 * 部署更新で受け付ける列。
-	 *
-	 * @var array
-	 */
+	/** @var array 部署更新で受け付ける列 */
 	protected static $update_columns = array('name');
 
-	/**
-	 * キーワード検索の対象となる部署列。
-	 *
-	 * @var array
-	 */
+	/** @var array キーワード検索の対象となる部署列 */
 	protected static $search_columns = array('name');
 
 	/**
 	 * 論理削除済み行を含め、名称で部署を取得する。
 	 *
-	 * @param   string                    $name
-	 * @param   Database_Connection|null  $db
-	 * @return  array|null
+	 * @param  string                   $name 対象の名前
+	 * @param  Database_Connection|null $db   使用するDB接続
+	 * @return array|null
 	 */
 	public function read_by_name($name, $db = null)
 	{
@@ -78,9 +56,9 @@ class Model_Table_Department extends Model_BaseCrud
 	/**
 	 * 部署を新しい行から使用できるか確認する。
 	 *
-	 * @param   int                       $id
-	 * @param   Database_Connection|null  $db
-	 * @return  bool
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return bool
 	 */
 	public function is_active($id, $db = null)
 	{
@@ -99,9 +77,9 @@ class Model_Table_Department extends Model_BaseCrud
 	/**
 	 * 有効な社員または備品が部署を使用中か確認する。
 	 *
-	 * @param   int                       $id
-	 * @param   Database_Connection|null  $db
-	 * @return  bool
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return bool
 	 */
 	public function has_active_references($id, $db = null)
 	{

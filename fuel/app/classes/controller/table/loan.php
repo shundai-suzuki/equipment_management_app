@@ -2,19 +2,17 @@
 
 /**
  * 認証済み利用者向け貸出履歴APIコントローラ。
- *
- * @package  app
  */
 class Controller_Table_Loan extends Controller_Base
 {
-	/** 
-	 * 貸出サービス。
-	 * 
-	 * @var Service_Table_Loan
-	 */
+	/** @var Service_Table_Loan 貸出サービス */
 	protected $service;
 
-	/** 認証後にサービスを初期化する。 */
+	/**
+	 * 認証後にサービスを初期化する。
+	 *
+	 * @return void
+	 */
 	public function before()
 	{
 		parent::before();
@@ -30,7 +28,7 @@ class Controller_Table_Loan extends Controller_Base
 	/**
 	 * 現在の社員が参照できる貸出履歴を検索する。
 	 *
-	 * @return  Response
+	 * @return Response
 	 */
 	public function get_search()
 	{
@@ -67,7 +65,7 @@ class Controller_Table_Loan extends Controller_Base
 	/**
 	 * 仕様で定義した貸出検索条件だけを返す。
 	 *
-	 * @return  array
+	 * @return array
 	 */
 	protected function search_filters()
 	{

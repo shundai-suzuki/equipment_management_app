@@ -2,55 +2,42 @@
 
 /**
  * HMACで命名したローカルJSONファイルにログイン試行制限を保存する。
- *
- * @package  app
  */
 class Security_LoginRateLimit
 {
+	/** @var int 状態ファイルの形式バージョン */
 	const STATE_VERSION = 1;
+	/** @var int 状態ファイルの最大バイト数 */
 	const MAX_STATE_BYTES = 1024;
+	/** @var int HMAC鍵の最小バイト数 */
 	const MIN_HMAC_KEY_BYTES = 32;
+	/** @var int 許可する社員IDの最大値 */
 	const MAX_EMPLOYEE_ID = 2147483647;
+	/** @var int 社員IDの最大桁数 */
 	const MAX_EMPLOYEE_ID_LEN = 10;
+	/** @var string ログイン試行制限の状態保存ディレクトリ */
 	const STATE_DIR = '/var/cache/fuel/login-rate-limit';
 
-	/**
-	 * アプリケーション設定で固定するディレクトリ。
-	 *
-	 * @var string
-	 */
+	/** @var string アプリケーション設定で固定するディレクトリ */
 	protected $state_dir;
 
-	/**
-	 * 試行制限の識別子を隠すためだけに使用する秘密値。
-	 *
-	 * @var string
-	 */
+	/** @var string 試行制限の識別子を隠すためだけに使用する秘密値 */
 	protected $hmac_key;
 
-	/**
-	 * 社員番号1件に対する失敗時の制限方針。
-	 *
-	 * @var array
-	 */
+	/** @var array 社員番号1件に対する失敗時の制限方針 */
 	protected $account_policy;
 
-	/**
-	 * 直接接続元IP1件に対する失敗時の制限方針。
-	 *
-	 * @var array
-	 */
+	/** @var array 直接接続元IP1件に対する失敗時の制限方針 */
 	protected $ip_policy;
 
-	/**
-	 * 未使用状態ファイルを保持する秒数。
-	 *
-	 * @var int
-	 */
+	/** @var int 未使用状態ファイルを保持する秒数 */
 	protected $retention_seconds;
 
 	/**
-	 * @param  array|null  $config
+	 * 設定を検証し、ログイン試行制限を初期化する。
+	 *
+	 * @param  array|null $config 使用する設定
+	 * @return void
 	 */
 	public function __construct($config = null)
 	{
@@ -95,9 +82,9 @@ class Security_LoginRateLimit
 	/**
 	 * 認証前に社員番号とIPの保存単位を確認する。
 	 *
-	 * @param   mixed  $employee_number
-	 * @param   mixed  $ip_address
-	 * @return  bool
+	 * @param  mixed $employee_number 社員番号
+	 * @param  mixed $ip_address      接続元IPアドレス
+	 * @return bool
 	 */
 	public function is_blocked($employee_number, $ip_address)
 	{
@@ -115,9 +102,9 @@ class Security_LoginRateLimit
 	/**
 	 * 対象となる各保存単位へ失敗を1回追加する。
 	 *
-	 * @param   mixed  $employee_number
-	 * @param   mixed  $ip_address
-	 * @return  bool  いずれかの保存単位が制限中かどうか
+	 * @param  mixed $employee_number 社員番号
+	 * @param  mixed $ip_address      接続元IPアドレス
+	 * @return bool
 	 */
 	public function record_failure($employee_number, $ip_address)
 	{
@@ -137,8 +124,8 @@ class Security_LoginRateLimit
 	/**
 	 * ログイン成功後に社員番号の保存単位だけを消去する。
 	 *
-	 * @param   mixed  $employee_number
-	 * @return  void
+	 * @param  mixed $employee_number 社員番号
+	 * @return void
 	 */
 	public function record_success($employee_number)
 	{
@@ -157,7 +144,7 @@ class Security_LoginRateLimit
 	/**
 	 * 保持期間を過ぎた未使用状態ファイルを削除する。
 	 *
-	 * @return  int  削除したファイル数
+	 * @return int
 	 */
 	public function cleanup()
 	{
@@ -204,8 +191,8 @@ class Security_LoginRateLimit
 	/**
 	 * 公開ディレクトリ外の固定絶対パスだけを受け付ける。
 	 *
-	 * @param   mixed  $state_dir
-	 * @return  string
+	 * @param  mixed $state_dir 状態ファイルの保存ディレクトリ
+	 * @return string
 	 */
 	protected function validate_state_dir($state_dir)
 	{
@@ -222,8 +209,8 @@ class Security_LoginRateLimit
 	/**
 	 * 正の整数で構成された失敗時の制限方針を検証する。
 	 *
-	 * @param   mixed  $policy
-	 * @return  array
+	 * @param  mixed $policy ログイン試行制限のポリシー
+	 * @return array
 	 */
 	protected function validate_policy($policy)
 	{
@@ -258,8 +245,8 @@ class Security_LoginRateLimit
 	/**
 	 * 正の整数である清掃保持期間を受け付ける。
 	 *
-	 * @param   mixed  $retention_seconds
-	 * @return  int
+	 * @param  mixed $retention_seconds 状態を保持する秒数
+	 * @return int
 	 */
 	protected function validate_retention_seconds($retention_seconds)
 	{
@@ -276,7 +263,7 @@ class Security_LoginRateLimit
 	/**
 	 * 非公開状態ディレクトリが存在しない場合は生成する。
 	 *
-	 * @return  void
+	 * @return void
 	 */
 	protected function prepare_state_directory()
 	{
@@ -316,9 +303,9 @@ class Security_LoginRateLimit
 	/**
 	 * 任意のアカウント保存単位と必須の直接接続元IP保存単位を生成する。
 	 *
-	 * @param   mixed  $employee_number
-	 * @param   mixed  $ip_address
-	 * @return  array
+	 * @param  mixed $employee_number 社員番号
+	 * @param  mixed $ip_address      接続元IPアドレス
+	 * @return array
 	 */
 	protected function build_buckets($employee_number, $ip_address)
 	{
@@ -345,8 +332,8 @@ class Security_LoginRateLimit
 	/**
 	 * HMAC入力用に符号付きINT範囲の有効な社員番号を正規化する。
 	 *
-	 * @param   mixed  $employee_number
-	 * @return  int|null
+	 * @param  mixed $employee_number 社員番号
+	 * @return int|null
 	 */
 	protected function normalize_employee_id($employee_number)
 	{
@@ -384,8 +371,8 @@ class Security_LoginRateLimit
 	/**
 	 * 直接接続元IPだけを正規化する。
 	 *
-	 * @param   mixed  $ip_address
-	 * @return  string
+	 * @param  mixed $ip_address 接続元IPアドレス
+	 * @return string
 	 */
 	protected function normalize_ip($ip_address)
 	{
@@ -413,9 +400,9 @@ class Security_LoginRateLimit
 	/**
 	 * リクエスト値を含まない固定ファイル名を生成する。
 	 *
-	 * @param   string  $type
-	 * @param   string  $value
-	 * @return  string
+	 * @param  string $type  エラー種別
+	 * @param  string $value 検証する値
+	 * @return string
 	 */
 	protected function bucket_path($type, $value)
 	{
@@ -427,8 +414,8 @@ class Security_LoginRateLimit
 	/**
 	 * 排他ロック中に保存単位を1件読み、制限期限を確認する。
 	 *
-	 * @param   string  $path
-	 * @return  bool
+	 * @param  string $path 対象ファイルのパス
+	 * @return bool
 	 */
 	protected function bucket_is_blocked($path)
 	{
@@ -453,9 +440,9 @@ class Security_LoginRateLimit
 	/**
 	 * 保存単位を1件更新し、更新後の制限状態を返す。
 	 *
-	 * @param   string  $path
-	 * @param   array   $policy
-	 * @return  bool
+	 * @param  string $path   対象ファイルのパス
+	 * @param  array  $policy ログイン試行制限のポリシー
+	 * @return bool
 	 */
 	protected function record_bucket_failure($path, array $policy)
 	{
@@ -506,8 +493,8 @@ class Security_LoginRateLimit
 	/**
 	 * ロック保持中に検証済みの保存単位を1件削除する。
 	 *
-	 * @param   string  $path
-	 * @return  void
+	 * @param  string $path 対象ファイルのパス
+	 * @return void
 	 */
 	protected function delete_bucket($path)
 	{
@@ -538,9 +525,9 @@ class Security_LoginRateLimit
 	/**
 	 * ロック中に検証した期限切れ保存単位を1件削除する。
 	 *
-	 * @param   string  $path
-	 * @param   int     $now
-	 * @return  bool
+	 * @param  string $path 対象ファイルのパス
+	 * @param  int    $now  現在時刻
+	 * @return bool
 	 */
 	protected function delete_expired_bucket($path, $now)
 	{
@@ -580,9 +567,9 @@ class Security_LoginRateLimit
 	/**
 	 * 通常の状態ファイルを1件開き、排他ロックを取得する。
 	 *
-	 * @param   string  $path
-	 * @param   bool    $create
-	 * @return  array|null
+	 * @param  string $path   対象ファイルのパス
+	 * @param  bool   $create 状態ファイルを新規作成するか
+	 * @return array|null
 	 */
 	protected function open_locked_file($path, $create)
 	{
@@ -641,9 +628,9 @@ class Security_LoginRateLimit
 	/**
 	 * サイズ制限内のJSON状態文書を1件読み取り、検証する。
 	 *
-	 * @param   resource  $handle
-	 * @param   bool      $allow_empty
-	 * @return  array|null
+	 * @param  resource $handle      状態ファイルのハンドル
+	 * @param  bool     $allow_empty 空文字を許可するか
+	 * @return array|null
 	 */
 	protected function read_state($handle, $allow_empty)
 	{
@@ -692,8 +679,8 @@ class Security_LoginRateLimit
 	/**
 	 * 保存状態の厳密な構造を検証する。
 	 *
-	 * @param   mixed  $state
-	 * @return  bool
+	 * @param  mixed $state ログイン試行制限の状態
+	 * @return bool
 	 */
 	protected function is_valid_state($state)
 	{
@@ -726,9 +713,9 @@ class Security_LoginRateLimit
 	/**
 	 * 状態文書を1件置き換え、全バイトが書き込まれたことを検証する。
 	 *
-	 * @param   resource  $handle
-	 * @param   array     $state
-	 * @return  void
+	 * @param  resource $handle 状態ファイルのハンドル
+	 * @param  array    $state  ログイン試行制限の状態
+	 * @return void
 	 */
 	protected function write_state($handle, array $state)
 	{
@@ -776,8 +763,8 @@ class Security_LoginRateLimit
 	/**
 	 * 状態ロックを1件解放し、ハンドルを閉じる。
 	 *
-	 * @param   resource  $handle
-	 * @return  void
+	 * @param  resource $handle 状態ファイルのハンドル
+	 * @return void
 	 */
 	protected function close_locked_file($handle)
 	{

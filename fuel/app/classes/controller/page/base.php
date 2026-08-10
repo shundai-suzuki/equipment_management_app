@@ -5,19 +5,19 @@
  */
 abstract class Controller_Page_Base extends \Controller_Template
 {
-	/** @var string ログイン後の共通レイアウト。 */
+	/** @var string ログイン後の共通レイアウト */
 	public $template = 'layouts/application';
 
-	/** @var array 認証なしで実行できるアクション名。 */
+	/** @var array 認証なしで実行できるアクション名 */
 	protected $guest_actions = array();
 
-	/** @var bool 現在の社員が管理者かどうか。 */
+	/** @var bool 現在の社員が管理者かどうか */
 	protected $is_admin = false;
 
 	/**
 	 * 画面表示前に必要な認証と権限を確認する。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function before()
 	{
@@ -31,13 +31,13 @@ abstract class Controller_Page_Base extends \Controller_Template
 	/**
 	 * 指定Viewを共通レイアウトへ設定する。
 	 *
-	 * @param string 	$view 				表示するView名
-	 * @param string 	$title 				画面タイトル
-	 * @param string 	$active_page 	現在の画面を示す名前
-	 * @param string 	$page_script 	読み込むJavaScriptファイル
-	 * @param array 	$data 				Viewへ渡すデータ
-	 * @param bool 		$guest 				未認証用レイアウトを使用するか
-	 * @return void 
+	 * @param string  $view         表示するView名
+	 * @param string  $title        画面タイトル
+	 * @param string  $active_page  現在の画面を示す名前
+	 * @param string  $page_script  読み込むJavaScriptファイル
+	 * @param array   $data         Viewへ渡すデータ
+	 * @param bool    $guest        未認証用レイアウトを使用するか
+	 * @return void
 	 */
 	protected function render_page($view, $title, $active_page, $page_script, array $data = array(), $guest = false)
 	{
@@ -59,9 +59,9 @@ abstract class Controller_Page_Base extends \Controller_Template
 	/**
 	 * 検索APIと通常POST先を持つ共通一覧画面を表示する。
 	 *
-	 * @param string $resource 表示対象のリソース名。
-	 * @param string $title 画面タイトル。
-	 * @return void 
+	 * @param string $resource 表示対象のリソース名
+	 * @param string $title    画面タイトル
+	 * @return void
 	 */
 	protected function render_resource($resource, $title)
 	{
@@ -87,9 +87,9 @@ abstract class Controller_Page_Base extends \Controller_Template
 	}
 
 	/**
-	 * 認証済み社員の権限を返す。
+	 * 認証済み社員の権限を返す
 	 *
-	 * @return string 認証済み社員の権限。
+	 * @return string 認証済み社員の権限
 	 */
 	protected function authenticated_role()
 	{
@@ -131,8 +131,8 @@ abstract class Controller_Page_Base extends \Controller_Template
 	/**
 	 * POSTされた正の整数を取得する。
 	 *
-	 * @param string $name POST項目名。
-	 * @return int 取得した正の整数。
+	 * @param  string $name POST項目名
+	 * @return int          取得した正の整数
 	 */
 	protected function post_integer($name)
 	{
@@ -142,9 +142,9 @@ abstract class Controller_Page_Base extends \Controller_Template
 	/**
 	 * 入力値を正の整数へ変換する。
 	 *
-	 * @param int|string $value 変換する入力値。
-	 * @param string $name 入力項目名。
-	 * @return int 変換した正の整数。
+	 * @param  int|string $value 変換する入力値
+	 * @param  string     $name  入力項目名
+	 * @return int
 	 */
 	protected function positive_integer($value, $name)
 	{
@@ -164,9 +164,9 @@ abstract class Controller_Page_Base extends \Controller_Template
 	/**
 	 * フォーム処理結果をフラッシュへ保存してリダイレクトする。
 	 *
-	 * @param \Closure $operation 実行するフォーム処理。
-	 * @param string $redirect 処理後のリダイレクト先。
-	 * @return void 
+	 * @param \Closure $operation 実行するフォーム処理
+	 * @param string   $redirect  処理後のリダイレクト先
+	 * @return void
 	 */
 	protected function form_result(\Closure $operation, $redirect)
 	{

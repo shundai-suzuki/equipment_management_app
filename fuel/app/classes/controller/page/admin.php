@@ -43,9 +43,9 @@ class Controller_Page_Admin extends Controller_Page_Base
 	/**
 	 * 通常フォームPOSTを対応するService処理へ振り分ける。
 	 *
-	 * @param string 							$resource 	操作対象のリソース名
-	 * @param string 							$operation  実行する操作名
-	 * @param int|string|null 		$id 				操作対象のID
+	 * @param string          $resource   操作対象のリソース名
+	 * @param string          $operation  実行する操作名
+	 * @param int|string|null $id         操作対象のID
 	 * @return void
 	 */
 	public function action_mutate($resource, $operation, $id = null)
@@ -150,8 +150,8 @@ class Controller_Page_Admin extends Controller_Page_Base
 	/**
 	 * 備品の登録または更新入力をServiceへ渡す。
 	 *
-	 * @param int 			$actor  操作する管理者の社員ID
-	 * @param int|null 	$id 	  更新対象の備品ID
+	 * @param int      $actor  操作する管理者の社員ID
+	 * @param int|null $id     更新対象の備品ID
 	 * @return void
 	 */
 	protected function save_equipment($actor, $id = null)

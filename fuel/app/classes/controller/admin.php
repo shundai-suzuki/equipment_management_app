@@ -2,16 +2,13 @@
 
 /**
  * 管理者専用JSON APIの共通コントローラ。
- *
- * @package  app
- * @extends  Controller_Base
  */
 abstract class Controller_Admin extends Controller_Base
 {
 	/**
 	 * ADMIN権限を持たない認証済み社員を拒否する。
 	 *
-	 * @return  void
+	 * @return void
 	 */
 	public function before()
 	{

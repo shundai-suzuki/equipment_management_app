@@ -1,15 +1,25 @@
 <?php
 
-/** 管理者用社員検索API。 */
+/**
+ * 管理者用社員検索API。
+ */
 class Controller_Table_Employee extends Controller_AdminCrud
 {
-	/** 社員サービスを生成する。 */
+	/**
+	 * 社員サービスを生成する。
+	 *
+	 * @return Service_Table_Employee
+	 */
 	protected function new_service()
 	{
 		return new Service_Table_Employee();
 	}
 
-	/** 社員一覧で許可する検索条件を返す。 */
+	/**
+	 * 社員一覧で許可する検索条件を返す。
+	 *
+	 * @return array
+	 */
 	protected function search_filters()
 	{
 		$filters = array();

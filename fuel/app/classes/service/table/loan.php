@@ -2,41 +2,42 @@
 
 /**
  * 貸出・返却の業務規則を適用する。
- *
- * @package  app
  */
 class Service_Table_Loan extends Service_BaseCrud
 {
+	/** @var int 1ページ当たりの表示件数 */
 	const PER_PAGE = 10;
+	/** @var int 貸出可能な最大日数 */
 	const MAX_LOAN_DAYS = 90;
+	/** @var int 検索キーワードの最大文字数 */
 	const MAX_KEYWORD_LENGTH = 255;
+	/** @var int 備考の最大文字数 */
 	const MAX_NOTE_LENGTH = 255;
+	/** @var int 権限不足時の例外コード */
 	const FORBIDDEN_EXCEPTION_CODE = 403;
+	/** @var int データ未検出時の例外コード */
 	const NOT_FOUND_EXCEPTION_CODE = 404;
+	/** @var int 競合発生時の例外コード */
 	const CONFLICT_EXCEPTION_CODE = 409;
+	/** @var int 入力不正時の例外コード */
 	const VALIDATION_EXCEPTION_CODE = 422;
 
-	/**
-	 * このサービスが登録するテーブル。
-	 *
-	 * @var string
-	 */
+	/** @var string このサービスが登録するテーブル */
 	protected static $table_name = 'loans';
 
-	/**
-	 * 借用者と担当者の検証に使用する社員モデル。
-	 *
-	 * @var Model_Table_Employee
-	 */
+	/** @var Model_Table_Employee 借用者と担当者の検証に使用する社員モデル */
 	protected $employee_model;
 
-	/** @var Model_Table_Equipment 備品在庫の読取モデル。 */
+	/** @var Model_Table_Equipment 備品在庫の読取モデル */
 	protected $equipment_model;
 
 	/**
-	 * @param  object|null  $model
-	 * @param  object|null  $employee_model
-	 * @param  object|null  $equipment_model
+	 * 貸出操作に使用するModelを初期化する。
+	 *
+	 * @param  object|null $model           使用する操作対象Model
+	 * @param  object|null $employee_model  使用する社員Model
+	 * @param  object|null $equipment_model 使用する備品Model
+	 * @return void
 	 */
 	public function __construct($model = null, $employee_model = null, $equipment_model = null)
 	{
@@ -59,11 +60,11 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 実行者が参照できる貸出履歴を検索する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $page
-	 * @param   string  $keyword
-	 * @param   array   $filters
-	 * @return  array
+	 * @param  int    $actor_id 操作する管理者の社員ID
+	 * @param  int    $page     取得するページ番号
+	 * @param  string $keyword  検索キーワード
+	 * @param  array  $filters  検索条件
+	 * @return array
 	 */
 	public function search_for_actor($actor_id, $page, $keyword = '', array $filters = array())
 	{
@@ -105,9 +106,9 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 管理者を再確認してから貸出を1件取得する。
 	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
 	public function read_for_admin($actor_id, $id)
 	{
@@ -138,11 +139,11 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 有効な借用者と利用可能な備品に対して貸出を1件登録する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $employee_id
-	 * @param   int     $equipment_id
-	 * @param   string  $due_date
-	 * @return  int
+	 * @param  int    $actor_id     操作する管理者の社員ID
+	 * @param  int    $employee_id  社員ID
+	 * @param  int    $equipment_id 備品ID
+	 * @param  string $due_date     返却期限
+	 * @return int
 	 */
 	public function create_for_admin($actor_id, $employee_id, $equipment_id, $due_date)
 	{
@@ -169,10 +170,10 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 履歴を削除せず、貸出中の1件を返却する。
 	 *
-	 * @param   int         $actor_id
-	 * @param   int         $id
-	 * @param   string|null $note
-	 * @return  array
+	 * @param  int         $actor_id 操作する管理者の社員ID
+	 * @param  int         $id       対象レコードのID
+	 * @param  string|null $note     返却時の備考
+	 * @return array
 	 */
 	public function return_for_admin($actor_id, $id, $note = null)
 	{
@@ -275,9 +276,9 @@ class Service_Table_Loan extends Service_BaseCrud
 		);
 	}
 
-	/** 
+	/**
 	 * 標準の貸出モデル。
-	 * 
+	 *
 	 * @return Model_Table_Loan
 	 */
 	protected function new_model()
@@ -288,9 +289,9 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 登録トランザクション内で関係者と在庫を再確認する。
 	 *
-	 * @param   array                $create_values
-	 * @param   Database_Connection  $db
-	 * @return  void
+	 * @param  array               $create_values 登録する値
+	 * @param  Database_Connection $db            使用するDB接続
+	 * @return void
 	 */
 	protected function before_create(array $create_values, \Database_Connection $db)
 	{
@@ -335,9 +336,9 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 登録前に有効な借用者行と管理者行を検証する。
 	 *
-	 * @param   int  $employee_id
-	 * @param   int  $actor_id
-	 * @return  void
+	 * @param  int $employee_id 社員ID
+	 * @param  int $actor_id    操作する管理者の社員ID
+	 * @return void
 	 */
 	protected function assert_employee_states($employee_id, $actor_id)
 	{
@@ -358,10 +359,10 @@ class Service_Table_Loan extends Service_BaseCrud
 		}
 	}
 
-	/** 
+	/**
 	 * Asia/Tokyo基準の現在業務日。
-	 * 
-	 * @return string 
+	 *
+	 * @return string
 	 */
 	protected function current_loan_date()
 	{
@@ -371,9 +372,9 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 貸出日から90日後までの返却期限を検証する。
 	 *
-	 * @param   mixed   $due_date
-	 * @param   string  $loaned_at
-	 * @return  string
+	 * @param  mixed  $due_date  返却期限
+	 * @param  string $loaned_at 貸出日
+	 * @return string
 	 */
 	protected function normalize_due_date($due_date, $loaned_at)
 	{
@@ -409,8 +410,8 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 任意の返却メモを正規化する。
 	 *
-	 * @param   mixed  $note
-	 * @return  string|null
+	 * @param  mixed $note 返却時の備考
+	 * @return string|null
 	 */
 	protected function normalize_note($note)
 	{
@@ -437,8 +438,8 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 固定ページングを検証する。
 	 *
-	 * @param   mixed  $page
-	 * @return  void
+	 * @param  mixed $page 取得するページ番号
+	 * @return void
 	 */
 	protected function assert_page($page)
 	{
@@ -451,8 +452,8 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 備品名のキーワードを正規化する。
 	 *
-	 * @param   mixed  $keyword
-	 * @return  string
+	 * @param  mixed $keyword 検索キーワード
+	 * @return string
 	 */
 	protected function normalize_keyword($keyword)
 	{
@@ -474,8 +475,8 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 仕様で定義した貸出検索条件だけを受け付ける。
 	 *
-	 * @param   array  $filters
-	 * @return  void
+	 * @param  array $filters 検索条件
+	 * @return void
 	 */
 	protected function assert_search_filters(array $filters)
 	{
@@ -516,9 +517,9 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 検索行へ算出した状態を追加する。
 	 *
-	 * @param   array   $rows
-	 * @param   string  $today
-	 * @return  array
+	 * @param  array  $rows  整形する行
+	 * @param  string $today 判定基準日
+	 * @return array
 	 */
 	protected function add_loan_states(array $rows, $today)
 	{
@@ -533,9 +534,9 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 状態列を保存せずに貸出状態を1件算出する。
 	 *
-	 * @param   array   $loan
-	 * @param   string  $today
-	 * @return  array
+	 * @param  array  $loan  対象の貸出情報
+	 * @param  string $today 判定基準日
+	 * @return array
 	 */
 	protected function add_loan_state(array $loan, $today)
 	{

@@ -5,13 +5,13 @@
  */
 class Controller_Page_Site extends Controller_Page_Base
 {
-	/** @var array ログイン前に利用できるアクション名。 */
+	/** @var array ログイン前に利用できるアクション名 */
 	protected $guest_actions = array('login', 'login_submit');
 
 	/**
 	 * ログイン画面を表示する。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_login()
 	{
@@ -26,7 +26,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	/**
 	 * ログインフォームを認証し、結果に応じてリダイレクトする。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_login_submit()
 	{
@@ -69,7 +69,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	/**
 	 * 認証Sessionを破棄してログイン画面へ戻す。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_logout()
 	{
@@ -81,7 +81,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	/**
 	 * 本人用パスワード変更画面を表示する。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_password()
 	{
@@ -91,7 +91,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	/**
 	 * 本人のパスワードを変更してSessionを再生成する。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_password_submit()
 	{
@@ -117,7 +117,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	/**
 	 * ダッシュボードを表示する。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_dashboard()
 	{
@@ -127,7 +127,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	/**
 	 * 備品一覧を表示する。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_equipment()
 	{
@@ -137,7 +137,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	/**
 	 * 権限に応じた貸出一覧を表示する。
 	 *
-	 * @return void 
+	 * @return void
 	 */
 	public function action_loans()
 	{

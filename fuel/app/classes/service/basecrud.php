@@ -1,55 +1,132 @@
 <?php
 
 /**
- * Provides administrator checks and common CRUD steps for table Services.
- *
- * @package  app
+ * テーブルサービス向けに管理者確認と共通CRUD手順を提供する。
  */
-abstract class Service_BaseCrud extends Service_BaseRegistration
+abstract class Service_BaseCrud
 {
+	/** @var int データ未検出時の例外コード */
 	const NOT_FOUND_EXCEPTION_CODE = 404;
+	/** @var int 権限不足時の例外コード */
 	const FORBIDDEN_EXCEPTION_CODE = 403;
+	/** @var int 入力不正時の例外コード */
 	const VALIDATION_EXCEPTION_CODE = 422;
+	/** @var int 競合発生時の例外コード */
 	const CONFLICT_EXCEPTION_CODE = 409;
+	/** @var int 1ページ当たりの表示件数 */
 	const PER_PAGE = 10;
+	/** @var int 検索キーワードの最大文字数 */
 	const MAX_KEYWORD_LENGTH = 255;
-	const MAX_SOFT_DELETE_REASON_LENGTH = 255;
 
-	/**
-	 * Employee Model for checking the administrator performing an operation.
-	 *
-	 * @var Model_Table_Employee|null
-	 */
+	/** @var Model_Table_Employee|null 操作を実行する管理者の確認に使用する社員モデル */
 	protected $actor_model;
 
+	/** @var Model_BaseCrud DB操作を担当するモデル */
+	protected $model;
+
 	/**
-	 * Return one active row after rechecking the administrator.
+	 * 使用するModelを受け取り、未指定時は子Serviceの標準Modelを生成する。
 	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
+	 * @param  object|null $model 使用する操作対象Model
+	 * @return void
 	 */
-	public function read_for_admin($actor_id, $id)
+	public function __construct($model = null)
 	{
-		$this->assert_admin_actor($actor_id);
+		if ($model !== null and ! ($model instanceof Model_BaseCrud))
+    {
+			throw new \InvalidArgumentException(
+				'The CRUD model must extend Model_BaseCrud.'
+			);
+    }
+		$this->model = $model ?: $this->new_model();
+	}
+
+	/**
+	 * 子サービス用のモデルを生成する。
+	 *
+	 * @return Model_BaseCrud
+	 */
+	abstract protected function new_model();
+
+	/**
+	 * 外部キーまたは実行者IDが正の整数であることを確認する。
+	 *
+	 * @param  int    $id   対象レコードのID
+	 * @param  string $name 対象の名前
+	 * @return void
+	 */
+	protected function assert_positive_id($id, $name)
+	{
+		if ( ! is_int($id) or $id < 1)
+		{
+			throw new \InvalidArgumentException($name.' must be a positive integer.');
+		}
+	}
+
+	/**
+	 * 事前確認と登録を同じトランザクションで実行する。
+	 *
+	 * @param  array $create_values 登録する値
+	 * @return int
+	 */
+	protected function create_record(array $create_values)
+	{
+		return $this->model->transaction(function ($db) use ($create_values)
+		{
+			$this->before_create($create_values, $db);
+
+			return $this->model->create($create_values, $db);
+		});
+	}
+
+	/**
+	 * 子サービスが登録直前の業務条件を再確認する。
+	 *
+	 * @param  array               $create_values 登録する値
+	 * @param  Database_Connection $db            使用するDB接続
+	 * @return void
+	 */
+	protected function before_create(array $create_values, \Database_Connection $db)
+	{
+	}
+
+	/**
+	 * 有効な1行を返す。
+	 *
+	 * @param  int $id 対象レコードのID
+	 * @return array
+	 */
+	public function read($id)
+	{
 		$this->assert_positive_id($id, 'The record ID');
 
 		return $this->read_required_record($id);
 	}
 
 	/**
-	 * Return an active-row list with validated pagination.
+	 * 管理者を再確認してから有効な1行を返す。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $page
-	 * @param   string  $keyword
-	 * @param   array   $filters
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
-	public function search_for_admin($actor_id, $page, $keyword = '', array $filters = array())
+	public function read_for_admin($actor_id, $id)
 	{
 		$this->assert_admin_actor($actor_id);
 
+		return $this->read($id);
+	}
+
+	/**
+	 * 検証済みページングで有効な行一覧を返す。
+	 *
+	 * @param  int    $page    取得するページ番号
+	 * @param  string $keyword 検索キーワード
+	 * @param  array  $filters 検索条件
+	 * @return array
+	 */
+	public function search($page, $keyword = '', array $filters = array())
+	{
 		if ( ! is_int($page) or $page < 1)
 		{
 			throw new \InvalidArgumentException('The page must be a positive integer.');
@@ -67,15 +144,31 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 			throw new \InvalidArgumentException('The keyword is too long.');
 		}
 
-		return $this->model->search($page, self::PER_PAGE, $keyword, $filters);
+		return $this->model->search($page, static::PER_PAGE, $keyword, $filters);
 	}
 
 	/**
-	 * Require an active row.
+	 * 検証済みページングで有効な行一覧を返す。
 	 *
-	 * @param   int                       $id
-	 * @param   Database_Connection|null  $db
-	 * @return  array
+	 * @param  int    $actor_id 操作する管理者の社員ID
+	 * @param  int    $page     取得するページ番号
+	 * @param  string $keyword  検索キーワード
+	 * @param  array  $filters  検索条件
+	 * @return array
+	 */
+	public function search_for_admin($actor_id, $page, $keyword = '', array $filters = array())
+	{
+		$this->assert_admin_actor($actor_id);
+
+		return $this->search($page, $keyword, $filters);
+	}
+
+	/**
+	 * 有効な行が存在することを必須とする。
+	 *
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return array
 	 */
 	protected function read_required_record($id, $db = null)
 	{
@@ -93,12 +186,12 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Update an already locked row and return its current representation.
+	 * ロック済み行を更新し、現在の内容を返す。
 	 *
-	 * @param   int                       $id
-	 * @param   array                     $update_values
-	 * @param   Database_Connection|null  $db
-	 * @return  array
+	 * @param  int                      $id            対象レコードのID
+	 * @param  array                    $update_values 更新する値
+	 * @param  Database_Connection|null $db            使用するDB接続
+	 * @return array
 	 */
 	protected function update_and_read_record($id, array $update_values, $db = null)
 	{
@@ -117,11 +210,11 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Soft-delete an already locked row and return its current representation.
+	 * ロック済み行を論理削除し、現在の内容を返す。
 	 *
-	 * @param   int                       $id
-	 * @param   Database_Connection|null  $db
-	 * @return  array
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return array
 	 */
 	protected function soft_delete_and_read_record($id, $db = null)
 	{
@@ -147,33 +240,31 @@ abstract class Service_BaseCrud extends Service_BaseRegistration
 	}
 
 	/**
-	 * Require a reason suitable for the later audit event.
+	 * ロック済み行を復元し、有効な内容を返す。
 	 *
-	 * @param   mixed  $reason
-	 * @return  void
+	 * @param  int                      $id 対象レコードのID
+	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @return array
 	 */
-	protected function assert_soft_delete_reason($reason)
+	protected function restore_and_read_record($id, $db = null)
 	{
-		if ( ! is_string($reason))
+		if ($this->model->restore($id, $db) !== 1)
 		{
-			throw new \InvalidArgumentException('The soft-delete reason must be a string.');
+			throw new \RuntimeException(
+				'The record changed during the restore operation.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
 		}
 
-		$reason = trim($reason);
-
-		if ($reason === ''
-			or mb_strlen($reason, 'UTF-8') > static::MAX_SOFT_DELETE_REASON_LENGTH)
-		{
-			throw new \InvalidArgumentException('The soft-delete reason is invalid.');
-		}
+		return $this->read_required_record($id, $db);
 	}
 
 	/**
-	 * Recheck that the actor remains an active administrator.
+	 * 実行者が引き続き有効な管理者であることを再確認する。
 	 *
-	 * @param   int                       $actor_id
-	 * @param   Database_Connection|null  $db
-	 * @return  void
+	 * @param  int                      $actor_id 操作する管理者の社員ID
+	 * @param  Database_Connection|null $db       使用するDB接続
+	 * @return void
 	 */
 	protected function assert_admin_actor($actor_id, $db = null)
 	{

@@ -1,34 +1,31 @@
 <?php
 
 /**
- * Applies authentication rules for employees.
- *
- * @package  app
+ * 社員の認証規則を適用する。
  */
 class Service_Auth
 {
+	/** @var int 許可する社員IDの最大値 */
 	const MAX_EMPLOYEE_ID = 2147483647;
+	/** @var int 社員IDの最大桁数 */
 	const MAX_EMPLOYEE_ID_LEN = 10;
+	/** @var int フィンガープリント鍵の最小バイト数 */
 	const MIN_FINGERPRINT_KEY_BYTES = 32;
+	/** @var string 社員番号列挙を防ぐダミーパスワードハッシュ */
 	const DUMMY_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
 
-	/**
-	 * Employee Model used for authentication lookups.
-	 *
-	 * @var Model_Table_Employee
-	 */
+	/** @var Model_Table_Employee 認証時の取得に使用する社員モデル */
 	protected $model;
 
-	/**
-	 * Secret used only for credential fingerprints.
-	 *
-	 * @var string
-	 */
+	/** @var string 認証情報フィンガープリントだけに使用する秘密値 */
 	protected $credential_fingerprint_key;
 
 	/**
-	 * @param  object|null  $model
-	 * @param  string|null  $credential_fingerprint_key
+	 * 認証に使用するModelとフィンガープリント生成鍵を初期化する。
+	 *
+	 * @param  object|null $model                      使用する操作対象Model
+	 * @param  string|null $credential_fingerprint_key フィンガープリント生成鍵
+	 * @return void
 	 */
 	public function __construct($model = null, $credential_fingerprint_key = null)
 	{
@@ -50,11 +47,11 @@ class Service_Auth
 	}
 
 	/**
-	 * Authenticate one active employee.
+	 * 有効な社員を1件認証する。
 	 *
-	 * @param   int|string  $employee_number
-	 * @param   mixed       $password
-	 * @return  array|false
+	 * @param  int|string $employee_number 社員番号
+	 * @param  mixed      $password        パスワード
+	 * @return array|false
 	 */
 	public function authenticate($employee_number, $password)
 	{
@@ -86,11 +83,11 @@ class Service_Auth
 	}
 
 	/**
-	 * Validate the employee stored in the current Session.
+	 * 現在のセッションに保存された社員を検証する。
 	 *
-	 * @param   int|string  $employee_number
-	 * @param   mixed       $credential_fingerprint
-	 * @return  array|false
+	 * @param  int|string $employee_number        社員番号
+	 * @param  mixed      $credential_fingerprint 認証情報のフィンガープリント
+	 * @return array|false
 	 */
 	public function validate_session($employee_number, $credential_fingerprint)
 	{
@@ -119,10 +116,10 @@ class Service_Auth
 	}
 
 	/**
-	 * Normalize a positive signed-INT employee number.
+	 * 符号付きINT範囲の正の社員番号を正規化する。
 	 *
-	 * @param   mixed  $employee_number
-	 * @return  int|null
+	 * @param  mixed $employee_number 社員番号
+	 * @return int|null
 	 */
 	protected function normalize_employee_id($employee_number)
 	{
@@ -155,10 +152,10 @@ class Service_Auth
 	}
 
 	/**
-	 * Check the DB state required for login and continued access.
+	 * ログインと継続アクセスに必要なDB状態を確認する。
 	 *
-	 * @param   mixed  $employee
-	 * @return  bool
+	 * @param  mixed $employee 対象の社員情報
+	 * @return bool
 	 */
 	protected function is_available_employee($employee)
 	{
@@ -179,10 +176,10 @@ class Service_Auth
 	}
 
 	/**
-	 * Derive a Session fingerprint without exposing the password hash.
+	 * パスワードハッシュを公開せずにセッション用フィンガープリントを導出する。
 	 *
-	 * @param   array  $employee
-	 * @return  string
+	 * @param  array $employee 対象の社員情報
+	 * @return string
 	 */
 	protected function create_credential_fingerprint(array $employee)
 	{
@@ -194,10 +191,10 @@ class Service_Auth
 	}
 
 	/**
-	 * Return only employee fields that Controllers may consume.
+	 * コントローラが使用できる社員項目だけを返す。
 	 *
-	 * @param   array  $employee
-	 * @return  array
+	 * @param  array $employee 対象の社員情報
+	 * @return array
 	 */
 	protected function safe_user(array $employee)
 	{

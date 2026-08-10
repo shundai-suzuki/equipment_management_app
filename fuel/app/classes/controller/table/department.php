@@ -1,50 +1,17 @@
 <?php
 
 /**
- * Administrator CRUD endpoints for departments.
- *
- * @package  app
+ * 管理者用部署検索API。
  */
 class Controller_Table_Department extends Controller_AdminCrud
 {
 	/**
-	 * Create the department Service.
+	 * 部署サービスを生成する。
 	 *
-	 * @return  Service_Table_Department
+	 * @return Service_Table_Department
 	 */
 	protected function new_service()
 	{
 		return new Service_Table_Department();
-	}
-
-	/**
-	 * Create a department from allowed POST inputs.
-	 *
-	 * @param   int  $actor_id
-	 * @return  int
-	 */
-	protected function create_from_post($actor_id)
-	{
-		return $this->service->create_for_admin(
-			$actor_id,
-			$this->post_integer('id', 0),
-			Input::post('name')
-		);
-	}
-
-	/**
-	 * Update a department from allowed POST inputs.
-	 *
-	 * @param   int  $actor_id
-	 * @param   int  $id
-	 * @return  array
-	 */
-	protected function update_from_post($actor_id, $id)
-	{
-		return $this->service->update_for_admin(
-			$actor_id,
-			$id,
-			Input::post('name')
-		);
 	}
 }

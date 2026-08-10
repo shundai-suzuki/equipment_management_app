@@ -11,9 +11,9 @@ class Create_employees
 		\DBUtil::create_table(
 			'employees', 
 			array(
-				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'auto_increment' => true),
 				'employee_name' => array('type' => 'varchar', 'constraint' => 30, 'null' => false),
-				'department_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'department_id' => array('type' => 'int', 'constraint' => 11, 'null' => false),
 				'role' => array('type' => 'varchar', 'constraint' => 20, 'null' => false),
 				'password_hash' => array('type' => 'varchar', 'constraint' => 255, 'null' => false),
 				'is_active' => array('type' => 'int', 'constraint' => 1, 'null' => false, 'default' => 1),
@@ -44,7 +44,6 @@ class Create_employees
 		$table = \DB::quote_identifier(\DB::table_prefix('employees'));
 		\DB::query(
 			'ALTER TABLE '.$table
-			.' ADD CONSTRAINT chk_employees_id_positive CHECK (id > 0),'
 			.' ADD CONSTRAINT chk_employees_role CHECK (role IN (\'EMPLOYEE\', \'ADMIN\')),'
 			.' ADD CONSTRAINT chk_employees_is_active CHECK (is_active IN (0, 1))'
 		)->execute();

@@ -1,37 +1,30 @@
 <?php
 
 /**
- * Applies department registration rules and delegates persistence.
- *
- * @package  app
+ * 部署登録規則を適用し、永続化を委譲する。
  */
 class Service_Table_Department extends Service_BaseCrud
 {
+	/** @var int 名前の最大文字数 */
 	const MAX_NAME_LENGTH = 255;
 
-	/**
-	 * Table registered by this Service.
-	 *
-	 * @var string
-	 */
+	/** @var string このサービスが登録するテーブル */
 	protected static $table_name = 'departments';
 
 	/**
-	 * Create a department or restore an archived department with the same name.
+	 * 部署を登録するか、同名の論理削除済み部署を復元する。
 	 *
-	 * @param   int     $id
-	 * @param   string  $name
-	 * @return  int
+	 * @param  string $name 対象の名前
+	 * @return int
 	 */
-	public function create($id, $name)
+	public function create($name)
 	{
-		$this->assert_new_id($id);
 		$name = $this->normalize_name($name);
 		$read_department = $this->model->read_by_name($name);
 
 		if ($read_department !== null)
 		{
-			return $this->restore_or_reject($read_department, $name);
+			return $this->restore_or_reject($read_department);
 		}
 
 		try
@@ -45,27 +38,26 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Create a department after rechecking the administrator.
+	 * 管理者を再確認してから部署を登録する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @param   string  $name
-	 * @return  int
+	 * @param  int    $actor_id 操作する管理者の社員ID
+	 * @param  string $name     対象の名前
+	 * @return int
 	 */
-	public function create_for_admin($actor_id, $id, $name)
+	public function create_for_admin($actor_id, $name)
 	{
 		$this->assert_admin_actor($actor_id);
 
-		return $this->create($id, $name);
+		return $this->create($name);
 	}
 
 	/**
-	 * Update a department name.
+	 * 部署名を更新する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @param   string  $name
-	 * @return  array
+	 * @param  int    $actor_id 操作する管理者の社員ID
+	 * @param  int    $id       対象レコードのID
+	 * @param  string $name     対象の名前
+	 * @return array
 	 */
 	public function update_for_admin($actor_id, $id, $name)
 	{
@@ -76,7 +68,7 @@ class Service_Table_Department extends Service_BaseCrud
 			function ($db) use ($actor_id, $id, $name)
 			{
 				$this->assert_admin_actor($actor_id, $db);
-				$department_before_update = $this->model->read_before_update($id, false, $db);
+				$department_before_update = $this->model->read_for_update($id, false, $db);
 
 				if ($department_before_update === null)
 				{
@@ -102,28 +94,36 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Soft-delete an unused department.
+	 * 未使用の部署を論理削除する。
 	 *
-	 * @param   int     $actor_id
-	 * @param   int     $id
-	 * @param   string  $reason
-	 * @return  array
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
 	 */
-	public function soft_delete_for_admin($actor_id, $id, $reason)
+	public function soft_delete_for_admin($actor_id, $id)
 	{
 		$this->assert_positive_id($id, 'The department ID');
-		$this->assert_soft_delete_reason($reason);
 
 		return $this->model->transaction(
 			function ($db) use ($actor_id, $id)
 			{
 				$this->assert_admin_actor($actor_id, $db);
 
-				if ($this->model->read_before_update($id, false, $db) === null)
+				$department_before_delete = $this->model->read_for_update($id, true, $db);
+
+				if ($department_before_delete === null)
 				{
 					throw new \RuntimeException(
 						'The department was not found.',
 						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($department_before_delete['deleted_at'] !== null)
+				{
+					throw new \RuntimeException(
+						'The department is already archived.',
+						static::CONFLICT_EXCEPTION_CODE
 					);
 				}
 
@@ -141,9 +141,51 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Create the department Model used by this Service.
+	 * 論理削除済み部署を1件復元する。
 	 *
-	 * @return  Model_Table_Department
+	 * @param  int $actor_id 操作する管理者の社員ID
+	 * @param  int $id       対象レコードのID
+	 * @return array
+	 */
+	public function restore_for_admin($actor_id, $id)
+	{
+		$this->assert_positive_id($id, 'The department ID');
+
+		return $this->model->transaction(
+			function ($db) use ($actor_id, $id)
+			{
+				$this->assert_admin_actor($actor_id, $db);
+				$department_before_restore = $this->model->read_for_update(
+					$id,
+					true,
+					$db
+				);
+
+				if ($department_before_restore === null)
+				{
+					throw new \RuntimeException(
+						'The department was not found.',
+						static::NOT_FOUND_EXCEPTION_CODE
+					);
+				}
+
+				if ($department_before_restore['deleted_at'] === null)
+				{
+					throw new \RuntimeException(
+						'The department is not archived.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
+
+				return $this->restore_and_read_record($id, $db);
+			}
+		);
+	}
+
+	/**
+	 * このサービスで使用する部署モデルを生成する。
+	 *
+	 * @return Model_Table_Department
 	 */
 	protected function new_model()
 	{
@@ -151,10 +193,10 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Normalize and validate a department name.
+	 * 部署名を正規化して検証する。
 	 *
-	 * @param   mixed  $name
-	 * @return  string
+	 * @param  mixed $name 対象の名前
+	 * @return string
 	 */
 	protected function normalize_name($name)
 	{
@@ -179,13 +221,12 @@ class Service_Table_Department extends Service_BaseCrud
 	}
 
 	/**
-	 * Restore an archived match or reject an active duplicate.
+	 * 一致する論理削除済み行を復元するか、有効な重複行を拒否する。
 	 *
-	 * @param   array   $read_department
-	 * @param   string  $name
-	 * @return  int
+	 * @param  array $read_department 取得した部署情報
+	 * @return int
 	 */
-	protected function restore_or_reject(array $read_department, $name)
+	protected function restore_or_reject(array $read_department)
 	{
 		if ($read_department['deleted_at'] === null)
 		{
@@ -197,32 +238,41 @@ class Service_Table_Department extends Service_BaseCrud
 
 		$id = (int) $read_department['id'];
 
-		if ($this->model->restore($id))
-		{
-			return $id;
-		}
+		return $this->model->transaction(
+			function ($db) use ($id)
+			{
+				$department_before_restore = $this->model->read_for_update(
+					$id,
+					true,
+					$db
+				);
 
-		$read_current = $this->model->read_by_name($name);
+				if ($department_before_restore === null)
+				{
+					throw new \RuntimeException(
+						'The archived department could not be read.',
+						static::CONFLICT_EXCEPTION_CODE
+					);
+				}
 
-		if ($read_current !== null
-			and (int) $read_current['id'] === $id
-			and $read_current['deleted_at'] === null)
-		{
-			return $id;
-		}
+				if ($department_before_restore['deleted_at'] === null)
+				{
+					return $id;
+				}
 
-		throw new \RuntimeException(
-			'Failed to restore the archived department.',
-			static::CONFLICT_EXCEPTION_CODE
+				$this->restore_and_read_record($id, $db);
+
+				return $id;
+			}
 		);
 	}
 
 	/**
-	 * Convert a duplicate department name into a conflict.
+	 * 部署名の重複を競合へ変換する。
 	 *
-	 * @param   string              $name
-	 * @param   Database_Exception  $exception
-	 * @return  int
+	 * @param  string             $name      対象の名前
+	 * @param  Database_Exception $exception 発生した例外
+	 * @return int
 	 */
 	protected function handle_create_exception($name, \Database_Exception $exception)
 	{
@@ -238,6 +288,6 @@ class Service_Table_Department extends Service_BaseCrud
 			throw $exception;
 		}
 
-		return $this->restore_or_reject($read_department, $name);
+		return $this->restore_or_reject($read_department);
 	}
 }

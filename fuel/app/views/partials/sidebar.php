@@ -3,9 +3,14 @@ $items = array(
 	'dashboard' => array('ダッシュボード', 'dashboard'),
 	'equipment' => array('備品一覧', 'equipment'),
 	'loans' => array('貸出一覧', 'loans'),
-	'employees' => array('社員管理', 'admin/employees'),
-	'departments' => array('部署管理', 'admin/departments'),
 );
+
+if ($is_admin)
+{
+	$items['employees'] = array('社員管理', 'admin/employees');
+	$items['departments'] = array('部署管理', 'admin/departments');
+}
+
 $link_class = 'd-block mb8 p13_16 c-navy fw600 td-none br6 c-blue-hover ba-blue_light-hover';
 $active_class = $link_class.' c-blue ba-blue_light';
 ?>

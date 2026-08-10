@@ -11,9 +11,9 @@ class Create_equipments
 		\DBUtil::create_table(
 			'equipments', 
 			array(
-				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'auto_increment' => true),
 				'name' => array('type' => 'varchar', 'constraint' => 255, 'null' => false),
-				'department_id' => array('type' => 'int', 'constraint' => 11, 'null' => false, 'default' => 0),
+				'department_id' => array('type' => 'int', 'constraint' => 11, 'null' => false),
 				'category' => array('type' => 'varchar', 'constraint' => 20, 'null' => false),
 				'total_amount' => array('type' => 'int', 'constraint' => 10, 'null' => false),
 				'description' => array('type' => 'varchar', 'constraint' => 255, 'null' => true, 'default' => null),
@@ -50,7 +50,6 @@ class Create_equipments
 		$table = \DB::quote_identifier(\DB::table_prefix('equipments'));
 		\DB::query(
 			'ALTER TABLE '.$table
-			.' ADD CONSTRAINT chk_equipments_id_positive CHECK (id > 0),'
 			.' ADD CONSTRAINT chk_equipments_category CHECK ('
 			.'CHAR_LENGTH(TRIM(category)) BETWEEN 1 AND 20 '
 			.'AND CHAR_LENGTH(category) = CHAR_LENGTH(TRIM(category))'

@@ -19,8 +19,10 @@
 			<?php echo $content; ?>
 		</main>
 	</div>
-	<?php echo \Asset::js('knockout-3.5.3.js'); ?>
-	<?php echo \Asset::js('app/api.js'); ?>
-	<?php if ($page_script !== ''): echo \Asset::js($page_script); endif; ?>
+	<?php if ($page_script !== ''): ?>
+		<?php echo \Asset::js('knockout-3.5.3.js'); ?>
+		<?php echo \Asset::js('app/api.js'); ?>
+		<?php echo \Asset::js($page_script); ?>
+	<?php endif; ?>
 </body>
 </html>

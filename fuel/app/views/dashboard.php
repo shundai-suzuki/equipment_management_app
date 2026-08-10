@@ -1,12 +1,7 @@
 <?php
 $loan_column_count = $is_admin ? 5 : 4;
 ?>
-<section
-	class="maw1440 m-0_auto"
-	data-page="dashboard"
-	data-loans-url="<?php echo e(Uri::create('api/loans')); ?>"
-	data-login-url="<?php echo e(Uri::create('login')); ?>"
->
+<section class="maw1440 m-0_auto">
 	<header class="d-flex ai-center jc-space_between mb24">
 		<h1 class="m0 fs30">ダッシュボード</h1>
 	</header>
@@ -57,30 +52,27 @@ $loan_column_count = $is_admin ? 5 : 4;
 						<th class="p13_14 ta-left va-middle bb1-border fs13 ba-table_head">状態</th>
 					</tr>
 				</thead>
-				<tbody aria-live="polite">
-					<tr hidden data-bind="attr: { hidden: ! isLoading() }">
-						<td class="p40 c-muted ta-center bb1-border" colspan="<?php echo $loan_column_count; ?>">貸出情報を読み込んでいます。</td>
-					</tr>
-					<tr hidden data-bind="attr: { hidden: ! errorMessage() }">
-						<td class="p40 c-red ta-center bb1-border" colspan="<?php echo $loan_column_count; ?>">
-							<span class="d-block mb12" data-bind="text: errorMessage"></span>
-							<button class="p8_16 c-green fw700 ba-white bo1-green br6" type="button" data-bind="click: loadLoans">再読み込み</button>
-						</td>
-					</tr>
-					<!-- ko foreach: loans -->
-					<tr class="ba-row_hover-hover">
-						<td class="p13_14 ta-left va-middle bb1-border" data-bind="text: id"></td>
-						<td class="p13_14 ta-left va-middle bb1-border" data-bind="text: equipment"></td>
-						<?php if ($is_admin): ?>
-							<td class="p13_14 ta-left va-middle bb1-border" data-bind="text: employee"></td>
-						<?php endif; ?>
-						<td class="p13_14 ta-left va-middle bb1-border" data-bind="text: dueDate"></td>
-						<td class="p13_14 ta-left va-middle bb1-border"><span class="d-inline_block p4_9 c-green fs13 fw700 ba-green_light br999" data-bind="text: status, css: statusClass"></span></td>
-					</tr>
-					<!-- /ko -->
-					<tr hidden data-bind="attr: { hidden: ! showEmpty() }">
+				<tbody>
+					<?php if (empty($loans)): ?>
+					<tr>
 						<td class="p40 c-muted ta-center bb1-border" colspan="<?php echo $loan_column_count; ?>">貸出中の備品はありません。</td>
 					</tr>
+					<?php else: ?>
+						<?php foreach ($loans as $loan): ?>
+							<?php $is_overdue = $loan['loan_state'] === 'OVERDUE'; ?>
+							<tr class="ba-row_hover-hover">
+								<td class="p13_14 ta-left va-middle bb1-border"><?php echo e($loan['id']); ?></td>
+								<td class="p13_14 ta-left va-middle bb1-border"><?php echo e($loan['equipment_name']); ?></td>
+								<?php if ($is_admin): ?>
+									<td class="p13_14 ta-left va-middle bb1-border"><?php echo e($loan['employee_name']); ?></td>
+								<?php endif; ?>
+								<td class="p13_14 ta-left va-middle bb1-border"><?php echo e(str_replace('-', '/', $loan['due_date'])); ?></td>
+								<td class="p13_14 ta-left va-middle bb1-border">
+									<span class="d-inline_block p4_9 fs13 fw700 br999 <?php echo $is_overdue ? 'c-red ba-red_light' : 'c-green ba-green_light'; ?>"><?php echo $is_overdue ? '返却超過' : '貸出中'; ?></span>
+								</td>
+							</tr>
+						<?php endforeach; ?>
+					<?php endif; ?>
 				</tbody>
 			</table>
 		</div>

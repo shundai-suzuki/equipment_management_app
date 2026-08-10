@@ -121,7 +121,13 @@ class Controller_Page_Site extends Controller_Page_Base
 	 */
 	public function action_dashboard()
 	{
-		$this->render_page('dashboard', 'ダッシュボード', 'dashboard', 'app/dashboard.js');
+		$search_result = (new Service_Table_Loan())->search_for_actor(
+			$this->employee_id(),	1, '', array('active_only' => true)
+		);
+
+		$this->render_page(
+			'dashboard', 'ダッシュボード', 'dashboard', '', array('loans' => array_slice($search_result['rows'], 0, 6))
+		);
 	}
 
 	/**

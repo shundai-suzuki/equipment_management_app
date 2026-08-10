@@ -9,41 +9,26 @@ class Service_Auth
 	const MAX_EMPLOYEE_ID = 2147483647;
 	/** @var int 社員IDの最大桁数 */
 	const MAX_EMPLOYEE_ID_LEN = 10;
-	/** @var int フィンガープリント鍵の最小バイト数 */
-	const MIN_FINGERPRINT_KEY_BYTES = 32;
 	/** @var string 社員番号列挙を防ぐダミーパスワードハッシュ */
 	const DUMMY_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
 
 	/** @var Model_Table_Employee 認証時の取得に使用する社員モデル */
 	protected $model;
 
-	/** @var string 認証情報フィンガープリントだけに使用する秘密値 */
-	protected $credential_fingerprint_key;
-
 	/**
-	 * 認証に使用するModelとフィンガープリント生成鍵を初期化する。
+	 * 認証に使用するModelを初期化する。
 	 *
-	 * @param  object|null $model                      使用する操作対象Model
-	 * @param  string|null $credential_fingerprint_key フィンガープリント生成鍵
+	 * @param object|null $model 使用する操作対象Model
 	 * @return void
 	 */
-	public function __construct($model = null, $credential_fingerprint_key = null)
+	public function __construct($model = null)
 	{
 		if ($model !== null and ! is_object($model))
 		{
 			throw new \InvalidArgumentException('The authentication model must be an object.');
 		}
 
-		$this->model = $model ? $model : new Model_Table_Employee();
-		$this->credential_fingerprint_key = $credential_fingerprint_key === null
-			? \Config::get('employee_auth.credential_fingerprint_key')
-			: $credential_fingerprint_key;
-
-		if ( ! is_string($this->credential_fingerprint_key)
-			or strlen($this->credential_fingerprint_key) < static::MIN_FINGERPRINT_KEY_BYTES)
-		{
-			throw new \RuntimeException('The credential fingerprint key is not configured.');
-		}
+		$this->model = $model ?: new Model_Table_Employee();
 	}
 
 	/**
@@ -129,7 +114,6 @@ class Service_Auth
 			{
 				return null;
 			}
-
 			return $employee_number;
 		}
 
@@ -147,7 +131,6 @@ class Service_Auth
 		}
 
 		$employee_id = (int) $employee_number;
-
 		return $employee_id <= static::MAX_EMPLOYEE_ID ? $employee_id : null;
 	}
 
@@ -183,11 +166,7 @@ class Service_Auth
 	 */
 	protected function create_credential_fingerprint(array $employee)
 	{
-		return hash_hmac(
-			'sha256',
-			(string) $employee['id'].'|'.$employee['password_hash'],
-			$this->credential_fingerprint_key
-		);
+		return hash('sha256',	(string) $employee['id'].'|'.$employee['password_hash']);
 	}
 
 	/**

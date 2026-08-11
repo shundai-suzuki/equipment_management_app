@@ -24,8 +24,10 @@
 		if (key === 'loan_state') {
 			return { ON_LOAN: '貸出中', OVERDUE: '返却超過', RETURNED: '返却済み' }[item] || '-';
 		}
-		if (key === 'is_active') { return Number(item) === 1 ? '有効' : '無効'; }
-		if (key === 'role') { return item === 'ADMIN' ? '管理者' : '社員'; }
+		if (key === 'is_active') {
+			 return Number(item) === 1 ? '有効' : '無効'; }
+		if (key === 'role') { 
+			return item === 'ADMIN' ? '管理者' : '社員'; }
 		if (key === 'loaned_at' || key === 'due_date') {
 			return typeof item === 'string' ? item.replace(/-/g, '/') : '-';
 		}
@@ -69,7 +71,7 @@
 	function setFormValues(row) {
 		Array.prototype.forEach.call(form.querySelectorAll('[data-field]'), function (input) {
 			const item = row && row[input.name];
-			input.value = item === undefined || item === null ? '' : item;
+			input.value = (item === undefined) || (item === null) ? '' : item;
 		});
 	}
 
@@ -96,30 +98,40 @@
 		self.toggleLabel = function (row) {
 			return Number(row.is_active) === 1 ? '無効化' : '有効化';
 		};
-		self.load = function () {
+		self.load = async function () {
 			self.isLoading(true);
 			self.errorMessage('');
-			api.get(root.getAttribute('data-search-url'), parameters(self.currentPage()))
-				.then(function (body) {
-					const pagination = body.meta && body.meta.pagination;
-					if ( ! Array.isArray(body.data) || ! pagination) {
-						throw new api.ApiError(500, null);
-					}
-					self.rows(body.data);
-					self.total(Number(pagination.total) || 0);
-					self.totalPages(Number(pagination.total_pages) || 0);
-					if (categoryFilter && body.meta.category_options) {
-						setCategoryOptions(body.meta.category_options);
-					}
-				})
-				.catch(function (error) {
-					if (api.isUnauthorized(error)) {
-						window.location.assign(root.getAttribute('data-login-url'));
-						return;
-					}
-					self.errorMessage(api.message(error, '一覧を取得できませんでした。'));
-				})
-				.then(function () { self.isLoading(false); });
+
+			try {
+				const body = await api.get(
+					root.getAttribute('data-search-url'),
+					parameters(self.currentPage())
+				);
+				const pagination = body.meta && body.meta.pagination;
+
+				if ( ! Array.isArray(body.data) || ! pagination) {
+					throw new api.ApiError(500, null);
+				}
+
+				self.rows(body.data);
+				self.total(Number(pagination.total) || 0);
+				self.totalPages(Number(pagination.total_pages) || 0);
+
+				if (categoryFilter && body.meta.category_options) {
+					setCategoryOptions(body.meta.category_options);
+				}
+			}
+			catch (error) {
+				if (api.isUnauthorized(error)) {
+					window.location.assign(root.getAttribute('data-login-url'));
+					return;
+				}
+
+				self.errorMessage(api.message(error, '一覧を取得できませんでした。'));
+			}
+			finally {
+				self.isLoading(false);
+			}
 		};
 		self.clearFilters = function () {
 			filters.forEach(function (input) {

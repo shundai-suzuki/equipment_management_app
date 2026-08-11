@@ -23,21 +23,26 @@
 	}
 
 	// 同一オリジンのGET APIを呼び出してJSONを返す。
-	function get(url, parameters) {
-		return window.fetch(url + query(parameters), {
+	async function get(url, parameters) {
+		const response = await window.fetch(url + query(parameters), {
 			method: 'GET',
 			credentials: 'same-origin',
 			headers: { Accept: 'application/json' }
-		}).then(function (response) {
-			return response.json().catch(function () {
-				throw new ApiError(response.status, null);
-			}).then(function (body) {
-				if ( ! response.ok) {
-					throw new ApiError(response.status, body);
-				}
-				return body;
-			});
 		});
+		let body;
+
+		try {
+			body = await response.json();
+		}
+		catch (error) {
+			throw new ApiError(response.status, null);
+		}
+
+		if ( ! response.ok) {
+			throw new ApiError(response.status, body);
+		}
+
+		return body;
 	}
 
 	// 一覧画面から使用するGET専用APIを公開する。

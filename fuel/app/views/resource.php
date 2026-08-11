@@ -72,7 +72,7 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 			<?php elseif ($resource === 'employees'): ?>
 				<label class="d-grid g8 fw600">
 					<span>キーワード</span>
-					<input type="search" data-filter="q" placeholder="社員番号・社員名で検索">
+					<input type="search" data-filter="q" placeholder="社員名で検索">
 				</label>
 				<label class="d-grid g8 fw600">
 					<span>部署</span>
@@ -102,7 +102,7 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 			<?php else: ?>
 				<label class="d-grid g8 fw600">
 					<span>キーワード</span>
-					<input type="search" data-filter="q" placeholder="部署ID・部署名で検索">
+					<input type="search" data-filter="q" placeholder="部署名で検索">
 				</label>
 			<?php endif; ?>
 		</div>

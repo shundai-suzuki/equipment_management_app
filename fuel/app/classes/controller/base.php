@@ -164,9 +164,12 @@ abstract class Controller_Base extends Controller_Rest
 	{
 		$query_value = \Input::get($name);
 
-		return $query_value === null or $query_value === ''
-			? null
-			: $this->integer_value($query_value, $name);
+		if ($query_value === null or $query_value === '')
+    {
+			return null;
+    }
+
+    return $this->integer_value($query_value, $name);
 	}
 
 	/**

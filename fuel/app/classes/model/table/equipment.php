@@ -203,7 +203,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 	 */
 	protected function apply_equipment_conditions($query, $keyword, array $filters)
 	{
-		$allowed_filters = array('category', 'available_only');
+		$allowed_filters = array(
+			'department_id', 'category', 'available_only',
+		);
 
 		if (array_diff(array_keys($filters), $allowed_filters))
 		{

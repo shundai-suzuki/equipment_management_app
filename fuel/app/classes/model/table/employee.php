@@ -53,7 +53,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	 * 認証に必要な社員項目だけを取得する。 Service_Authが共通の認証結果を適用する前にパスワードを確認できるよう、 無効な行と論理削除済み行も返す。
 	 *
 	 * @param  int                      $employee_id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @param  Database_Connection|null $db          使用するDB接続
 	 * @return array|null
 	 */
 	public function read_for_authentication($employee_id, $db = null)
@@ -85,7 +85,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	 * 社員が有効かつ未削除か確認する。
 	 *
 	 * @param  int                      $employee_id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @param  Database_Connection|null $db          使用するDB接続
 	 * @return bool
 	 */
 	public function is_active($employee_id, $db = null)
@@ -97,7 +97,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	 * 社員が有効な管理者か確認する。
 	 *
 	 * @param  int                      $employee_id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @param  Database_Connection|null $db          使用するDB接続
 	 * @return bool
 	 */
 	public function is_active_admin($employee_id, $db = null)
@@ -127,7 +127,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	 * 社員に貸出履歴があるか確認する。
 	 *
 	 * @param  int                      $employee_id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @param  Database_Connection|null $db          使用するDB接続
 	 * @return bool
 	 */
 	public function has_loan_history($employee_id, $db = null)
@@ -148,7 +148,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	 * 社員が現在未返却の備品を持っているか確認する。
 	 *
 	 * @param  int                      $employee_id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @param  Database_Connection|null $db          使用するDB接続
 	 * @return bool
 	 */
 	public function has_active_loans($employee_id, $db = null)
@@ -170,7 +170,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	 * 社員の論理削除とアカウント無効化を不可分に実行する。
 	 *
 	 * @param  int                      $employee_id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
+	 * @param  Database_Connection|null $db          使用するDB接続
 	 * @return int
 	 */
 	public function soft_delete($employee_id, $db = null)
@@ -191,9 +191,9 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 一時的なアカウント利用状態を変更する。
 	 * 
-	 * @param  int                      $employee_id        対象レコードのID
-	 * @param  int                      $is_active 社員の有効状態
-	 * @param  Database_Connection|null $db        使用するDB接続
+	 * @param  int                      $employee_id 対象レコードのID
+	 * @param  int                      $is_active   社員の有効状態
+	 * @param  Database_Connection|null $db          使用するDB接続
 	 * @return int
 	 */
 	public function update_active_state($employee_id, $is_active, $db = null)
@@ -214,7 +214,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 未削除社員1件のパスワードハッシュを置き換える。
 	 *
-	 * @param  int                      $employee_id            対象レコードのID
+	 * @param  int                      $employee_id   対象レコードのID
 	 * @param  string                   $password_hash パスワードハッシュ
 	 * @param  Database_Connection|null $db            使用するDB接続
 	 * @return int
@@ -237,8 +237,8 @@ class Model_Table_Employee extends Model_BaseCrud
 	 * 共通の有効条件と任意の権限条件を適用する。
 	 *
 	 * @param  int                      $employee_id   対象レコードのID
-	 * @param  string|null              $role 社員権限
-	 * @param  Database_Connection|null $db   使用するDB接続
+	 * @param  string|null              $role          社員権限
+	 * @param  Database_Connection|null $db            使用するDB接続
 	 * @return bool
 	 */
 	protected function has_active_role($employee_id, $role, $db)

@@ -95,7 +95,7 @@ class Inventorysetup
 	 */
 	protected static function read_passwords()
 	{
-		$password_file = __DIR__.DIRECTORY_SEPARATOR.'demopassword';
+		$password_file = __DIR__.DIRECTORY_SEPARATOR.'demopassword.txt';
 		if ( ! is_file($password_file) or ! is_readable($password_file))
 		{
 			throw new \RuntimeException('The initial-password file is unavailable.');

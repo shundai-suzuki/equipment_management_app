@@ -66,10 +66,10 @@ Dockerの基本的な概念については、以下のリンクを参考にし�
 
 ### テーブル作成
 migrationを利用してテーブルを作成している。そのため、docker内で以下のコマンドでテーブル作成と初期値代入を行う。
-<code>
-php oil refine migrate
+```bash
+php oil refine migrate 
 php oil refine inventorysetup
-</code>
+```
 
 ### 初期ログイン
-初期データは基本的にid: 1,2,3,4,5 が存在し、それぞれのデモパスワードがfuel/app/tasks/demopasswordに上から順番通りにあるため、それを用いてログインする。id: 1,2が管理者で、id: 3,4,5が社員である。
+初期データは基本的にid: 1,2,3,4,5 が存在し、それぞれのデモパスワードがfuel/app/tasks/demopasswordに上から順番通りにあるため、それを用いてログインする。id: 1,2が管理者で、id: 3,4,5が社員である。なお、複数回ログインに失敗すると入力が成功しても一定時間はログインできないようになっているため注意する。

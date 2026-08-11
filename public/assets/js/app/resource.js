@@ -152,8 +152,8 @@
 			if ( ! self.isSubmitting()) { self.drawerOpen(false); }
 		};
 		self.save = function () { self.isSubmitting(true); return true; };
-		self.archive = function (row) {
-			self.submitAction(row, 'archive', 'このデータを削除しますか？');
+		self.softDelete = function (row) {
+			self.submitAction(row, 'soft_delete', 'このデータを削除しますか？');
 		};
 		self.toggle = function (row) {
 			var active = Number(row.is_active) === 1;

@@ -7,8 +7,6 @@ class Service_Table_Loan extends Service_BaseCrud
 {
 	/** @var int 貸出期限の最大日数 */
 	const MAX_LOAN_DAYS = 90;
-	/** @var int 返却メモの最大文字数 */
-	const MAX_NOTE_LENGTH = 255;
 	/** @var int 権限不足時の例外コード */
 	const FORBIDDEN_EXCEPTION_CODE = 403;
 
@@ -151,7 +149,7 @@ class Service_Table_Loan extends Service_BaseCrud
 	{
 		$this->assert_positive_id($actor_id);
 		$this->assert_positive_id($id);
-		$note = $this->optional_text($note, static::MAX_NOTE_LENGTH);
+		$note = $this->optional_text($note);
 
 		$this->model->transaction(function ($db) use ($actor_id, $id, $note)
 		{

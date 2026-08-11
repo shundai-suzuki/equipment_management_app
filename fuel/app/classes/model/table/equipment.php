@@ -8,7 +8,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'equipments';
 
-	/** @var array 備品の新規行で受け付ける登録値 */
+	/** @var array 備品の新規行で指定する登録列 */
 	protected static $create_columns = array(
 		'name',
 		'department_id',
@@ -30,7 +30,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/** @var array 備品更新で受け付ける列 */
+	/** @var array 備品更新で指定する列 */
 	protected static $update_columns = array(
 		'name',
 		'department_id',

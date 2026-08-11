@@ -5,9 +5,6 @@
  */
 class Controller_Table_Equipment extends Controller_Crud
 {
-	/** @var int カテゴリの最大文字数 */
-	const MAX_CATEGORY_LENGTH = 20;
-
 	/**
 	 * 備品Serviceを生成する。
 	 *
@@ -34,21 +31,8 @@ class Controller_Table_Equipment extends Controller_Crud
 			$filters['department_id'] = $department_id;
 		}
 
-		if ($category !== null and $category !== '')
+		if (is_string($category) and $category !== '')
 		{
-			if ( ! is_string($category))
-			{
-				throw new \InvalidArgumentException('category must be a string.');
-			}
-
-			$category = trim($category);
-
-			if ($category === ''
-				or mb_strlen($category, 'UTF-8') > static::MAX_CATEGORY_LENGTH)
-			{
-				throw new \InvalidArgumentException('category is invalid.');
-			}
-
 			$filters['category'] = $category;
 		}
 
@@ -57,8 +41,7 @@ class Controller_Table_Equipment extends Controller_Crud
 		if ($available_only !== null and $available_only !== '')
 		{
 			$filters['available_only'] = $this->boolean_value(
-				$available_only,
-				'available_only'
+				$available_only, 'available_only'
 			);
 		}
 

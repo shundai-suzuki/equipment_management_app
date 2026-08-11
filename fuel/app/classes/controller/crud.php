@@ -1,7 +1,7 @@
 <?php
 
 /**
- * 認証済み社員向け一覧・詳細JSONの共通コントローラ。
+ * 認証済み社員向け一覧JSONの共通コントローラ。
  */
 abstract class Controller_Crud extends Controller_Base
 {
@@ -40,10 +40,8 @@ abstract class Controller_Crud extends Controller_Base
 		return $this->execute_api(function ()
 		{
 			$page = $this->integer_value(\Input::get('page', 1), 'page');
-			$result = $this->service->search(
-				$page,
-				\Input::get('q', ''),
-				$this->search_filters()
+			$result = $this->search(
+				$page, \Input::get('q', ''), $this->search_filters()
 			);
 			$total = (int) $result['total'];
 			$meta = array('pagination' => array(
@@ -60,24 +58,28 @@ abstract class Controller_Crud extends Controller_Base
 				$meta['category_options'] = $result['category_options'];
 			}
 
-			return $this->json_success($result['rows'], 200, $meta);
+			return $this->json_success($result['rows'], $meta);
 		});
 	}
 
 	/**
-	 * 指定IDの詳細JSONを返す。
+	 * 子Controllerに対応するServiceを生成する。
 	 *
-	 * @param mixed $id 対象レコードのID
-	 * @return Response
+	 * @return Service_BaseCrud
 	 */
-	public function get_read($id)
+	abstract protected function new_service();
+
+	/**
+	 * 一覧検索をServiceへ委譲する。
+	 *
+	 * @param  int    $page    取得するページ番号
+	 * @param  mixed  $keyword 検索キーワード
+	 * @param  array  $filters 検索条件
+	 * @return array
+	 */
+	protected function search($page, $keyword, array $filters)
 	{
-		return $this->execute_api(function () use ($id)
-		{
-			return $this->json_success(
-				$this->service->read($this->integer_value($id, 'id'))
-			);
-		});
+		return $this->service->search($page, $keyword, $filters);
 	}
 
 	/**
@@ -88,13 +90,6 @@ abstract class Controller_Crud extends Controller_Base
 	protected function authorize()
 	{
 	}
-
-	/**
-	 * 子Controllerに対応するServiceを生成する。
-	 *
-	 * @return Service_BaseCrud
-	 */
-	abstract protected function new_service();
 
 	/**
 	 * 子Controller固有の検索条件を返す。

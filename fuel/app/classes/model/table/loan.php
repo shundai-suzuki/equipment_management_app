@@ -8,7 +8,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'loans';
 
-	/** @var array 新規貸出で登録する列 */
+	/** @var array 新規貸出で指定する登録列 */
 	protected static $create_columns = array(
 		'employee_id',
 		'equipment_id',

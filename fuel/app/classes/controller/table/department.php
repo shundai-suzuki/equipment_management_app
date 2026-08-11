@@ -3,7 +3,7 @@
 /**
  * 管理者用部署検索API。
  */
-class Controller_Table_Department extends Controller_AdminCrud
+class Controller_Table_Department extends Controller_Admin
 {
 	/**
 	 * 部署サービスを生成する。

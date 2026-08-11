@@ -5,10 +5,8 @@
  */
 class Service_Table_Employee extends Service_BaseCrud
 {
-	/** @var int 社員名の最大文字数 */
-	const MAX_NAME_LENGTH = 30;
 	/** @var int パスワードの最小バイト数 */
-	const MIN_PASSWORD_BYTES = 12;
+	const MIN_PASSWORD_BYTES = 6;
 	/** @var int パスワードの最大バイト数 */
 	const MAX_PASSWORD_BYTES = 72;
 
@@ -43,12 +41,9 @@ class Service_Table_Employee extends Service_BaseCrud
 		$this->assert_active_department($department_id);
 
 		return $this->create_record(array(
-			'employee_name' => $this->required_text(
-				$employee_name,
-				static::MAX_NAME_LENGTH
-			),
+			'employee_name' => $this->required_text($employee_name),
 			'department_id' => $department_id,
-			'role' => $this->role($role),
+			'role' => $role,
 			'password_hash' => $this->create_hash_password(
 				$password,
 				$password_confirmation
@@ -60,21 +55,20 @@ class Service_Table_Employee extends Service_BaseCrud
 	/**
 	 * 社員の基本情報を更新する。
 	 *
-	 * @param int   $id            対象社員のID
+	 * @param int   $employee_id            対象社員のID
 	 * @param mixed $employee_name 社員名
 	 * @param int   $department_id 所属部署ID
 	 * @param mixed $role          権限
 	 * @return void
 	 */
-	public function update($id, $employee_name, $department_id, $role)
+	public function update($employee_id, $employee_name, $department_id, $role)
 	{
-		$this->assert_positive_id($id);
-		$employee = $this->read($id);
+		$this->assert_positive_id($employee_id);
+		$employee = $this->read($employee_id);
 		$this->assert_active_department($department_id);
-		$role = $this->role($role);
 
 		if ((int) $employee['department_id'] !== $department_id
-			and $this->model->has_loan_history($id))
+			and $this->model->has_loan_history($employee_id))
 		{
 			throw new \RuntimeException(
 				'Employees with loan history cannot change departments.',
@@ -89,11 +83,8 @@ class Service_Table_Employee extends Service_BaseCrud
 			$this->assert_not_last_admin($employee);
 		}
 
-		$this->model->update($id, array(
-			'employee_name' => $this->required_text(
-				$employee_name,
-				static::MAX_NAME_LENGTH
-			),
+		$this->model->update($employee_id, array(
+			'employee_name' => $this->required_text($employee_name),
 			'department_id' => $department_id,
 			'role' => $role,
 		));
@@ -102,34 +93,34 @@ class Service_Table_Employee extends Service_BaseCrud
 	/**
 	 * 未返却貸出のない社員を論理削除する。
 	 *
-	 * @param int $id 対象社員のID
+	 * @param int $employee_id 対象社員のID
 	 * @return void
 	 */
-	public function soft_delete($id)
+	public function soft_delete($employee_id)
 	{
-		$employee = $this->read($id);
+		$employee = $this->read($employee_id);
 
-		if ($this->model->has_active_loans($id))
+		if ($this->model->has_active_loans($employee_id))
 		{
 			throw new \RuntimeException(
-				'Employees with active loans cannot be archived.',
+				'Employees with active loans cannot be soft-deleted.',
 				static::CONFLICT_EXCEPTION_CODE
 			);
 		}
 
 		$this->assert_not_last_admin($employee);
-		$this->model->soft_delete($id);
+		$this->model->soft_delete($employee_id);
 	}
 
 	/**
 	 * 社員を一時的に無効化する。
 	 *
-	 * @param int $id 対象社員のID
+	 * @param int $employee_id 対象社員のID
 	 * @return void
 	 */
-	public function deactivate($id)
+	public function deactivate($employee_id)
 	{
-		$employee = $this->read($id);
+		$employee = $this->read($employee_id);
 
 		if ((int) $employee['is_active'] === 0)
 		{
@@ -139,7 +130,7 @@ class Service_Table_Employee extends Service_BaseCrud
 			);
 		}
 
-		if ($this->model->has_active_loans($id))
+		if ($this->model->has_active_loans($employee_id))
 		{
 			throw new \RuntimeException(
 				'Employees with active loans cannot be deactivated.',
@@ -148,18 +139,18 @@ class Service_Table_Employee extends Service_BaseCrud
 		}
 
 		$this->assert_not_last_admin($employee);
-		$this->model->update_active_state($id, 0);
+		$this->model->update_active_state($employee_id, 0);
 	}
 
 	/**
 	 * 社員を再有効化する。
 	 *
-	 * @param int $id 対象社員のID
+	 * @param int $employee_id 対象社員のID
 	 * @return void
 	 */
-	public function activate($id)
+	public function activate($employee_id)
 	{
-		$employee = $this->read($id);
+		$employee = $this->read($employee_id);
 
 		if ((int) $employee['is_active'] === 1)
 		{
@@ -170,19 +161,19 @@ class Service_Table_Employee extends Service_BaseCrud
 		}
 
 		$this->assert_active_department((int) $employee['department_id']);
-		$this->model->update_active_state($id, 1);
+		$this->model->update_active_state($employee_id, 1);
 	}
 
 	/**
 	 * 論理削除済み社員を復元する。
 	 *
-	 * @param int $id 対象社員のID
+	 * @param int $employee_id 対象社員のID
 	 * @return void
 	 */
-	public function restore($id)
+	public function restore($employee_id)
 	{
-		$this->assert_positive_id($id);
-		$employee = $this->model->read($id, true);
+		$this->assert_positive_id($employee_id);
+		$employee = $this->model->read($employee_id, true);
 
 		if ($employee === null)
 		{
@@ -193,26 +184,23 @@ class Service_Table_Employee extends Service_BaseCrud
 		}
 
 		$this->assert_active_department((int) $employee['department_id']);
-		$this->restore_record($id);
+		$this->restore_record($employee_id);
 	}
 
 	/**
 	 * 認証済み社員本人のパスワードを変更する。
 	 *
-	 * @param int   $id                    対象社員のID
+	 * @param int   $employee_id                    対象社員のID
 	 * @param mixed $current_password      現在のパスワード
 	 * @param mixed $password              パスワード
 	 * @param mixed $password_confirmation 確認用パスワード
 	 * @return void
 	 */
-	public function change_own_password($id, $current_password, $password, $password_confirmation)
+	public function change_own_password($employee_id, $current_password, $password, $password_confirmation)
 	{
-		$this->assert_positive_id($id);
-		$password_hash = $this->create_hash_password(
-			$password,
-			$password_confirmation
-		);
-		$employee = $this->model->read_for_authentication($id);
+		$this->assert_positive_id($employee_id);
+		$password_hash = $this->create_hash_password($password, $password_confirmation);
+		$employee = $this->model->read_for_authentication($employee_id);
 
 		if ( ! is_string($current_password)
 			or ! $this->is_available_employee($employee)
@@ -224,23 +212,23 @@ class Service_Table_Employee extends Service_BaseCrud
 			);
 		}
 
-		$this->model->update_password_hash($id, $password_hash);
+		$this->model->update_password_hash($employee_id, $password_hash);
 	}
 
 	/**
 	 * 管理者パスワードを確認して社員パスワードを再設定する。
 	 *
 	 * @param int   $actor_id              操作する管理者のID
-	 * @param int   $id                    対象社員のID
+	 * @param int   $employee_id                    対象社員のID
 	 * @param mixed $admin_password        管理者確認用パスワード
 	 * @param mixed $password              パスワード
 	 * @param mixed $password_confirmation 確認用パスワード
 	 * @return void
 	 */
-	public function reset_password($actor_id, $id, $admin_password, $password, $password_confirmation)
+	public function reset_password($actor_id, $employee_id, $admin_password, $password, $password_confirmation)
 	{
 		$this->assert_positive_id($actor_id);
-		$this->read($id);
+		$this->read($employee_id);
 		$administrator = $this->model->read_for_authentication($actor_id);
 
 		if ( ! is_string($admin_password)
@@ -255,7 +243,7 @@ class Service_Table_Employee extends Service_BaseCrud
 		}
 
 		$this->model->update_password_hash(
-			$id,
+			$employee_id,
 			$this->create_hash_password($password, $password_confirmation)
 		);
 	}
@@ -268,22 +256,6 @@ class Service_Table_Employee extends Service_BaseCrud
 	protected function new_model()
 	{
 		return new Model_Table_Employee();
-	}
-
-	/**
-	 * 許可する社員権限を返す。
-	 *
-	 * @param mixed $role 権限
-	 * @return string
-	 */
-	protected function role($role)
-	{
-		if ( ! in_array($role, array('EMPLOYEE', 'ADMIN'), true))
-		{
-			throw new \InvalidArgumentException('The employee role is invalid.');
-		}
-
-		return $role;
 	}
 
 	/**

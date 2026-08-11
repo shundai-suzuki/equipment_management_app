@@ -142,7 +142,7 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openView, enable: ! $root.isSubmitting()">詳細</button>
 								<?php if ($is_admin): ?>
 									<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
-									<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.archive, enable: ! $root.isSubmitting()">削除</button>
+									<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
 								<?php endif; ?>
 							<?php elseif ($resource === 'loans' and $is_admin): ?>
 								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="visible: loan_state !== 'RETURNED', click: $root.returnLoan, enable: ! $root.isSubmitting()">返却</button>
@@ -150,10 +150,10 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
 								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="text: $root.toggleLabel($data), click: $root.toggle, enable: ! $root.isSubmitting()"></button>
 								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openPassword, enable: ! $root.isSubmitting()">パスワード再設定</button>
-								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.archive, enable: ! $root.isSubmitting()">削除</button>
+								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
 							<?php else: ?>
 								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
-								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.archive, enable: ! $root.isSubmitting()">削除</button>
+								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
 							<?php endif; ?>
 						</td>
 					<?php endif; ?>

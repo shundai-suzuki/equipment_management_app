@@ -8,7 +8,7 @@ class Model_Table_Department extends Model_BaseCrud
 	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'departments';
 
-	/** @var array 部署の新規行で受け付ける登録値 */
+	/** @var array 部署の新規行で指定する登録列 */
 	protected static $create_columns = array('name');
 
 	/** @var array 部署CRUDの読取処理が返す列 */
@@ -20,7 +20,7 @@ class Model_Table_Department extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/** @var array 部署更新で受け付ける列 */
+	/** @var array 部署更新で指定する列 */
 	protected static $update_columns = array('name');
 
 	/** @var array キーワード検索の対象となる部署列 */

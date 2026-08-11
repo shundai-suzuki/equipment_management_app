@@ -7,8 +7,6 @@ class Service_Auth
 {
 	/** @var int 許可する社員IDの最大値 */
 	const MAX_EMPLOYEE_ID = 2147483647;
-	/** @var int 社員IDの最大桁数 */
-	const MAX_EMPLOYEE_ID_LEN = 10;
 	/** @var string 社員番号列挙を防ぐダミーパスワードハッシュ */
 	const DUMMY_PASSWORD_HASH = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.';
 
@@ -21,13 +19,8 @@ class Service_Auth
 	 * @param object|null $model 使用する操作対象Model
 	 * @return void
 	 */
-	public function __construct($model = null)
+	public function __construct()
 	{
-		if ($model !== null and ! is_object($model))
-		{
-			throw new \InvalidArgumentException('The authentication model must be an object.');
-		}
-
 		$this->model = $model ?: new Model_Table_Employee();
 	}
 
@@ -124,8 +117,7 @@ class Service_Auth
 
 		$employee_number = trim($employee_number);
 
-		if ( ! preg_match('/\A[1-9][0-9]*\z/', $employee_number)
-			or strlen($employee_number) > static::MAX_EMPLOYEE_ID_LEN)
+		if ( ! preg_match('/\A[1-9][0-9]*\z/', $employee_number))
 		{
 			return null;
 		}

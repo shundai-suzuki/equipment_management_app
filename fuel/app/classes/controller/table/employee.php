@@ -3,7 +3,7 @@
 /**
  * 管理者用社員検索API。
  */
-class Controller_Table_Employee extends Controller_AdminCrud
+class Controller_Table_Employee extends Controller_Admin
 {
 	/**
 	 * 社員サービスを生成する。
@@ -31,12 +31,8 @@ class Controller_Table_Employee extends Controller_AdminCrud
 		}
 
 		$role = \Input::get('role');
-		if ($role !== null and $role !== '')
+		if (is_string($role) and $role !== '')
 		{
-			if ( ! in_array($role, array('EMPLOYEE', 'ADMIN'), true))
-			{
-				throw new \InvalidArgumentException('role is invalid.');
-			}
 			$filters['role'] = $role;
 		}
 
@@ -44,10 +40,6 @@ class Controller_Table_Employee extends Controller_AdminCrud
 		if ($is_active !== null and $is_active !== '')
 		{
 			$is_active = $this->integer_value($is_active, 'is_active', 0);
-			if ($is_active > 1)
-			{
-				throw new \InvalidArgumentException('is_active is invalid.');
-			}
 			$filters['is_active'] = $is_active;
 		}
 

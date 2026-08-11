@@ -5,6 +5,8 @@
  */
 abstract class Controller_Page_Base extends \Controller_Template
 {
+	/** @var int IDの最大値 */
+	const MAX_EMPLOYEE_ID = 2147483647;
 	/** @var string ログイン後の共通レイアウト */
 	public $template = 'layouts/application';
 
@@ -120,27 +122,25 @@ abstract class Controller_Page_Base extends \Controller_Template
 			throw new \LogicException('The page resource is not configured.');
 		}
 
-		$definition = $resources[$resource];
+		$resource_config = $resources[$resource];
 
 		if ($resource === 'loans' and ! $this->is_admin)
 		{
-			unset($definition['columns'][2]);
-			$definition['columns'] = array_values($definition['columns']);
+			unset($resource_config['columns'][2]);
+			$resource_config['columns'] = array_values($resource_config['columns']);
 		}
 
 		$department_options = in_array(
-			$resource,
-			array('equipment', 'employees'),
-			true
+			$resource, array('equipment', 'employees'),	true
 		) ? (new Service_Table_Department())->read_options() : array();
 
 		$this->render_page('resource', $title, $resource, 'app/resource.js', array(
 			'resource' => $resource,
-			'columns' => $definition['columns'],
-			'create_label' => $definition['create_label'],
-			'edit_label' => $definition['edit_label'],
+			'columns' => $resource_config['columns'],
+			'create_label' => $resource_config['create_label'],
+			'edit_label' => $resource_config['edit_label'],
 			'department_options' => $department_options,
-			'search_url' => \Uri::create($definition['search_url']),
+			'search_url' => \Uri::create($resource_config['search_url']),
 			'write_url' => $this->is_admin ? \Uri::create('admin/'.$resource) : '',
 			'login_url' => \Uri::create('login'),
 		));
@@ -178,14 +178,14 @@ abstract class Controller_Page_Base extends \Controller_Template
 	protected function employee_id()
 	{
 		$driver = \Auth::instance();
-		$id = $driver instanceof Auth_Login_Employee ? $driver->get('id') : null;
+		$employee_id = $driver instanceof Auth_Login_Employee ? $driver->get('id') : null;
 
-		if ( ! is_int($id) or $id < 1)
+		if ( ! is_int($employee_id) or $employee_id < 1)
 		{
 			throw new \RuntimeException('The authenticated employee is invalid.', 403);
 		}
 
-		return $id;
+		return $employee_id;
 	}
 
 	/**
@@ -213,7 +213,7 @@ abstract class Controller_Page_Base extends \Controller_Template
 			$value = (int) $value;
 		}
 
-		if ( ! is_int($value) or $value < 1 or $value > 2147483647)
+		if ( ! is_int($value) or $value < 1 or $value > static::MAX_EMPLOYEE_ID)
 		{
 			throw new \InvalidArgumentException($name.' must be a positive integer.');
 		}

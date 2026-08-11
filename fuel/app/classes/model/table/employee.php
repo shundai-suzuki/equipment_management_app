@@ -8,7 +8,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'employees';
 
-	/** @var array 社員の新規行で受け付ける登録値 */
+	/** @var array 社員の新規行で指定する登録列 */
 	protected static $create_columns = array(
 		'employee_name',
 		'department_id',
@@ -29,7 +29,7 @@ class Model_Table_Employee extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/** @var array 通常の社員更新で受け付ける列 */
+	/** @var array 通常の社員更新で指定する列 */
 	protected static $update_columns = array(
 		'employee_name',
 		'department_id',

@@ -10,8 +10,6 @@ class Security_LoginRateLimit
 	const MAX_BUCKETS = 4096;
 	/** @var int 許可する社員IDの最大値 */
 	const MAX_EMPLOYEE_ID = 2147483647;
-	/** @var int 社員IDの最大桁数 */
-	const MAX_EMPLOYEE_ID_LEN = 10;
 	/** @var string ログイン試行制限の固定状態ファイル */
 	const STATE_FILE = '/var/cache/fuel/login-rate-limit/state.json';
 	/** @var int 失敗可能回数 */
@@ -41,23 +39,10 @@ class Security_LoginRateLimit
 	{
 		$this->state_file = static::STATE_FILE;
 		$directory = dirname($this->state_file);
-		if (is_link($directory))
-		{
-			throw new Security_LoginRateLimitException(
-				'The login rate-limit state directory i unsafe.'
-			);
-		}
 		if ( ! is_dir($directory)	and ! @mkdir($directory, 0700, true))
 		{
-			throw new Security_LoginRateLimitException(
+			throw new \RuntimeException(
 				'The login rate-limit state directory cannot be created.'
-			);
-		}
-		clearstatcache(true, $directory);
-		if (is_link($directory) or ! is_dir($directory))
-		{
-			throw new Security_LoginRateLimitException(
-				'The login rate-limit state directory is unavailable.'
 			);
 		}
 	}
@@ -105,9 +90,7 @@ class Security_LoginRateLimit
 				$type = $bucket['type'];
 				$key = $bucket['key'];
 				$policy = $bucket['policy'];
-				$current = isset($state[$type][$key])
-					? $state[$type][$key]
-					: null;
+				$current = isset($state[$type][$key])	? $state[$type][$key]	: null;
 				if ($current === null
 					or $now >= $current['window_started_at'] + $policy['window_seconds'])
 				{
@@ -118,10 +101,7 @@ class Security_LoginRateLimit
 						'updated_at' => $now,
 					);
 				}
-				$current['failed_count'] = min(
-					$current['failed_count'] + 1,
-					$policy['max_failures']
-				);
+				$current['failed_count'] = $current['failed_count'] + 1;
 				if ($current['failed_count'] >= $policy['max_failures']
 					and $current['blocked_until'] <= $now)
 				{
@@ -153,18 +133,6 @@ class Security_LoginRateLimit
 		}, true);
 	}
 	/**
-	 * 保持期間を過ぎた未使用バケットを削除する。
-	 *
-	 * @return int
-	 */
-	public function cleanup()
-	{
-		return $this->use_state(function (array &$state)
-		{
-			return $this->prune_state($state, time());
-		}, true);
-	}
-	/**
 	 * 任意の社員番号バケットと必須のIPバケットを生成する。
 	 *
 	 * @param mixed	$employee_number	社員番号
@@ -179,7 +147,7 @@ class Security_LoginRateLimit
 		$normalized_ip = $packed_ip === false ? false : inet_ntop($packed_ip);
 		if ($normalized_ip === false)
 		{
-			throw new Security_LoginRateLimitException(
+			throw new \RuntimeException(
 				'The direct client IP is unavailable.'
 			);
 		}
@@ -221,8 +189,7 @@ class Security_LoginRateLimit
 		elseif (is_string($employee_number))
 		{
 			$employee_number = trim($employee_number);
-			if (preg_match('/^[1-9][0-9]*$/D', $employee_number) !== 1
-				or strlen($employee_number) > static::MAX_EMPLOYEE_ID_LEN)
+			if (preg_match('/^[1-9][0-9]*$/D', $employee_number) !== 1)
 			{
 				return null;
 			}
@@ -247,23 +214,17 @@ class Security_LoginRateLimit
 	 */
 	protected function use_state(\Closure $operation, $write)
 	{
-		if (is_link($this->state_file))
-		{
-			throw new Security_LoginRateLimitException(
-				'The login rate-limit state file is unsafe.'
-			);
-		}
 		$handle = @fopen($this->state_file, 'c+');
 		if ($handle === false)
 		{
-			throw new Security_LoginRateLimitException(
+			throw new \RuntimeException(
 				'The login rate-limit state file cannot be opened.'
 			);
 		}
 		if ( ! @flock($handle, LOCK_EX))
 		{
 			@fclose($handle);
-			throw new Security_LoginRateLimitException(
+			throw new \RuntimeException(
 				'The login rate-limit state file cannot be locked.'
 			);
 		}
@@ -271,14 +232,13 @@ class Security_LoginRateLimit
 		{
 			clearstatcache(true, $this->state_file);
 			$stat = @fstat($handle);
-			if (is_link($this->state_file)
-				or $stat === false
+			if ($stat === false
 				or ($stat['mode'] & 0170000) !== 0100000
 				or $stat['size'] > static::MAX_STATE_BYTES
 				or ! @chmod($this->state_file, 0600)
 				or @rewind($handle) === false)
 			{
-				throw new Security_LoginRateLimitException(
+				throw new \RuntimeException(
 					'The login rate-limit state file is invalid.'
 				);
 			}
@@ -293,7 +253,7 @@ class Security_LoginRateLimit
 				or strlen($json) > static::MAX_STATE_BYTES
 				or ! $this->is_valid_state($state))
 			{
-				throw new Security_LoginRateLimitException(
+				throw new \RuntimeException(
 					'The login rate-limit state file is invalid.'
 				);
 			}
@@ -306,14 +266,14 @@ class Security_LoginRateLimit
 					or ! @ftruncate($handle, 0)
 					or @rewind($handle) === false)
 				{
-					throw new Security_LoginRateLimitException(
+					throw new \RuntimeException(
 						'The login rate-limit state file cannot be written.'
 					);
 				}
 				if (@fwrite($handle, $json) !== strlen($json)
 					or ! @fflush($handle))
 				{
-					throw new Security_LoginRateLimitException(
+					throw new \RuntimeException(
 						'The login rate-limit state file cannot be written.'
 					);
 				}
@@ -326,7 +286,7 @@ class Security_LoginRateLimit
 			$closed = @fclose($handle);
 			if ( ! $unlocked or ! $closed)
 			{
-				throw new Security_LoginRateLimitException(
+				throw new \RuntimeException(
 					'The login rate-limit state file cannot be closed.'
 				);
 			}
@@ -340,7 +300,7 @@ class Security_LoginRateLimit
 	 */
 	protected function is_valid_state($state)
 	{
-		$state_keys = array('version', 'accounts', 'ips');
+		$state_keys = array('accounts', 'ips');
 		$bucket_keys = array(
 			'failed_count',
 			'window_started_at',
@@ -350,7 +310,6 @@ class Security_LoginRateLimit
 		if ( ! is_array($state)
 			or array_diff($state_keys, array_keys($state))
 			or array_diff(array_keys($state), $state_keys)
-			or ! isset($state['version'])
 			or ! is_array($state['accounts'])
 			or ! is_array($state['ips'])
 			or count($state['accounts']) + count($state['ips']) > static::MAX_BUCKETS)

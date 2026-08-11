@@ -23,9 +23,9 @@ abstract class Service_BaseCrud
 	 * @param object|null $model 使用する操作対象Model
 	 * @return void
 	 */
-	public function __construct($model = null)
+	public function __construct()
 	{
-		$this->model = $model ?: $this->new_model();
+		$this->model = $this->new_model();
 	}
 
 	/**
@@ -126,7 +126,7 @@ abstract class Service_BaseCrud
 		if ($this->model->restore($id) !== 1)
 		{
 			throw new \RuntimeException(
-				'The archived record was not found.',
+				'The soft-deleted record was not found.',
 				static::NOT_FOUND_EXCEPTION_CODE
 			);
 		}
@@ -149,15 +149,14 @@ abstract class Service_BaseCrud
 	/**
 	 * 必須テキストを前後空白なしで返す。
 	 *
-	 * @param mixed $value      入力値
-	 * @param int   $max_length 許可する最大文字数
+	 * @param mixed $value 入力値
 	 * @return string
 	 */
-	protected function required_text($value, $max_length)
+	protected function required_text($value)
 	{
 		$value = is_string($value) ? trim($value) : '';
 
-		if ($value === '' or mb_strlen($value, 'UTF-8') > $max_length)
+		if ($value === '')
 		{
 			throw new \InvalidArgumentException('The text value is invalid.');
 		}
@@ -168,17 +167,16 @@ abstract class Service_BaseCrud
 	/**
 	 * 任意テキストを前後空白なしで返す。
 	 *
-	 * @param mixed $value      入力値
-	 * @param int   $max_length 許可する最大文字数
+	 * @param mixed $value 入力値
 	 * @return string|null
 	 */
-	protected function optional_text($value, $max_length)
+	protected function optional_text($value)
 	{
 		if ($value === null or $value === '')
 		{
 			return null;
 		}
 
-		return $this->required_text($value, $max_length);
+		return $this->required_text($value);
 	}
 }

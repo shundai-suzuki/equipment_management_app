@@ -45,10 +45,10 @@ class Controller_Page_Admin extends Controller_Page_Base
 	 *
 	 * @param string          $resource   操作対象のリソース名
 	 * @param string          $operation  実行する操作名
-	 * @param int|string|null $id         操作対象のID
+	 * @param int|string|null $target_id  操作対象のID
 	 * @return void
 	 */
-	public function post_mutate($resource, $operation, $id = null)
+	public function post_mutate($resource, $operation, $target_id = null)
 	{
 		$redirects = array(
 			'departments' => 'admin/departments',
@@ -62,10 +62,10 @@ class Controller_Page_Admin extends Controller_Page_Base
 			throw new \HttpNotFoundException();
 		}
 
-		$this->form_result(function () use ($resource, $operation, $id)
+		$this->form_result(function () use ($resource, $operation, $target_id)
 		{
 			$actor = $this->employee_id();
-			$id = $id === null ? null : $this->positive_integer($id, 'id');
+			$target_id = $target_id === null ? null : $this->positive_integer($target_id, 'id');
 
 			switch ($resource.'/'.$operation)
 			{
@@ -73,13 +73,13 @@ class Controller_Page_Admin extends Controller_Page_Base
 					(new Service_Table_Department())->create(\Input::post('name'));
 					break;
 				case 'departments/update':
-					(new Service_Table_Department())->update($id, \Input::post('name'));
+					(new Service_Table_Department())->update($target_id, \Input::post('name'));
 					break;
-				case 'departments/archive':
-					(new Service_Table_Department())->soft_delete($id);
+				case 'departments/soft_delete':
+					(new Service_Table_Department())->soft_delete($target_id);
 					break;
 				case 'departments/restore':
-					(new Service_Table_Department())->restore($id);
+					(new Service_Table_Department())->restore($target_id);
 					break;
 				case 'employees/create':
 					(new Service_Table_Employee())->create(
@@ -92,28 +92,28 @@ class Controller_Page_Admin extends Controller_Page_Base
 					break;
 				case 'employees/update':
 					(new Service_Table_Employee())->update(
-						$id,
+						$target_id,
 						\Input::post('employee_name'),
 						$this->post_integer('department_id'),
 						\Input::post('role')
 					);
 					break;
-				case 'employees/archive':
-					(new Service_Table_Employee())->soft_delete($id);
+				case 'employees/soft_delete':
+					(new Service_Table_Employee())->soft_delete($target_id);
 					break;
 				case 'employees/deactivate':
-					(new Service_Table_Employee())->deactivate($id);
+					(new Service_Table_Employee())->deactivate($target_id);
 					break;
 				case 'employees/activate':
-					(new Service_Table_Employee())->activate($id);
+					(new Service_Table_Employee())->activate($target_id);
 					break;
 				case 'employees/restore':
-					(new Service_Table_Employee())->restore($id);
+					(new Service_Table_Employee())->restore($target_id);
 					break;
 				case 'employees/password':
 					(new Service_Table_Employee())->reset_password(
 						$actor,
-						$id,
+						$target_id,
 						\Input::post('admin_password'),
 						\Input::post('password'),
 						\Input::post('password_confirmation')
@@ -123,10 +123,10 @@ class Controller_Page_Admin extends Controller_Page_Base
 					$this->save_equipment();
 					break;
 				case 'equipment/update':
-					$this->save_equipment($id);
+					$this->save_equipment($target_id);
 					break;
-				case 'equipment/archive':
-					(new Service_Table_Equipment())->soft_delete($id);
+				case 'equipment/soft_delete':
+					(new Service_Table_Equipment())->soft_delete($target_id);
 					break;
 				case 'loans/create':
 					(new Service_Table_Loan())->create(
@@ -137,7 +137,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 					);
 					break;
 				case 'loans/return':
-					(new Service_Table_Loan())->return_loan($actor, $id, \Input::post('note'));
+					(new Service_Table_Loan())->return_loan($actor, $target_id, \Input::post('note'));
 					break;
 				default:
 					throw new \HttpNotFoundException();
@@ -148,26 +148,26 @@ class Controller_Page_Admin extends Controller_Page_Base
 	/**
 	 * 備品の登録または更新入力をServiceへ渡す。
 	 *
-	 * @param int|null $id 更新対象の備品ID
+	 * @param int|null $target_id 更新対象の備品ID
 	 * @return void
 	 */
-	protected function save_equipment($id = null)
+	protected function save_equipment($target_id = null)
 	{
 		$service = new Service_Table_Equipment();
-		$values = array(
+		$post_values = array(
 			\Input::post('name'),
 			$this->post_integer('department_id'),
 			\Input::post('category'),
-			$this->post_integer('total_amount'),
+			\Input::post('total_amount'),
 			\Input::post('description'),
 		);
 
-		if ($id === null)
+		if ($target_id === null)
 		{
-			$service->create($values[0], $values[1], $values[2], $values[3], $values[4]);
+			$service->create($post_values[0], $post_values[1], $post_values[2], $post_values[3], $post_values[4]);
 			return;
 		}
 
-		$service->update($id, $values[0], $values[1], $values[2], $values[3], $values[4]);
+		$service->update($target_id, $post_values[0], $post_values[1], $post_values[2], $post_values[3], $post_values[4]);
 	}
 }

@@ -5,9 +5,6 @@
  */
 class Service_Table_Department extends Service_BaseCrud
 {
-	/** @var int 部署名の最大文字数 */
-	const MAX_NAME_LENGTH = 255;
-
 	/**
 	 * 有効な部署の選択肢を取得する。
 	 *
@@ -26,7 +23,7 @@ class Service_Table_Department extends Service_BaseCrud
 	 */
 	public function create($name)
 	{
-		$name = $this->required_text($name, static::MAX_NAME_LENGTH);
+		$name = $this->required_text($name);
 		$department = $this->model->read_by_name($name);
 
 		if ($department === null)
@@ -56,7 +53,7 @@ class Service_Table_Department extends Service_BaseCrud
 	public function update($id, $name)
 	{
 		$this->update_record($id, array(
-			'name' => $this->required_text($name, static::MAX_NAME_LENGTH),
+			'name' => $this->required_text($name),
 		));
 	}
 

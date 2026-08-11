@@ -5,13 +5,6 @@
  */
 class Service_Table_Equipment extends Service_BaseCrud
 {
-	/** @var int 備品名の最大文字数 */
-	const MAX_NAME_LENGTH = 255;
-	/** @var int カテゴリの最大文字数 */
-	const MAX_CATEGORY_LENGTH = 20;
-	/** @var int 説明の最大文字数 */
-	const MAX_DESCRIPTION_LENGTH = 255;
-
 	/** @var Model_Table_Department 部署を確認するModel */
 	protected $department_model;
 
@@ -34,7 +27,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 * @param mixed $name          備品名
 	 * @param int   $department_id 管理部署ID
 	 * @param mixed $category      カテゴリ
-	 * @param int   $total_amount  総数
+	 * @param mixed $total_amount  総数
 	 * @param mixed $description   説明
 	 * @return int
 	 */
@@ -93,7 +86,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 * @param mixed $name          備品名
 	 * @param int   $department_id 管理部署ID
 	 * @param mixed $category      カテゴリ
-	 * @param int   $total_amount  総数
+	 * @param mixed $total_amount  総数
 	 * @param mixed $description   説明
 	 * @return void
 	 */
@@ -119,7 +112,8 @@ class Service_Table_Equipment extends Service_BaseCrud
 			);
 		}
 
-		if ($total_amount < $this->model->count_active_loans($id))
+		if (is_numeric($values['total_amount'])
+			and (int) $values['total_amount'] < $this->model->count_active_loans($id))
 		{
 			throw new \InvalidArgumentException('The total amount is too small.');
 		}
@@ -140,7 +134,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 		if ($this->model->count_active_loans($id) > 0)
 		{
 			throw new \RuntimeException(
-				'Equipment with an active loan cannot be archived.',
+				'Equipment with an active loan cannot be soft-deleted.',
 				static::CONFLICT_EXCEPTION_CODE
 			);
 		}
@@ -164,7 +158,7 @@ class Service_Table_Equipment extends Service_BaseCrud
 	 * @param mixed $name          備品名
 	 * @param int   $department_id 管理部署ID
 	 * @param mixed $category      カテゴリ
-	 * @param int   $total_amount  総数
+	 * @param mixed $total_amount  総数
 	 * @param mixed $description   説明
 	 * @return array
 	 */
@@ -172,20 +166,12 @@ class Service_Table_Equipment extends Service_BaseCrud
 	{
 		$this->assert_positive_id($department_id);
 
-		if ( ! is_int($total_amount) or $total_amount < 1)
-		{
-			throw new \InvalidArgumentException('The total amount is invalid.');
-		}
-
 		return array(
-			'name' => $this->required_text($name, static::MAX_NAME_LENGTH),
+			'name' => $this->required_text($name),
 			'department_id' => $department_id,
-			'category' => $this->required_text($category, static::MAX_CATEGORY_LENGTH),
-			'total_amount' => $total_amount,
-			'description' => $this->optional_text(
-				$description,
-				static::MAX_DESCRIPTION_LENGTH
-			),
+			'category' => is_string($category) ? $category : '',
+			'total_amount' => is_scalar($total_amount) ? $total_amount : 0,
+			'description' => $this->optional_text($description),
 		);
 	}
 

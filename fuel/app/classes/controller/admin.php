@@ -3,22 +3,15 @@
 /**
  * 管理者専用JSON APIの共通コントローラ。
  */
-abstract class Controller_Admin extends Controller_Base
+abstract class Controller_Admin extends Controller_Crud
 {
 	/**
 	 * ADMIN権限を持たない認証済み社員を拒否する。
 	 *
 	 * @return void
 	 */
-	public function before()
+	protected function authorize()
 	{
-		parent::before();
-
-		if ($this->before_response instanceof \Response)
-		{
-			return;
-		}
-
 		$employee = $this->current_employee();
 
 		if ($employee === null or $employee['role'] !== 'ADMIN')

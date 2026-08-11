@@ -25,7 +25,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_employees()
+	public function get_employees()
 	{
 		$this->render_resource('employees', '社員管理');
 	}
@@ -35,7 +35,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_departments()
+	public function get_departments()
 	{
 		$this->render_resource('departments', '部署管理');
 	}
@@ -45,10 +45,10 @@ class Controller_Page_Admin extends Controller_Page_Base
 	 *
 	 * @param string          $resource   操作対象のリソース名
 	 * @param string          $operation  実行する操作名
-	 * @param int|string|null $id         操作対象のID
+	 * @param int|string|null $target_id  操作対象のID
 	 * @return void
 	 */
-	public function action_mutate($resource, $operation, $id = null)
+	public function post_mutate($resource, $operation, $target_id = null)
 	{
 		$redirects = array(
 			'departments' => 'admin/departments',
@@ -62,28 +62,27 @@ class Controller_Page_Admin extends Controller_Page_Base
 			throw new \HttpNotFoundException();
 		}
 
-		$this->form_result(function () use ($resource, $operation, $id)
+		$this->form_result(function () use ($resource, $operation, $target_id)
 		{
 			$actor = $this->employee_id();
-			$id = $id === null ? null : $this->positive_integer($id, 'id');
+			$target_id = $target_id === null ? null : $this->positive_integer($target_id, 'id');
 
 			switch ($resource.'/'.$operation)
 			{
 				case 'departments/create':
-					(new Service_Table_Department())->create_for_admin($actor, \Input::post('name'));
+					(new Service_Table_Department())->create(\Input::post('name'));
 					break;
 				case 'departments/update':
-					(new Service_Table_Department())->update_for_admin($actor, $id, \Input::post('name'));
+					(new Service_Table_Department())->update($target_id, \Input::post('name'));
 					break;
-				case 'departments/archive':
-					(new Service_Table_Department())->soft_delete_for_admin($actor, $id);
+				case 'departments/soft_delete':
+					(new Service_Table_Department())->soft_delete($target_id);
 					break;
 				case 'departments/restore':
-					(new Service_Table_Department())->restore_for_admin($actor, $id);
+					(new Service_Table_Department())->restore($target_id);
 					break;
 				case 'employees/create':
-					(new Service_Table_Employee())->create_for_admin(
-						$actor,
+					(new Service_Table_Employee())->create(
 						\Input::post('employee_name'),
 						$this->post_integer('department_id'),
 						\Input::post('role'),
@@ -92,46 +91,45 @@ class Controller_Page_Admin extends Controller_Page_Base
 					);
 					break;
 				case 'employees/update':
-					(new Service_Table_Employee())->update_for_admin(
-						$actor,
-						$id,
+					(new Service_Table_Employee())->update(
+						$target_id,
 						\Input::post('employee_name'),
 						$this->post_integer('department_id'),
 						\Input::post('role')
 					);
 					break;
-				case 'employees/archive':
-					(new Service_Table_Employee())->soft_delete_for_admin($actor, $id);
+				case 'employees/soft_delete':
+					(new Service_Table_Employee())->soft_delete($target_id);
 					break;
 				case 'employees/deactivate':
-					(new Service_Table_Employee())->deactivate_for_admin($actor, $id);
+					(new Service_Table_Employee())->deactivate($target_id);
 					break;
 				case 'employees/activate':
-					(new Service_Table_Employee())->activate_for_admin($actor, $id);
+					(new Service_Table_Employee())->activate($target_id);
 					break;
 				case 'employees/restore':
-					(new Service_Table_Employee())->restore_for_admin($actor, $id);
+					(new Service_Table_Employee())->restore($target_id);
 					break;
 				case 'employees/password':
-					(new Service_Table_Employee())->reset_password_for_admin(
+					(new Service_Table_Employee())->reset_password(
 						$actor,
-						$id,
+						$target_id,
 						\Input::post('admin_password'),
 						\Input::post('password'),
 						\Input::post('password_confirmation')
 					);
 					break;
 				case 'equipment/create':
-					$this->save_equipment($actor);
+					$this->save_equipment();
 					break;
 				case 'equipment/update':
-					$this->save_equipment($actor, $id);
+					$this->save_equipment($target_id);
 					break;
-				case 'equipment/archive':
-					(new Service_Table_Equipment())->soft_delete_for_admin($actor, $id);
+				case 'equipment/soft_delete':
+					(new Service_Table_Equipment())->soft_delete($target_id);
 					break;
 				case 'loans/create':
-					(new Service_Table_Loan())->create_for_admin(
+					(new Service_Table_Loan())->create(
 						$actor,
 						$this->post_integer('employee_id'),
 						$this->post_integer('equipment_id'),
@@ -139,7 +137,7 @@ class Controller_Page_Admin extends Controller_Page_Base
 					);
 					break;
 				case 'loans/return':
-					(new Service_Table_Loan())->return_for_admin($actor, $id, \Input::post('note'));
+					(new Service_Table_Loan())->return_loan($actor, $target_id, \Input::post('note'));
 					break;
 				default:
 					throw new \HttpNotFoundException();
@@ -150,27 +148,26 @@ class Controller_Page_Admin extends Controller_Page_Base
 	/**
 	 * 備品の登録または更新入力をServiceへ渡す。
 	 *
-	 * @param int      $actor  操作する管理者の社員ID
-	 * @param int|null $id     更新対象の備品ID
+	 * @param int|null $target_id 更新対象の備品ID
 	 * @return void
 	 */
-	protected function save_equipment($actor, $id = null)
+	protected function save_equipment($target_id = null)
 	{
 		$service = new Service_Table_Equipment();
-		$values = array(
+		$post_values = array(
 			\Input::post('name'),
 			$this->post_integer('department_id'),
 			\Input::post('category'),
-			$this->post_integer('total_amount'),
+			\Input::post('total_amount'),
 			\Input::post('description'),
 		);
 
-		if ($id === null)
+		if ($target_id === null)
 		{
-			$service->create_for_admin($actor, $values[0], $values[1], $values[2], $values[3], $values[4]);
+			$service->create($post_values[0], $post_values[1], $post_values[2], $post_values[3], $post_values[4]);
 			return;
 		}
 
-		$service->update_for_admin($actor, $id, $values[0], $values[1], $values[2], $values[3], $values[4]);
+		$service->update($target_id, $post_values[0], $post_values[1], $post_values[2], $post_values[3], $post_values[4]);
 	}
 }

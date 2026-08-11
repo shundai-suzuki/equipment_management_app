@@ -7,6 +7,7 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 {
 	/** @var string 認証済み社員IDを保存するSessionキー */
 	const SESSION_EMPLOYEE_ID = 'employee_auth.employee_id';
+	
 	/** @var string 認証情報フィンガープリントを保存するSessionキー */
 	const SESSION_CREDENTIAL_FINGERPRINT = 'employee_auth.credential_fingerprint';
 
@@ -33,9 +34,7 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	protected function perform_check()
 	{
 		$employee_id = \Session::get(static::SESSION_EMPLOYEE_ID);
-		$credential_fingerprint = \Session::get(
-			static::SESSION_CREDENTIAL_FINGERPRINT
-		);
+		$credential_fingerprint = \Session::get(static::SESSION_CREDENTIAL_FINGERPRINT);
 
 		if ($employee_id === null and $credential_fingerprint === null)
 		{
@@ -44,10 +43,7 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 		}
 
 		$user = $this->get_service()
-			->validate_session(
-				$employee_id,
-				$credential_fingerprint
-			);
+			->validate_session($employee_id, $credential_fingerprint);
 
 		if ($user === false)
 		{
@@ -69,10 +65,7 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	public function validate_user($employee_number = '', $password = '')
 	{
 		$authentication = $this->get_service()
-			->authenticate(
-				$employee_number,
-				$password
-			);
+			->authenticate($employee_number, $password);
 
 		if ($authentication === false)
 		{
@@ -99,7 +92,6 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 		{
 			$this->user = null;
 			$this->clear_session_values();
-
 			return $this->check();
 		}
 
@@ -207,10 +199,7 @@ class Auth_Login_Employee extends \Auth_Login_Driver
 	{
 		if ($this->service === null)
 		{
-			$this->service = new Service_Auth(
-				null,
-				$this->get_config('credential_fingerprint_key')
-			);
+			$this->service = new Service_Auth();
 		}
 
 		return $this->service;

@@ -1,15 +1,6 @@
-<?php
-
-$request_id = bin2hex(random_bytes(16));
-
-header('Content-Type: application/json; charset=utf-8');
-
-echo \Format::forge(
-	array(
-		'error' => array(
-			'code' => 'BAD_REQUEST',
-			'message' => 'リクエスト形式が正しくありません。',
-		),
-		'request_id' => $request_id,
-	)
-)->to_json();
+<?php echo \View::forge('error', array(
+	'status' => 400,
+	'title' => 'リクエスト形式が正しくありません',
+	'message' => '入力内容を確認して、もう一度お試しください。',
+	'request_id' => '',
+)); ?>

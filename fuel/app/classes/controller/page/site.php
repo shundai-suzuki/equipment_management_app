@@ -13,7 +13,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_login()
+	public function get_login()
 	{
 		if (\Auth::check())
 		{
@@ -28,7 +28,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_login_submit()
+	public function post_login_submit()
 	{
 		$employee_number = \Input::post('employee_number', '');
 		$password = \Input::post('password', '');
@@ -71,7 +71,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_logout()
+	public function post_logout()
 	{
 		\Auth::logout();
 
@@ -83,7 +83,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_password()
+	public function get_password()
 	{
 		$this->render_page('password', 'パスワード変更', 'password', '');
 	}
@@ -93,7 +93,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_password_submit()
+	public function post_password_submit()
 	{
 		$this->form_result(function ()
 		{
@@ -119,9 +119,29 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_dashboard()
+	public function get_dashboard()
 	{
-		$this->render_page('dashboard', 'ダッシュボード', 'dashboard', 'app/dashboard.js');
+		$search_result = (new Service_Table_Loan())->search_for_actor(
+			$this->employee_id(),	1, '', array('active_only' => true)
+		);
+
+		$loans = array_map(
+			function (array $loan)
+			{
+				return array(
+					'id' => $loan['id'],
+					'equipment_name' => $loan['equipment_name'],
+					'employee_name' => $loan['employee_name'],
+					'due_date' => $loan['due_date'],
+					'loan_state' => $loan['loan_state'],
+				);
+			},
+			array_slice($search_result['rows'], 0, 6)
+		);
+
+		$this->render_page(
+			'dashboard', 'ダッシュボード', 'dashboard', '', array('loans' => $loans)
+		);
 	}
 
 	/**
@@ -129,7 +149,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_equipment()
+	public function get_equipment()
 	{
 		$this->render_resource('equipment', '備品一覧');
 	}
@@ -139,7 +159,7 @@ class Controller_Page_Site extends Controller_Page_Base
 	 *
 	 * @return void
 	 */
-	public function action_loans()
+	public function get_loans()
 	{
 		$this->render_resource('loans', '貸出一覧');
 	}

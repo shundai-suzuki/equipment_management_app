@@ -8,7 +8,7 @@ class Model_Table_Employee extends Model_BaseCrud
 	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'employees';
 
-	/** @var array 社員の新規行で受け付ける登録値 */
+	/** @var array 社員の新規行で指定する登録列 */
 	protected static $create_columns = array(
 		'employee_name',
 		'department_id',
@@ -29,7 +29,7 @@ class Model_Table_Employee extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/** @var array 通常の社員更新で受け付ける列 */
+	/** @var array 通常の社員更新で指定する列 */
 	protected static $update_columns = array(
 		'employee_name',
 		'department_id',
@@ -52,23 +52,18 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 認証に必要な社員項目だけを取得する。 Service_Authが共通の認証結果を適用する前にパスワードを確認できるよう、 無効な行と論理削除済み行も返す。
 	 *
-	 * @param  int                      $id 対象レコードのID
+	 * @param  int                      $employee_id 対象レコードのID
 	 * @param  Database_Connection|null $db 使用するDB接続
 	 * @return array|null
 	 */
-	public function read_for_authentication($id, $db = null)
+	public function read_for_authentication($employee_id, $db = null)
 	{
 		$db = $this->connection($db);
 		$read_result = \DB::select(
-			'id',
-			'employee_name',
-			'role',
-			'password_hash',
-			'is_active',
-			'deleted_at'
+			'id',	'employee_name', 'role', 'password_hash',	'is_active', 'deleted_at'
 		)
 			->from(static::$table_name)
-			->where('id', '=', $id)
+			->where('id', '=', $employee_id)
 			->execute($db);
 
 		if (count($read_result) === 0)
@@ -89,67 +84,60 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 社員が有効かつ未削除か確認する。
 	 *
-	 * @param  int                      $id 対象レコードのID
+	 * @param  int                      $employee_id 対象レコードのID
 	 * @param  Database_Connection|null $db 使用するDB接続
 	 * @return bool
 	 */
-	public function is_active($id, $db = null)
+	public function is_active($employee_id, $db = null)
 	{
-		return $this->has_active_role($id, null, $db);
+		return $this->has_active_role($employee_id, null, $db);
 	}
 
 	/**
 	 * 社員が有効な管理者か確認する。
 	 *
-	 * @param  int                      $id 対象レコードのID
+	 * @param  int                      $employee_id 対象レコードのID
 	 * @param  Database_Connection|null $db 使用するDB接続
 	 * @return bool
 	 */
-	public function is_active_admin($id, $db = null)
+	public function is_active_admin($employee_id, $db = null)
 	{
-		return $this->has_active_role($id, 'ADMIN', $db);
+		return $this->has_active_role($employee_id, 'ADMIN', $db);
 	}
 
 	/**
-	 * 有効な管理者をすべてロックし、その件数を返す。
+	 * 有効な管理者の件数を返す。
 	 *
-	 * @param  Database_Connection $db 使用するDB接続
 	 * @return int
 	 */
-	public function lock_active_admin_count(\Database_Connection $db)
+	public function count_active_admins()
 	{
-		$id = $this->quoted_column('id', $db);
-		$role = $this->quoted_column('role', $db);
-		$is_active = $this->quoted_column('is_active', $db);
-		$deleted_at = $this->quoted_column('deleted_at', $db);
-		$read_admin_rows = \DB::query(
-			'SELECT '.$id.' FROM '.$this->quoted_table($db)
-			.' WHERE '.$role.' = :role'
-			.' AND '.$is_active.' = 1'
-			.' AND '.$deleted_at.' IS NULL FOR UPDATE',
-			\DB::SELECT
+		return (int) \DB::select(
+			array(\DB::expr('COUNT(*)'), 'admin_count')
 		)
-			->param('role', 'ADMIN')
-			->execute($db);
-
-		return count($read_admin_rows);
+			->from(static::$table_name)
+			->where('role', '=', 'ADMIN')
+			->where('is_active', '=', 1)
+			->where('deleted_at', 'IS', null)
+			->execute($this->db)
+			->get('admin_count', 0);
 	}
 
 	/**
 	 * 社員に貸出履歴があるか確認する。
 	 *
-	 * @param  int                      $id 対象レコードのID
+	 * @param  int                      $employee_id 対象レコードのID
 	 * @param  Database_Connection|null $db 使用するDB接続
 	 * @return bool
 	 */
-	public function has_loan_history($id, $db = null)
+	public function has_loan_history($employee_id, $db = null)
 	{
 		$db = $this->connection($db);
 		$read_result = \DB::select(
 			array(\DB::expr('1'), 'loan_exists')
 		)
 			->from('loans')
-			->where('employee_id', '=', $id)
+			->where('employee_id', '=', $employee_id)
 			->limit(1)
 			->execute($db);
 
@@ -159,18 +147,18 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 社員が現在未返却の備品を持っているか確認する。
 	 *
-	 * @param  int                      $id 対象レコードのID
+	 * @param  int                      $employee_id 対象レコードのID
 	 * @param  Database_Connection|null $db 使用するDB接続
 	 * @return bool
 	 */
-	public function has_active_loans($id, $db = null)
+	public function has_active_loans($employee_id, $db = null)
 	{
 		$db = $this->connection($db);
 		$read_result = \DB::select(
 			array(\DB::expr('1'), 'active_loan_exists')
 		)
 			->from('loans')
-			->where('employee_id', '=', $id)
+			->where('employee_id', '=', $employee_id)
 			->where('returned_at', 'IS', null)
 			->limit(1)
 			->execute($db);
@@ -181,11 +169,11 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 社員の論理削除とアカウント無効化を不可分に実行する。
 	 *
-	 * @param  int                      $id 対象レコードのID
+	 * @param  int                      $employee_id 対象レコードのID
 	 * @param  Database_Connection|null $db 使用するDB接続
 	 * @return int
 	 */
-	public function soft_delete($id, $db = null)
+	public function soft_delete($employee_id, $db = null)
 	{
 		$db = $this->connection($db);
 
@@ -195,7 +183,7 @@ class Model_Table_Employee extends Model_BaseCrud
 				'deleted_at' => \DB::expr('CURRENT_TIMESTAMP'),
 				'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
 			))
-			->where('id', '=', $id)
+			->where('id', '=', $employee_id)
 			->where('deleted_at', 'IS', null)
 			->execute($db);
 	}
@@ -203,12 +191,12 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 一時的なアカウント利用状態を変更する。
 	 * 
-	 * @param  int                      $id        対象レコードのID
+	 * @param  int                      $employee_id        対象レコードのID
 	 * @param  int                      $is_active 社員の有効状態
 	 * @param  Database_Connection|null $db        使用するDB接続
 	 * @return int
 	 */
-	public function update_active_state($id, $is_active, $db = null)
+	public function update_active_state($employee_id, $is_active, $db = null)
 	{
 		$db = $this->connection($db);
 
@@ -217,7 +205,7 @@ class Model_Table_Employee extends Model_BaseCrud
 				'is_active' => $is_active,
 				'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
 			))
-			->where('id', '=', $id)
+			->where('id', '=', $employee_id)
 			->where('is_active', '!=', $is_active)
 			->where('deleted_at', 'IS', null)
 			->execute($db);
@@ -226,12 +214,12 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 未削除社員1件のパスワードハッシュを置き換える。
 	 *
-	 * @param  int                      $id            対象レコードのID
+	 * @param  int                      $employee_id            対象レコードのID
 	 * @param  string                   $password_hash パスワードハッシュ
 	 * @param  Database_Connection|null $db            使用するDB接続
 	 * @return int
 	 */
-	public function update_password_hash($id, $password_hash, $db = null)
+	public function update_password_hash($employee_id, $password_hash, $db = null)
 	{
 		$db = $this->connection($db);
 
@@ -240,7 +228,7 @@ class Model_Table_Employee extends Model_BaseCrud
 				'password_hash' => $password_hash,
 				'updated_at' => \DB::expr('CURRENT_TIMESTAMP'),
 			))
-			->where('id', '=', $id)
+			->where('id', '=', $employee_id)
 			->where('deleted_at', 'IS', null)
 			->execute($db);
 	}
@@ -248,19 +236,19 @@ class Model_Table_Employee extends Model_BaseCrud
 	/**
 	 * 共通の有効条件と任意の権限条件を適用する。
 	 *
-	 * @param  int                      $id   対象レコードのID
+	 * @param  int                      $employee_id   対象レコードのID
 	 * @param  string|null              $role 社員権限
 	 * @param  Database_Connection|null $db   使用するDB接続
 	 * @return bool
 	 */
-	protected function has_active_role($id, $role, $db)
+	protected function has_active_role($employee_id, $role, $db)
 	{
 		$db = $this->connection($db);
 		$read_query = \DB::select(
 			array(\DB::expr('1'), 'employee_exists')
 		)
 			->from(static::$table_name)
-			->where('id', '=', $id)
+			->where('id', '=', $employee_id)
 			->where('is_active', '=', 1)
 			->where('deleted_at', 'IS', null);
 

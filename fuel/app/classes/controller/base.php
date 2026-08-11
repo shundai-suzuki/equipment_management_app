@@ -5,16 +5,11 @@
  */
 abstract class Controller_Base extends Controller_Rest
 {
-	/** @var string JSONレスポンスのContent-Type */
-	const JSON_CONTENT_TYPE = 'application/json; charset=utf-8';
 	/** @var int 許可する整数の最大値 */
 	const MAX_INTEGER = 2147483647;
 
-	/** @var string AJAX専用ヘッダに依存せず、常にJSONを返す */
-	protected $rest_format = 'json';
-
-	/** @var bool trueの場合は認証必須、falseの場合は未ログインでも実行可能 */
-	protected $authentication_required = true;
+	/** @var string JSON形式を採用 */
+	protected $format = 'json';
 
 	/** @var string レスポンスとサーバ側ログで共有する識別子 */
 	protected $request_id;
@@ -33,7 +28,7 @@ abstract class Controller_Base extends Controller_Rest
 
 		$this->request_id = bin2hex(random_bytes(16));
 
-		if ($this->authentication_required and ! \Auth::check())
+		if ( ! \Auth::check())
 		{
 			$this->before_response = $this->json_error(
 				'AUTHENTICATION_REQUIRED',
@@ -74,12 +69,11 @@ abstract class Controller_Base extends Controller_Rest
 	/**
 	 * 任意の一覧メタデータを含む成功レスポンスを生成する。
 	 *
-	 * @param  array      $data   Viewへ渡すデータ
-	 * @param  int        $status HTTPステータスコード
-	 * @param  array|null $meta   レスポンスの付加情報
+	 * @param array      $data Viewへ渡すデータ
+	 * @param array|null $meta レスポンスの付加情報
 	 * @return Response
 	 */
-	protected function json_success(array $data, $status = 200, $meta = null)
+	protected function json_success(array $data, $meta = null)
 	{
 		$body = array('data' => $data);
 
@@ -90,31 +84,25 @@ abstract class Controller_Base extends Controller_Rest
 
 		$body['request_id'] = $this->request_id;
 
-		return $this->json_response($body, $status);
+		return $this->response($body, 200);
 	}
 
 	/**
-	 * 任意の項目別メッセージを含むエラーレスポンスを生成する。
+	 * エラーレスポンスを生成する。
 	 *
-	 * @param  string     $code    エラーコード
-	 * @param  string     $message エラーメッセージ
-	 * @param  int        $status  HTTPステータスコード
-	 * @param  array|null $fields  入力項目ごとのエラー
+	 * @param string $code    エラーコード
+	 * @param string $message エラーメッセージ
+	 * @param int    $status  HTTPステータスコード
 	 * @return Response
 	 */
-	protected function json_error($code, $message, $status, $fields = null)
+	protected function json_error($code, $message, $status)
 	{
 		$error = array(
 			'code' => $code,
 			'message' => $message,
 		);
 
-		if ($fields !== null)
-		{
-			$error['fields'] = $fields;
-		}
-
-		return $this->json_response(
+		return $this->response(
 			array(
 				'error' => $error,
 				'request_id' => $this->request_id,
@@ -124,7 +112,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * コントローラで使用を許可する認証済み社員項目を返す。
+	 * コントローラで使用を許可する認証済みの社員ID, 権限を返す。
 	 *
 	 * @return array|null
 	 */
@@ -138,19 +126,10 @@ abstract class Controller_Base extends Controller_Rest
 		}
 
 		$id = $driver->get('id');
-		$employee_name = $driver->get('employee_name');
 		$role = $driver->get('role');
-
-		if ( ! is_int($id)
-			or ! is_string($employee_name)
-			or ! in_array($role, array('EMPLOYEE', 'ADMIN'), true))
-		{
-			return null;
-		}
 
 		return array(
 			'id' => $id,
-			'employee_name' => $employee_name,
 			'role' => $role,
 		);
 	}
@@ -176,30 +155,21 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * 必須のPOST整数値を取得して変換する。
-	 *
-	 * @param  string $name    対象の名前
-	 * @param  int    $minimum 許可する最小値
-	 * @return int
-	 */
-	protected function post_integer($name, $minimum = 1)
-	{
-		return $this->integer_value(\Input::post($name), $name, $minimum);
-	}
-
-	/**
-	 * 任意の正のクエリ整数値を取得する。
+	 * GETした正の整数値を取得する。
 	 *
 	 * @param  string   $name 対象の名前
 	 * @return int|null
 	 */
 	protected function optional_query_integer($name)
 	{
-		$value = \Input::get($name);
+		$query_value = \Input::get($name);
 
-		return $value === null or $value === ''
-			? null
-			: $this->integer_value($value, $name);
+		if ($query_value === null or $query_value === '')
+    {
+			return null;
+    }
+
+    return $this->integer_value($query_value, $name);
 	}
 
 	/**
@@ -235,7 +205,7 @@ abstract class Controller_Base extends Controller_Rest
 	}
 
 	/**
-	 * クエリ文字列のtrueとfalseを真偽値へ変換する。
+	 * クエリ文字列のtrueとfalseをbooleanへ変換する。
 	 *
 	 * @param  mixed  $value 検証する値
 	 * @param  string $name  対象の名前
@@ -243,17 +213,14 @@ abstract class Controller_Base extends Controller_Rest
 	 */
 	protected function boolean_value($value, $name)
 	{
-		if ($value === true or $value === 'true')
+		if ($value !== 'true' and $value !== 'false')
 		{
-			return true;
+			throw new \InvalidArgumentException(
+				$name.' must be true or false.'
+			);
 		}
 
-		if ($value === false or $value === 'false')
-		{
-			return false;
-		}
-
-		throw new \InvalidArgumentException($name.' must be true or false.');
+		return $value === 'true';
 	}
 
 	/**
@@ -275,19 +242,6 @@ abstract class Controller_Base extends Controller_Rest
 				'入力内容を確認してください。',
 				422
 			);
-		}
-		catch (\Database_Exception $exception)
-		{
-			if ((int) $exception->getCode() === 1062)
-			{
-				return $this->json_error(
-					'CONFLICT',
-					'同じ内容のデータが既に存在します。',
-					409
-				);
-			}
-
-			return $this->internal_error($exception);
 		}
 		catch (\RuntimeException $exception)
 		{
@@ -344,7 +298,6 @@ abstract class Controller_Base extends Controller_Rest
 		}
 		catch (\Throwable $logging_exception)
 		{
-			// ログ出力に失敗しても、クライアントへのレスポンスを共通形式に保つ。
 		}
 
 		return $this->json_error(
@@ -354,26 +307,4 @@ abstract class Controller_Base extends Controller_Rest
 		);
 	}
 
-	/**
-	 * 共通本文を符号化し、JSONのContent-Typeを付与する。
-	 *
-	 * @param  array $body   レスポンス本文
-	 * @param  int   $status HTTPステータスコード
-	 * @return Response
-	 */
-	protected function json_response(array $body, $status)
-	{
-		$json = \Format::forge($body)->to_json();
-
-		if ( ! is_string($json))
-		{
-			throw new \RuntimeException('The JSON response could not be encoded.');
-		}
-
-		return \Response::forge(
-			$json,
-			$status,
-			array('Content-Type' => static::JSON_CONTENT_TYPE)
-		);
-	}
 }

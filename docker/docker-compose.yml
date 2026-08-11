@@ -12,9 +12,6 @@ services:
       - ../:/var/www/html/my_fuel_project
     networks:
       - fuelphp-network
-    environment:
-      FUEL_AUTH_FINGERPRINT_KEY: ${FUEL_AUTH_FINGERPRINT_KEY}
-      FUEL_CSRF_TOKEN_SALT: ${FUEL_CSRF_TOKEN_SALT}
 
   db:
     build:

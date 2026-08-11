@@ -8,19 +8,19 @@ abstract class Model_BaseCrud extends \Model
 	/** @var string 子モデルが宣言する物理テーブル名 */
 	protected static $table_name = '';
 
-	/** @var array 子モデルが行を登録するときに受け付ける列 */
+	/** @var array 子モデルが行をcreateするときに指定する列 */
 	protected static $create_columns = array();
 
-	/** @var array 共通読取処理が返す列 */
+	/** @var array read処理が返す列 */
 	protected static $read_columns = array();
 
-	/** @var array 共通更新処理が受け付ける列 */
+	/** @var array 子モデルが行をupdateするときに指定する列 */
 	protected static $update_columns = array();
 
 	/** @var array キーワード検索の対象となるテキスト列 */
 	protected static $search_columns = array();
 
-	/** @var array 固定のデータベース列に対応付けるリクエスト検索条件名 */
+	/** @var array データベース列に対応付けるリクエスト検索条件名 */
 	protected static $filter_columns = array();
 
 	/** @var array データベース文字列から整数へ変換する読取列 */
@@ -43,7 +43,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
     /**
-     * 許可された値を登録し、DBが生成したIDを返す。
+     * 指定された値を登録し、DBが生成したIDを返す。
      *
      * @param  array                    $create_values 登録する値
      * @param  Database_Connection|null $db            使用するDB接続
@@ -52,7 +52,6 @@ abstract class Model_BaseCrud extends \Model
     public function create(array $create_values, $db = null)
     {
         $db = $this->connection($db);
-        $this->assert_identifier(static::$table_name);
         $this->assert_values($create_values, static::$create_columns, 'create');
         $create_values['created_at'] = \DB::expr('CURRENT_TIMESTAMP');
         $create_values['updated_at'] = \DB::expr('CURRENT_TIMESTAMP');
@@ -60,11 +59,6 @@ abstract class Model_BaseCrud extends \Model
         $result = \DB::insert(static::$table_name)
             ->set($create_values)
             ->execute($db);
-
-        if ( ! isset($result[0], $result[1]) or (int) $result[0] < 1 or (int) $result[1] !== 1)
-        {
-            throw new \RuntimeException('Failed to create the record.');
-        }
 
         return (int) $result[0];
     }
@@ -80,8 +74,6 @@ abstract class Model_BaseCrud extends \Model
 	public function read($id, $include_soft_deleted = false, $db = null)
 	{
 		$db = $this->connection($db);
-		$this->assert_crud_configuration();
-
 		$read_query = \DB::select_array(static::$read_columns)
 			->from(static::$table_name)
 			->where('id', '=', $id);
@@ -108,7 +100,6 @@ abstract class Model_BaseCrud extends \Model
 	 */
 	public function search($page, $per_page, $keyword = '', array $filters = array())
 	{
-		$this->assert_crud_configuration();
 		$search_offset = ($page - 1) * $per_page;
 
 		$search_count_query = \DB::select(
@@ -147,12 +138,7 @@ abstract class Model_BaseCrud extends \Model
 	public function update($id, array $update_values, $db = null)
 	{
 		$db = $this->connection($db);
-		$this->assert_crud_configuration();
-		$this->assert_values(
-			$update_values,
-			static::$update_columns,
-			'update'
-		);
+		$this->assert_values($update_values, static::$update_columns, 'update');
 		$update_values['updated_at'] = \DB::expr('CURRENT_TIMESTAMP');
 
 		return (int) \DB::update(static::$table_name)
@@ -172,8 +158,6 @@ abstract class Model_BaseCrud extends \Model
 	public function soft_delete($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$this->assert_crud_configuration();
-
 		return (int) \DB::update(static::$table_name)
 			->set(array(
 				'deleted_at' => \DB::expr('CURRENT_TIMESTAMP'),
@@ -194,8 +178,6 @@ abstract class Model_BaseCrud extends \Model
 	public function restore($id, $db = null)
 	{
 		$db = $this->connection($db);
-		$this->assert_crud_configuration();
-
 		return (int) \DB::update(static::$table_name)
 			->set(array(
 				'deleted_at' => null,
@@ -204,41 +186,6 @@ abstract class Model_BaseCrud extends \Model
 			->where('id', '=', $id)
 			->where('deleted_at', 'IS NOT', null)
 			->execute($db);
-	}
-
-	/**
-	 * テーブル固有の業務更新前に1行取得する。
-	 *
-	 * @param  int                 $id                   対象レコードのID
-	 * @param  bool                $include_soft_deleted 論理削除済みデータを含めるか
-	 * @param  Database_Connection $db                   使用するDB接続
-	 * @return array|null
-	 */
-	public function read_for_update($id, $include_soft_deleted, \Database_Connection $db)
-	{
-		$this->assert_crud_configuration();
-		$columns = array();
-
-		foreach (static::$read_columns as $column)
-		{
-			$columns[] = $this->quoted_column($column, $db);
-		}
-
-		$sql = 'SELECT '.implode(', ', $columns)
-			.' FROM '.$this->quoted_table($db)
-			.' WHERE '.$this->quoted_column('id', $db).' = :id';
-
-		if ( ! $include_soft_deleted)
-		{
-			$sql .= ' AND '.$this->quoted_column('deleted_at', $db).' IS NULL';
-		}
-
-		$read_rows = \DB::query($sql.' FOR UPDATE', \DB::SELECT)
-			->param('id', $id)
-			->execute($db)
-			->as_array();
-
-		return empty($read_rows) ? null : $this->format_row($read_rows[0]);
 	}
 
 	/**
@@ -282,7 +229,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * 1.有効行、2.キーワードによるID・名称検索、3.完全一致（部署、権限、カテゴリ）を適用する。
+	 * 1.有効行、2.キーワードによる名称検索、3.完全一致（部署、権限、カテゴリ）を適用する。
 	 *
 	 * @param  Database_Query_Builder_Where $search_query 検索クエリ
 	 * @param  string                       $keyword      検索キーワード
@@ -293,45 +240,21 @@ abstract class Model_BaseCrud extends \Model
 	{
 		$search_query->where('deleted_at', 'IS', null);
 
-		if ($keyword !== '')
+		if ($keyword !== '' and isset(static::$search_columns[0]))
 		{
-			$search_query->and_where_open();
-			$has_condition = false;
-
-			if (preg_match('/\A[1-9][0-9]*\z/', $keyword) === 1)
-			{
-				$search_query->where('id', '=', (int) $keyword);
-				$has_condition = true;
-			}
-
-			foreach (static::$search_columns as $column)
-			{
-				$this->assert_identifier($column);
-
-				if ($has_condition)
-				{
-					$search_query->or_where($column, 'LIKE', '%'.$keyword.'%');
-				}
-				else
-				{
-					$search_query->where($column, 'LIKE', '%'.$keyword.'%');
-					$has_condition = true;
-				}
-			}
-
-			$search_query->and_where_close();
+			$search_query->where(static::$search_columns[0], 'LIKE', '%'.$keyword.'%');
 		}
 
 		foreach ($filters as $name => $value)
 		{
 			if ( ! array_key_exists($name, static::$filter_columns))
 			{
-				throw new \InvalidArgumentException('The search filter is not allowed.');
+				throw new \InvalidArgumentException(
+					'The search filter is not allowed.'
+				);
 			}
 
-			$column = static::$filter_columns[$name];
-			$this->assert_identifier($column);
-			$search_query->where($column, '=', $value);
+			$search_query->where(static::$filter_columns[$name], '=', $value);
 		}
 	}
 
@@ -371,40 +294,15 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * 子モデルが宣言した固定CRUDメタデータを検証する。
+	 * 登録または更新値が子Modelで定義した列と完全一致することを確認する。
 	 *
+	 * @param array  $values          登録または更新する値
+	 * @param array  $allowed_columns 指定できる列
+	 * @param string $operation       実行する操作名
 	 * @return void
 	 */
-	protected function assert_crud_configuration()
+	protected function assert_values(array $values, array $allowed_columns, $operation)
 	{
-		$this->assert_identifier(static::$table_name);
-
-		if (empty(static::$read_columns))
-		{
-			throw new \LogicException('The Model read columns are not configured.');
-		}
-
-		foreach (static::$read_columns as $column)
-		{
-			$this->assert_identifier($column);
-		}
-	}
-
-	/**
-	 * CRUD処理で宣言された列だけが含まれることを必須とする。
-	 *
-	 * @param  array  $values          登録または更新する値
-	 * @param  array  $allowed_columns 許可する列名
-	 * @param  string $operation       実行する操作名
-	 * @return void
-	 */
-	protected function assert_values(array $values,	array $allowed_columns, $operation)
-	{
-		foreach ($allowed_columns as $column)
-		{
-			$this->assert_identifier($column);
-		}
-
 		$keys = array_keys($values);
 
 		if (array_diff($keys, $allowed_columns)
@@ -435,8 +333,6 @@ abstract class Model_BaseCrud extends \Model
 	 */
 	protected function quoted_table(\Database_Connection $db)
 	{
-		$this->assert_identifier(static::$table_name);
-
 		return $db->quote_identifier($db->table_prefix(static::$table_name));
 	}
 
@@ -449,23 +345,6 @@ abstract class Model_BaseCrud extends \Model
 	 */
 	protected function quoted_column($column, \Database_Connection $db)
 	{
-		$this->assert_identifier($column);
-
 		return $db->quote_identifier($column);
-	}
-
-	/**
-	 * テーブル・列識別子が安全なクラス定義に由来することを確認する。
-	 *
-	 * @param  string $identifier SQL識別子
-	 * @return void
-	 */
-	protected function assert_identifier($identifier)
-	{
-		if ( ! is_string($identifier)
-			or preg_match('/\A[a-z][a-z0-9_]*\z/', $identifier) !== 1)
-		{
-			throw new \LogicException('The Model contains an invalid database identifier.');
-		}
 	}
 }

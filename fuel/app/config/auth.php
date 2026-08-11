@@ -2,11 +2,7 @@
 
 return array(
 	'driver' => array(
-		'Employee' => array(
-			'credential_fingerprint_key' => \Config::get(
-				'employee_auth.credential_fingerprint_key'
-			),
+		'Employee' => array(),
 		),
-	),
 	'verify_multiple_logins' => false,
 );

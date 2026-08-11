@@ -189,40 +189,6 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * テーブル固有の業務更新前に1行取得する。
-	 *
-	 * @param  int                 $id                   対象レコードのID
-	 * @param  bool                $include_soft_deleted 論理削除済みデータを含めるか
-	 * @param  Database_Connection $db                   使用するDB接続
-	 * @return array|null
-	 */
-	public function read_for_update($id, $include_soft_deleted, \Database_Connection $db)
-	{
-		$columns = array();
-
-		foreach (static::$read_columns as $column)
-		{
-			$columns[] = $this->quoted_column($column, $db);
-		}
-
-		$sql = 'SELECT '.implode(', ', $columns)
-			.' FROM '.$this->quoted_table($db)
-			.' WHERE '.$this->quoted_column('id', $db).' = :id';
-
-		if ( ! $include_soft_deleted)
-		{
-			$sql .= ' AND '.$this->quoted_column('deleted_at', $db).' IS NULL';
-		}
-
-		$read_rows = \DB::query($sql.' FOR UPDATE', \DB::SELECT)
-			->param('id', $id)
-			->execute($db)
-			->as_array();
-
-		return empty($read_rows) ? null : $this->format_row($read_rows[0]);
-	}
-
-	/**
 	 * テーブル固有の業務更新を1つのトランザクションで実行する。
 	 *
 	 * @param  Closure $operation 実行する操作名

@@ -4,3 +4,4 @@ fuel/app/config/config_recommend.php
 /.codex/
 fuel/app/tasks/.env
 fuel/app/config/crypt.php
+AGENTS.md

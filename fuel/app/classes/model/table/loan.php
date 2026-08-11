@@ -8,7 +8,7 @@ class Model_Table_Loan extends Model_BaseCrud
 	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'loans';
 
-	/** @var array 新規貸出で登録する列 */
+	/** @var array 新規貸出で指定する登録列 */
 	protected static $create_columns = array(
 		'employee_id',
 		'equipment_id',
@@ -20,7 +20,7 @@ class Model_Table_Loan extends Model_BaseCrud
 		'note',
 	);
 
-	/** @var array 返却またはロックしても安全な貸出列 */
+	/** @var array 貸出の読取処理が返す列 */
 	protected static $read_columns = array(
 		'id',
 		'employee_id',
@@ -106,35 +106,6 @@ class Model_Table_Loan extends Model_BaseCrud
 		$db = $this->connection($db);
 		$read_rows = $this->loan_query($this->loan_select_columns())
 			->where('loans.id', '=', $id)
-			->execute($db)
-			->as_array();
-
-		return empty($read_rows) ? null : $this->format_row($read_rows[0]);
-	}
-
-	/**
-	 * 返却済みへ変更する前に貸出を1件ロックする。
-	 *
-	 * @param  int                 $id 対象レコードのID
-	 * @param  Database_Connection $db 使用するDB接続
-	 * @return array|null
-	 */
-	public function lock_for_return($id, \Database_Connection $db)
-	{
-		$columns = array();
-
-		foreach (static::$read_columns as $column)
-		{
-			$columns[] = $this->quoted_column($column, $db);
-		}
-
-		$read_rows = \DB::query(
-			'SELECT '.implode(', ', $columns)
-			.' FROM '.$this->quoted_table($db)
-			.' WHERE '.$this->quoted_column('id', $db).' = :id FOR UPDATE',
-			\DB::SELECT
-		)
-			->param('id', $id)
 			->execute($db)
 			->as_array();
 

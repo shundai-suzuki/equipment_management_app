@@ -1,180 +1,52 @@
 <?php
 
 /**
- * テーブルサービス向けに管理者確認と共通CRUD手順を提供する。
+ * テーブルServiceで共通のCRUD処理を提供する。
  */
 abstract class Service_BaseCrud
 {
 	/** @var int データ未検出時の例外コード */
 	const NOT_FOUND_EXCEPTION_CODE = 404;
-	/** @var int 権限不足時の例外コード */
-	const FORBIDDEN_EXCEPTION_CODE = 403;
 	/** @var int 入力不正時の例外コード */
 	const VALIDATION_EXCEPTION_CODE = 422;
 	/** @var int 競合発生時の例外コード */
 	const CONFLICT_EXCEPTION_CODE = 409;
 	/** @var int 1ページ当たりの表示件数 */
 	const PER_PAGE = 10;
-	/** @var int 検索キーワードの最大文字数 */
-	const MAX_KEYWORD_LENGTH = 255;
 
-	/** @var Model_Table_Employee|null 操作を実行する管理者の確認に使用する社員モデル */
-	protected $actor_model;
-
-	/** @var Model_BaseCrud DB操作を担当するモデル */
+	/** @var Model_BaseCrud DB操作を担当するModel */
 	protected $model;
 
 	/**
-	 * 使用するModelを受け取り、未指定時は子Serviceの標準Modelを生成する。
+	 * 使用するModelを初期化する。
 	 *
-	 * @param  object|null $model 使用する操作対象Model
+	 * @param object|null $model 使用する操作対象Model
 	 * @return void
 	 */
-	public function __construct($model = null)
+	public function __construct()
 	{
-		if ($model !== null and ! ($model instanceof Model_BaseCrud))
-    {
-			throw new \InvalidArgumentException(
-				'The CRUD model must extend Model_BaseCrud.'
-			);
-    }
-		$this->model = $model ?: $this->new_model();
+		$this->model = $this->new_model();
 	}
 
 	/**
-	 * 子サービス用のモデルを生成する。
+	 * 子Serviceで使用するModelを生成する。
 	 *
 	 * @return Model_BaseCrud
 	 */
 	abstract protected function new_model();
 
 	/**
-	 * 外部キーまたは実行者IDが正の整数であることを確認する。
+	 * 有効な1行を取得する。
 	 *
-	 * @param  int    $id   対象レコードのID
-	 * @param  string $name 対象の名前
-	 * @return void
-	 */
-	protected function assert_positive_id($id, $name)
-	{
-		if ( ! is_int($id) or $id < 1)
-		{
-			throw new \InvalidArgumentException($name.' must be a positive integer.');
-		}
-	}
-
-	/**
-	 * 事前確認と登録を同じトランザクションで実行する。
-	 *
-	 * @param  array $create_values 登録する値
-	 * @return int
-	 */
-	protected function create_record(array $create_values)
-	{
-		return $this->model->transaction(function ($db) use ($create_values)
-		{
-			$this->before_create($create_values, $db);
-
-			return $this->model->create($create_values, $db);
-		});
-	}
-
-	/**
-	 * 子サービスが登録直前の業務条件を再確認する。
-	 *
-	 * @param  array               $create_values 登録する値
-	 * @param  Database_Connection $db            使用するDB接続
-	 * @return void
-	 */
-	protected function before_create(array $create_values, \Database_Connection $db)
-	{
-	}
-
-	/**
-	 * 有効な1行を返す。
-	 *
-	 * @param  int $id 対象レコードのID
+	 * @param int $id 対象レコードのID
 	 * @return array
 	 */
 	public function read($id)
 	{
-		$this->assert_positive_id($id, 'The record ID');
+		$this->assert_positive_id($id);
+		$record = $this->model->read($id);
 
-		return $this->read_required_record($id);
-	}
-
-	/**
-	 * 管理者を再確認してから有効な1行を返す。
-	 *
-	 * @param  int $actor_id 操作する管理者の社員ID
-	 * @param  int $id       対象レコードのID
-	 * @return array
-	 */
-	public function read_for_admin($actor_id, $id)
-	{
-		$this->assert_admin_actor($actor_id);
-
-		return $this->read($id);
-	}
-
-	/**
-	 * 検証済みページングで有効な行一覧を返す。
-	 *
-	 * @param  int    $page    取得するページ番号
-	 * @param  string $keyword 検索キーワード
-	 * @param  array  $filters 検索条件
-	 * @return array
-	 */
-	public function search($page, $keyword = '', array $filters = array())
-	{
-		if ( ! is_int($page) or $page < 1)
-		{
-			throw new \InvalidArgumentException('The page must be a positive integer.');
-		}
-
-		if ( ! is_string($keyword))
-		{
-			throw new \InvalidArgumentException('The keyword must be a string.');
-		}
-
-		$keyword = trim($keyword);
-
-		if (mb_strlen($keyword, 'UTF-8') > static::MAX_KEYWORD_LENGTH)
-		{
-			throw new \InvalidArgumentException('The keyword is too long.');
-		}
-
-		return $this->model->search($page, static::PER_PAGE, $keyword, $filters);
-	}
-
-	/**
-	 * 検証済みページングで有効な行一覧を返す。
-	 *
-	 * @param  int    $actor_id 操作する管理者の社員ID
-	 * @param  int    $page     取得するページ番号
-	 * @param  string $keyword  検索キーワード
-	 * @param  array  $filters  検索条件
-	 * @return array
-	 */
-	public function search_for_admin($actor_id, $page, $keyword = '', array $filters = array())
-	{
-		$this->assert_admin_actor($actor_id);
-
-		return $this->search($page, $keyword, $filters);
-	}
-
-	/**
-	 * 有効な行が存在することを必須とする。
-	 *
-	 * @param  int                      $id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
-	 * @return array
-	 */
-	protected function read_required_record($id, $db = null)
-	{
-		$read_record = $this->model->read($id, false, $db);
-
-		if ($read_record === null)
+		if ($record === null)
 		{
 			throw new \RuntimeException(
 				'The requested record was not found.',
@@ -182,105 +54,129 @@ abstract class Service_BaseCrud
 			);
 		}
 
-		return $read_record;
+		return $record;
 	}
 
 	/**
-	 * ロック済み行を更新し、現在の内容を返す。
+	 * 1ページ10件の検索結果を取得する。
 	 *
-	 * @param  int                      $id            対象レコードのID
-	 * @param  array                    $update_values 更新する値
-	 * @param  Database_Connection|null $db            使用するDB接続
+	 * @param int    $page    取得するページ番号
+	 * @param string $keyword 検索キーワード
+	 * @param array  $filters 検索条件
 	 * @return array
 	 */
-	protected function update_and_read_record($id, array $update_values, $db = null)
+	public function search($page, $keyword = '', array $filters = array())
 	{
-		$this->model->update($id, $update_values, $db);
-		$updated_record = $this->model->read($id, false, $db);
+		$this->assert_positive_id($page);
 
-		if ($updated_record === null)
-		{
-			throw new \RuntimeException(
-				'The record changed during the update.',
-				static::CONFLICT_EXCEPTION_CODE
-			);
-		}
-
-		return $updated_record;
+		return $this->model->search(
+			$page,
+			static::PER_PAGE,
+			is_string($keyword) ? trim($keyword) : '',
+			$filters
+		);
 	}
 
 	/**
-	 * ロック済み行を論理削除し、現在の内容を返す。
+	 * Modelへ新規登録を委譲する。
 	 *
-	 * @param  int                      $id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
-	 * @return array
+	 * @param array $create_values 登録する値
+	 * @return int
 	 */
-	protected function soft_delete_and_read_record($id, $db = null)
+	protected function create_record(array $create_values)
 	{
-		if ($this->model->soft_delete($id, $db) !== 1)
-		{
-			throw new \RuntimeException(
-				'The record changed during the soft-delete operation.',
-				static::CONFLICT_EXCEPTION_CODE
-			);
-		}
-
-		$soft_deleted_record = $this->model->read($id, true, $db);
-
-		if ($soft_deleted_record === null)
-		{
-			throw new \RuntimeException(
-				'The soft-deleted record could not be read.',
-				static::CONFLICT_EXCEPTION_CODE
-			);
-		}
-
-		return $soft_deleted_record;
+		return $this->model->create($create_values);
 	}
 
 	/**
-	 * ロック済み行を復元し、有効な内容を返す。
+	 * 存在する行を更新する。
 	 *
-	 * @param  int                      $id 対象レコードのID
-	 * @param  Database_Connection|null $db 使用するDB接続
-	 * @return array
-	 */
-	protected function restore_and_read_record($id, $db = null)
-	{
-		if ($this->model->restore($id, $db) !== 1)
-		{
-			throw new \RuntimeException(
-				'The record changed during the restore operation.',
-				static::CONFLICT_EXCEPTION_CODE
-			);
-		}
-
-		return $this->read_required_record($id, $db);
-	}
-
-	/**
-	 * 実行者が引き続き有効な管理者であることを再確認する。
-	 *
-	 * @param  int                      $actor_id 操作する管理者の社員ID
-	 * @param  Database_Connection|null $db       使用するDB接続
+	 * @param int   $id            対象レコードのID
+	 * @param array $update_values 更新する値
 	 * @return void
 	 */
-	protected function assert_admin_actor($actor_id, $db = null)
+	protected function update_record($id, array $update_values)
 	{
-		$this->assert_positive_id($actor_id, 'The administrator employee ID');
+		$this->read($id);
+		$this->model->update($id, $update_values);
+	}
 
-		if ($this->actor_model === null)
-		{
-			$this->actor_model = new Model_Table_Employee();
-		}
+	/**
+	 * 有効な行を論理削除する。
+	 *
+	 * @param int $id 対象レコードのID
+	 * @return void
+	 */
+	protected function soft_delete_record($id)
+	{
+		$this->read($id);
+		$this->model->soft_delete($id);
+	}
 
-		if ( ! $this->actor_model->is_active_admin($actor_id, $db))
+	/**
+	 * 論理削除済み行を復元する。
+	 *
+	 * @param int $id 対象レコードのID
+	 * @return void
+	 */
+	protected function restore_record($id)
+	{
+		$this->assert_positive_id($id);
+
+		if ($this->model->restore($id) !== 1)
 		{
 			throw new \RuntimeException(
-				'The actor is not an active administrator.',
-				static::FORBIDDEN_EXCEPTION_CODE
+				'The soft-deleted record was not found.',
+				static::NOT_FOUND_EXCEPTION_CODE
 			);
 		}
+	}
+
+	/**
+	 * 正のIDを確認する。
+	 *
+	 * @param int $id 対象レコードのID
+	 * @return void
+	 */
+	protected function assert_positive_id($id)
+	{
+		if ( ! is_int($id) or $id < 1)
+		{
+			throw new \InvalidArgumentException('The ID must be a positive integer.');
+		}
+	}
+
+	/**
+	 * 必須テキストを前後空白なしで返す。
+	 *
+	 * @param mixed $value 入力値
+	 * @return string
+	 */
+	protected function required_text($value)
+	{
+		$value = is_string($value) ? trim($value) : '';
+
+		if ($value === '')
+		{
+			throw new \InvalidArgumentException('The text value is invalid.');
+		}
+
+		return $value;
+	}
+
+	/**
+	 * 任意テキストを前後空白なしで返す。
+	 *
+	 * @param mixed $value 入力値
+	 * @return string|null
+	 */
+	protected function optional_text($value)
+	{
+		if ($value === null or $value === '')
+		{
+			return null;
+		}
+
+		return $this->required_text($value);
 	}
 }

@@ -12,9 +12,9 @@
 
 	// 検索条件をURLクエリ文字列へ変換する。
 	function query(parameters) {
-		var values = [];
+		const values = [];
 		Object.keys(parameters || {}).forEach(function (name) {
-			var value = parameters[name];
+			const value = parameters[name];
 			if (value !== '' && value !== null && value !== undefined) {
 				values.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
 			}
@@ -23,44 +23,31 @@
 	}
 
 	// 同一オリジンのGET APIを呼び出してJSONを返す。
-	function get(url, parameters) {
-		return window.fetch(url + query(parameters), {
+	async function get(url, parameters) {
+		const response = await window.fetch(url + query(parameters), {
 			method: 'GET',
-			credentials: 'same-origin',
 			headers: { Accept: 'application/json' }
-		}).then(function (response) {
-			return response.json().catch(function () {
-				throw new ApiError(response.status, null);
-			}).then(function (body) {
-				if ( ! response.ok) {
-					throw new ApiError(response.status, body);
-				}
-				return body;
-			});
 		});
-	}
+		let body;
 
-	// ページングされたGET APIを最終ページまで取得する。
-	function allPages(url) {
-		var rows = [];
-		// 指定ページを取得し、必要なら次ページへ進む。
-		function load(page) {
-			return get(url, { page: page }).then(function (body) {
-				rows = rows.concat(Array.isArray(body.data) ? body.data : []);
-				var pages = body.meta && body.meta.pagination
-					? Number(body.meta.pagination.total_pages)
-					: page;
-				return page < pages ? load(page + 1) : rows;
-			});
+		try {
+			body = await response.json();
 		}
-		return load(1);
+		catch (error) {
+			throw new ApiError(response.status, null);
+		}
+
+		if ( ! response.ok) {
+			throw new ApiError(response.status, body);
+		}
+
+		return body;
 	}
 
 	// 一覧画面から使用するGET専用APIを公開する。
 	window.InventoryApi = {
 		ApiError: ApiError,
 		get: get,
-		allPages: allPages,
 		isUnauthorized: function (error) {
 			return error instanceof ApiError && (error.status === 401 || error.status === 403);
 		},

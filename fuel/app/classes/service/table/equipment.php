@@ -1,265 +1,149 @@
 <?php
 
 /**
- * 備品登録規則を適用し、永続化を委譲する。
+ * 備品の業務規則を適用する。
  */
 class Service_Table_Equipment extends Service_BaseCrud
 {
-	/** @var int 名前の最大文字数 */
-	const MAX_NAME_LENGTH = 255;
-	/** @var int カテゴリの最大文字数 */
-	const MAX_CATEGORY_LENGTH = 20;
-	/** @var int 説明の最大文字数 */
-	const MAX_DESCRIPTION_LENGTH = 255;
-	/** @var int 備品総数の最大値 */
-	const MAX_TOTAL_AMOUNT = 2147483647;
-
-	/** @var string このサービスが登録するテーブル */
-	protected static $table_name = 'equipments';
-
-	/** @var Model_Table_Department 管理部署の検証に使用する部署モデル */
+	/** @var Model_Table_Department 部署を確認するModel */
 	protected $department_model;
 
 	/**
-	 * 備品操作に使用するModelを初期化する。
+	 * 備品と部署のModelを初期化する。
 	 *
-	 * @param  object|null $model            使用する操作対象Model
-	 * @param  object|null $department_model 使用する部署Model
+	 * @param object|null $model            使用する備品Model
+	 * @param object|null $department_model 使用する部署Model
 	 * @return void
 	 */
 	public function __construct($model = null, $department_model = null)
 	{
 		parent::__construct($model);
-
-		if ($department_model !== null and ! is_object($department_model))
-		{
-			throw new \InvalidArgumentException('The department model must be an object.');
-		}
-
-		$this->department_model = $department_model ? $department_model : new Model_Table_Department();
+		$this->department_model = $department_model ?: new Model_Table_Department();
 	}
 
 	/**
-	 * 備品を登録するか、一致する論理削除済み在庫行を復元する。
+	 * 備品を登録するか、同じ削除済み備品を復元する。
 	 *
-	 * @param  string      $name          対象の名前
-	 * @param  int         $department_id 部署ID
-	 * @param  string      $category      備品カテゴリ
-	 * @param  int         $total_amount  備品の総数
-	 * @param  string|null $description   備品の説明
+	 * @param mixed $name          備品名
+	 * @param int   $department_id 管理部署ID
+	 * @param mixed $category      カテゴリ
+	 * @param mixed $total_amount  総数
+	 * @param mixed $description   説明
 	 * @return int
 	 */
 	public function create($name, $department_id, $category, $total_amount, $description = null)
 	{
-		$this->assert_positive_id($department_id, 'The department ID');
-
-		$name = $this->normalize_required_text($name, 'The equipment name', static::MAX_NAME_LENGTH);
-		$category = $this->normalize_required_text($category, 'The equipment category', static::MAX_CATEGORY_LENGTH);
-		$total_amount = $this->normalize_total_amount($total_amount);
-		$description = $this->normalize_description($description);
-
-		$this->assert_active_department($department_id);
-		$read_equipment = $this->model->read_by_department_and_name($department_id, $name);
-
-		if ($read_equipment !== null)
-		{
-			return $this->restore_or_reject($read_equipment);
-		}
-
-		$create_values = array(
-			'name' => $name,
-			'department_id' => $department_id,
-			'category' => $category,
-			'total_amount' => $total_amount,
-			'description' => $description,
-		);
-
-		try
-		{
-			return $this->create_record($create_values);
-		}
-		catch (\Database_Exception $exception)
-		{
-			return $this->handle_create_exception($department_id, $name, $exception);
-		}
-	}
-
-	/**
-	 * 管理者を再確認してから備品を登録する。
-	 *
-	 * @param  int         $actor_id      操作する管理者の社員ID
-	 * @param  string      $name          対象の名前
-	 * @param  int         $department_id 部署ID
-	 * @param  string      $category      備品カテゴリ
-	 * @param  int         $total_amount  備品の総数
-	 * @param  string|null $description   備品の説明
-	 * @return int
-	 */
-	public function create_for_admin($actor_id, $name, $department_id, $category, $total_amount, $description = null)
-	{
-		$this->assert_admin_actor($actor_id);
-
-		return $this->create($name,
+		$values = $this->values(
+			$name,
 			$department_id,
 			$category,
 			$total_amount,
 			$description
 		);
+		$this->assert_active_department($department_id);
+		$equipment = $this->model->read_by_department_and_name(
+			$department_id,
+			$values['name']
+		);
+
+		if ($equipment === null)
+		{
+			return $this->create_record($values);
+		}
+
+		if ($equipment['deleted_at'] === null)
+		{
+			throw new \RuntimeException(
+				'An equipment record with the same name already exists.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
+
+		$this->restore_record((int) $equipment['id']);
+		return (int) $equipment['id'];
 	}
 
 	/**
-	 * 備品一覧と有効なカテゴリ候補を返す。
+	 * 備品一覧とカテゴリ候補を取得する。
 	 *
-	 * @param  int    $page    取得するページ番号
-	 * @param  string $keyword 検索キーワード
-	 * @param  array  $filters 検索条件
+	 * @param int    $page    取得するページ番号
+	 * @param string $keyword 検索キーワード
+	 * @param array  $filters 検索条件
 	 * @return array
 	 */
 	public function search($page, $keyword = '', array $filters = array())
 	{
-		$search_result = parent::search(
-			$page,
-			$keyword,
-			$filters
-		);
-		$search_result['category_options'] = $this->model->read_category_options();
+		$result = parent::search($page, $keyword, $filters);
+		$result['category_options'] = $this->model->read_category_options();
 
-		return $search_result;
+		return $result;
 	}
 
 	/**
-	 * 更新可能な備品項目を更新する。
+	 * 備品の管理情報を更新する。
 	 *
-	 * @param  int         $actor_id      操作する管理者の社員ID
-	 * @param  int         $id            対象レコードのID
-	 * @param  string      $name          対象の名前
-	 * @param  int         $department_id 部署ID
-	 * @param  string      $category      備品カテゴリ
-	 * @param  int         $total_amount  備品の総数
-	 * @param  string|null $description   備品の説明
-	 * @return array
+	 * @param int   $id            対象備品のID
+	 * @param mixed $name          備品名
+	 * @param int   $department_id 管理部署ID
+	 * @param mixed $category      カテゴリ
+	 * @param mixed $total_amount  総数
+	 * @param mixed $description   説明
+	 * @return void
 	 */
-	public function update_for_admin($actor_id,	$id, $name,	$department_id,	$category, $total_amount,	$description = null)
+	public function update($id, $name, $department_id, $category, $total_amount, $description = null)
 	{
-		$this->assert_positive_id($id, 'The equipment ID');
-		$this->assert_positive_id($department_id, 'The department ID');
-
-		$name = $this->normalize_required_text($name, 'The equipment name', static::MAX_NAME_LENGTH);
-		$category = $this->normalize_required_text($category, 'The equipment category', static::MAX_CATEGORY_LENGTH);
-		$total_amount = $this->normalize_total_amount($total_amount);
-		$description = $this->normalize_description($description);
-
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id,	$name, $department_id, $category,	$total_amount, $description)
-			{
-				$this->assert_admin_actor($actor_id, $db);
-				$equipment_before_update = $this->model->read_for_update($id, false, $db);
-
-				if ($equipment_before_update === null)
-				{
-					throw new RuntimeException(
-						'The equipment was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
-
-				$this->assert_active_department($department_id, $db);
-
-				if ((int) $equipment_before_update['department_id'] !== $department_id
-					and $this->model->has_loan_history($id, $db))
-				{
-					throw new RuntimeException(
-						'Equipment with lending history cannot change departments.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				$read_duplicate = $this->model->read_by_department_and_name(
-					$department_id,
-					$name,
-					$db
-				);
-
-				if ($read_duplicate !== null and (int) $read_duplicate['id'] !== $id)
-				{
-					throw new RuntimeException(
-						'Equipment with the same department and name already exists.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ($total_amount < $this->model->count_active_loans($id, $db))
-				{
-					throw new RuntimeException(
-						'The total amount cannot be less than the active loan count.',
-						static::VALIDATION_EXCEPTION_CODE
-					);
-				}
-
-				return $this->update_and_read_record(
-					$id,
-					array(
-						'name' => $name,
-						'department_id' => $department_id,
-						'category' => $category,
-						'total_amount' => $total_amount,
-						'description' => $description,
-					),
-					$db
-				);
-			}
+		$this->assert_positive_id($id);
+		$equipment = $this->read($id);
+		$values = $this->values(
+			$name,
+			$department_id,
+			$category,
+			$total_amount,
+			$description
 		);
+		$this->assert_active_department($department_id);
+
+		if ((int) $equipment['department_id'] !== $department_id
+			and $this->model->has_loan_history($id))
+		{
+			throw new \RuntimeException(
+				'Equipment with loan history cannot change departments.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
+
+		if (is_numeric($values['total_amount'])
+			and (int) $values['total_amount'] < $this->model->count_active_loans($id))
+		{
+			throw new \InvalidArgumentException('The total amount is too small.');
+		}
+
+		$this->model->update($id, $values);
 	}
 
 	/**
-	 * 貸出中データがない備品を論理削除する。
+	 * 未返却貸出のない備品を論理削除する。
 	 *
-	 * @param  int $actor_id 操作する管理者の社員ID
-	 * @param  int $id       対象レコードのID
-	 * @return array
+	 * @param int $id 対象備品のID
+	 * @return void
 	 */
-	public function soft_delete_for_admin($actor_id, $id)
+	public function soft_delete($id)
 	{
-		$this->assert_positive_id($id, 'The equipment ID');
+		$this->read($id);
 
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id)
-			{
-				$this->assert_admin_actor($actor_id, $db);
+		if ($this->model->count_active_loans($id) > 0)
+		{
+			throw new \RuntimeException(
+				'Equipment with an active loan cannot be soft-deleted.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
 
-				$equipment_before_delete = $this->model->read_for_update($id, true, $db);
-
-				if ($equipment_before_delete === null)
-				{
-					throw new RuntimeException(
-						'The equipment was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
-
-				if ($equipment_before_delete['deleted_at'] !== null)
-				{
-					throw new RuntimeException(
-						'The equipment is already archived.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ($this->model->count_active_loans($id, $db) > 0)
-				{
-					throw new RuntimeException(
-						'Equipment with an active loan cannot be archived.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				return $this->soft_delete_and_read_record($id, $db);
-			}
-		);
+		$this->model->soft_delete($id);
 	}
 
 	/**
-	 * このサービスで使用する備品モデルを生成する。
+	 * このServiceで使用する備品Modelを生成する。
 	 *
 	 * @return Model_Table_Equipment
 	 */
@@ -269,192 +153,41 @@ class Service_Table_Equipment extends Service_BaseCrud
 	}
 
 	/**
-	 * 登録トランザクション内で部署を再確認する。
+	 * 備品の登録・更新値を作成する。
 	 *
-	 * @param  array               $create_values 登録する値
-	 * @param  Database_Connection $db            使用するDB接続
-	 * @return void
+	 * @param mixed $name          備品名
+	 * @param int   $department_id 管理部署ID
+	 * @param mixed $category      カテゴリ
+	 * @param mixed $total_amount  総数
+	 * @param mixed $description   説明
+	 * @return array
 	 */
-	protected function before_create(array $create_values, \Database_Connection $db)
+	protected function values($name, $department_id, $category, $total_amount, $description)
 	{
-		$this->assert_active_department($create_values['department_id'], $db);
-	}
+		$this->assert_positive_id($department_id);
 
-	/**
-	 * テーブル固有の上限で必須テキスト項目を正規化する。
-	 *
-	 * @param  mixed  $value      検証する値
-	 * @param  string $name       対象の名前
-	 * @param  int    $max_length 許可する最大文字数
-	 * @return string
-	 */
-	protected function normalize_required_text($value, $name, $max_length)
-	{
-		if ( ! is_string($value))
-		{
-			throw new \InvalidArgumentException($name.' must be a string.');
-		}
-
-		$value = trim($value);
-
-		if ($value === '' or mb_strlen($value, 'UTF-8') > $max_length)
-		{
-			throw new \InvalidArgumentException($name.' has an invalid length.');
-		}
-
-		return $value;
-	}
-
-	/**
-	 * 任意の備品説明を正規化する。
-	 *
-	 * @param  mixed $description 備品の説明
-	 * @return string|null
-	 */
-	protected function normalize_description($description)
-	{
-		if ($description === null)
-		{
-			return null;
-		}
-
-		if ( ! is_string($description))
-		{
-			throw new \InvalidArgumentException('The equipment description must be a string or null.');
-		}
-
-		$description = trim($description);
-
-		if ($description === '')
-		{
-			return null;
-		}
-
-		if (mb_strlen($description, 'UTF-8') > static::MAX_DESCRIPTION_LENGTH)
-		{
-			throw new \InvalidArgumentException('The equipment description must not exceed 255 characters.');
-		}
-
-		return $description;
-	}
-
-	/**
-	 * 備品総数が符号付きINT範囲の正の整数であることを必須とする。
-	 *
-	 * @param  mixed $total_amount 備品の総数
-	 * @return int
-	 */
-	protected function normalize_total_amount($total_amount)
-	{
-		if ( ! is_int($total_amount)
-			or $total_amount < 1
-			or $total_amount > static::MAX_TOTAL_AMOUNT)
-		{
-			throw new \InvalidArgumentException('The equipment total amount is invalid.');
-		}
-
-		return $total_amount;
-	}
-
-	/**
-	 * トランザクション更新中に部署を必須としてロックする。
-	 *
-	 * @param  int                      $department_id 部署ID
-	 * @param  Database_Connection|null $db            使用するDB接続
-	 * @return void
-	 */
-	protected function assert_active_department($department_id, $db = null)
-	{
-		if ($db instanceof \Database_Connection)
-		{
-			if ($this->department_model->read_for_update($department_id, false,	$db) !== null)
-			{
-				return;
-			}
-		}
-		elseif ($this->department_model->is_active($department_id))
-		{
-			return;
-		}
-
-		throw new \InvalidArgumentException(
-			'The selected department is not available.'
+		return array(
+			'name' => $this->required_text($name),
+			'department_id' => $department_id,
+			'category' => is_string($category) ? $category : '',
+			'total_amount' => is_scalar($total_amount) ? $total_amount : 0,
+			'description' => $this->optional_text($description),
 		);
 	}
 
 	/**
-	 * 一致する論理削除済み行を復元するか、有効な重複行を拒否する。
+	 * 指定部署が利用可能か確認する。
 	 *
-	 * @param  array $read_equipment 取得した備品情報
-	 * @return int
+	 * @param int $department_id 管理部署ID
+	 * @return void
 	 */
-	protected function restore_or_reject(array $read_equipment)
+	protected function assert_active_department($department_id)
 	{
-		if ($read_equipment['deleted_at'] === null)
+		if ( ! $this->department_model->is_active($department_id))
 		{
-			throw new \RuntimeException(
-				'Equipment with the same department and name already exists.',
-				static::CONFLICT_EXCEPTION_CODE
+			throw new \InvalidArgumentException(
+				'The selected department is not available.'
 			);
 		}
-
-		$id = (int) $read_equipment['id'];
-
-		return $this->model->transaction(
-			function ($db) use ($id)
-			{
-				$equipment_before_restore = $this->model->read_for_update(
-					$id,
-					true,
-					$db
-				);
-
-				if ($equipment_before_restore === null)
-				{
-					throw new \RuntimeException(
-						'The archived equipment could not be read.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ($equipment_before_restore['deleted_at'] === null)
-				{
-					return $id;
-				}
-
-				$this->assert_active_department(
-					(int) $equipment_before_restore['department_id'],
-					$db
-				);
-				$this->restore_and_read_record($id, $db);
-
-				return $id;
-			}
-		);
-	}
-
-	/**
-	 * 部署・名称の組み合わせの重複を競合へ変換する。
-	 *
-	 * @param  int                $department_id 部署ID
-	 * @param  string             $name          対象の名前
-	 * @param  Database_Exception $exception     発生した例外
-	 * @return int
-	 */
-	protected function handle_create_exception($department_id, $name, \Database_Exception $exception)
-	{
-		if ((int) $exception->getCode() !== 1062)
-		{
-			throw $exception;
-		}
-
-		$read_equipment = $this->model->read_by_department_and_name($department_id, $name);
-
-		if ($read_equipment === null)
-		{
-			throw $exception;
-		}
-
-		return $this->restore_or_reject($read_equipment);
 	}
 }

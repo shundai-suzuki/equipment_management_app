@@ -5,6 +5,8 @@
  */
 abstract class Controller_Page_Base extends \Controller_Template
 {
+	/** @var int IDの最大値 */
+	const MAX_EMPLOYEE_ID = 2147483647;
 	/** @var string ログイン後の共通レイアウト */
 	public $template = 'layouts/application';
 
@@ -47,6 +49,7 @@ abstract class Controller_Page_Base extends \Controller_Template
 		}
 
 		$data['is_admin'] = $this->is_admin;
+		$data['title'] = $title;
 		$this->template->title = $title;
 		$this->template->active_page = $active_page;
 		$this->template->page_script = $page_script;
@@ -57,7 +60,7 @@ abstract class Controller_Page_Base extends \Controller_Template
 	}
 
 	/**
-	 * 検索APIと通常POST先を持つ共通一覧画面を表示する。
+	 * 検索API、通常POST先、画面定義を持つ共通一覧画面を表示する。
 	 *
 	 * @param string $resource 表示対象のリソース名
 	 * @param string $title    画面タイトル
@@ -65,23 +68,81 @@ abstract class Controller_Page_Base extends \Controller_Template
 	 */
 	protected function render_resource($resource, $title)
 	{
-		$search = array(
-			'equipment' => 'api/equipment',
-			'loans' => 'api/loans',
-			'employees' => 'api/admin/employees',
-			'departments' => 'api/admin/departments',
+		$resources = array(
+			'equipment' => array(
+				'search_url' => 'api/equipment',
+				'create_label' => '備品登録',
+				'edit_label' => '備品編集',
+				'columns' => array(
+					array('id', '備品ID'),
+					array('name', '備品名'),
+					array('category', 'カテゴリ'),
+					array('department_id', '管理部署'),
+					array('total_amount', '総数'),
+					array('loaned_amount', '貸出中'),
+					array('available_amount', '利用可能'),
+				),
+			),
+			'loans' => array(
+				'search_url' => 'api/loans',
+				'create_label' => '貸出登録',
+				'edit_label' => '',
+				'columns' => array(
+					array('id', '貸出ID'),
+					array('equipment_name', '備品'),
+					array('employee_name', '借用者'),
+					array('due_date', '返却期限'),
+					array('loan_state', '状態'),
+				),
+			),
+			'employees' => array(
+				'search_url' => 'api/admin/employees',
+				'create_label' => '社員登録',
+				'edit_label' => '社員編集',
+				'columns' => array(
+					array('id', '社員番号'),
+					array('employee_name', '社員名'),
+					array('department_id', '部署'),
+					array('role', '権限'),
+					array('is_active', '状態'),
+				),
+			),
+			'departments' => array(
+				'search_url' => 'api/admin/departments',
+				'create_label' => '部署登録',
+				'edit_label' => '部署編集',
+				'columns' => array(
+					array('id', '部署ID'),
+					array('name', '部署名'),
+				),
+			),
 		);
 
-		if ( ! isset($search[$resource]))
+		if ( ! isset($resources[$resource]))
 		{
 			throw new \LogicException('The page resource is not configured.');
 		}
 
+		$resource_config = $resources[$resource];
+
+		if ($resource === 'loans' and ! $this->is_admin)
+		{
+			unset($resource_config['columns'][2]);
+			$resource_config['columns'] = array_values($resource_config['columns']);
+		}
+
+		$department_options = in_array(
+			$resource, array('equipment', 'employees'),	true
+		) ? (new Service_Table_Department())->read_options() : array();
+
 		$this->render_page('resource', $title, $resource, 'app/resource.js', array(
 			'resource' => $resource,
-			'search_url' => \Uri::create($search[$resource]),
+			'columns' => $resource_config['columns'],
+			'create_label' => $resource_config['create_label'],
+			'edit_label' => $resource_config['edit_label'],
+			'department_options' => $department_options,
+			'search_url' => \Uri::create($resource_config['search_url']),
 			'write_url' => $this->is_admin ? \Uri::create('admin/'.$resource) : '',
-			'departments_url' => \Uri::create('api/departments'),
 			'login_url' => \Uri::create('login'),
 		));
 	}
@@ -118,14 +179,14 @@ abstract class Controller_Page_Base extends \Controller_Template
 	protected function employee_id()
 	{
 		$driver = \Auth::instance();
-		$id = $driver instanceof Auth_Login_Employee ? $driver->get('id') : null;
+		$employee_id = $driver instanceof Auth_Login_Employee ? $driver->get('id') : null;
 
-		if ( ! is_int($id) or $id < 1)
+		if ( ! is_int($employee_id) or $employee_id < 1)
 		{
 			throw new \RuntimeException('The authenticated employee is invalid.', 403);
 		}
 
-		return $id;
+		return $employee_id;
 	}
 
 	/**
@@ -153,7 +214,7 @@ abstract class Controller_Page_Base extends \Controller_Template
 			$value = (int) $value;
 		}
 
-		if ( ! is_int($value) or $value < 1 or $value > 2147483647)
+		if ( ! is_int($value) or $value < 1 or $value > static::MAX_EMPLOYEE_ID)
 		{
 			throw new \InvalidArgumentException($name.' must be a positive integer.');
 		}

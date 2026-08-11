@@ -1,4 +1,5 @@
 <?php
+// 共通サイドバー
 $items = array(
 	'dashboard' => array('ダッシュボード', 'dashboard'),
 	'equipment' => array('備品一覧', 'equipment'),
@@ -11,10 +12,10 @@ if ($is_admin)
 	$items['departments'] = array('部署管理', 'admin/departments');
 }
 
-$link_class = 'd-block mb8 p13_16 c-navy fw600 td-none br6 c-blue-hover ba-blue_light-hover';
+$link_class = 'd-block mb8 pt13 pr16 pb13 pl16 c-navy fw600 td-none br6 c-blue-hover back-blue_light-hover';
 $active_class = $link_class.' c-blue ba-blue_light';
 ?>
-<nav class="p24_14 ba-white br1-border" aria-label="メインメニュー">
+<nav class="pt24 pr14 pb24 pl14 back-white br1-border" aria-label="メインメニュー">
 	<?php foreach ($items as $key => $item): ?>
 		<a
 			class="<?php echo $active_page === $key ? $active_class : $link_class; ?>"

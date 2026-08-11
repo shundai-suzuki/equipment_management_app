@@ -8,7 +8,7 @@ class Model_Table_Department extends Model_BaseCrud
 	/** @var string このモデルが操作するテーブル */
 	protected static $table_name = 'departments';
 
-	/** @var array 部署の新規行で受け付ける登録値 */
+	/** @var array 部署の新規行で指定する登録列 */
 	protected static $create_columns = array('name');
 
 	/** @var array 部署CRUDの読取処理が返す列 */
@@ -20,11 +20,26 @@ class Model_Table_Department extends Model_BaseCrud
 		'deleted_at',
 	);
 
-	/** @var array 部署更新で受け付ける列 */
+	/** @var array 部署更新で指定する列 */
 	protected static $update_columns = array('name');
 
 	/** @var array キーワード検索の対象となる部署列 */
 	protected static $search_columns = array('name');
+
+	/**
+	 * 選択欄で使用する有効な部署一覧を返す。
+	 *
+	 * @return array
+	 */
+	public function read_options()
+	{
+		return \DB::select('id', 'name')
+			->from(static::$table_name)
+			->where('deleted_at', 'IS', null)
+			->order_by('name', 'ASC')
+			->execute($this->db)
+			->as_array();
+	}
 
 	/**
 	 * 論理削除済み行を含め、名称で部署を取得する。

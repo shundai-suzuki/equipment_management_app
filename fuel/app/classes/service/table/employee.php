@@ -1,531 +1,255 @@
 <?php
 
 /**
- * 社員登録規則を適用し、永続化を委譲する。
+ * 社員の業務規則を適用する。
  */
 class Service_Table_Employee extends Service_BaseCrud
 {
-	/** @var int 名前の最大文字数 */
-	const MAX_NAME_LENGTH = 30;
 	/** @var int パスワードの最小バイト数 */
-	const MIN_PASSWORD_BYTES = 12;
+	const MIN_PASSWORD_BYTES = 6;
 	/** @var int パスワードの最大バイト数 */
 	const MAX_PASSWORD_BYTES = 72;
 
-	/** @var string このサービスが登録するテーブル */
-	protected static $table_name = 'employees';
-
-	/** @var Model_Table_Department 選択された部署の検証に使用する部署モデル */
+	/** @var Model_Table_Department 部署を確認するModel */
 	protected $department_model;
 
 	/**
-	 * 社員操作に使用するModelを初期化する。
+	 * 社員と部署のModelを初期化する。
 	 *
-	 * @param  object|null $model            使用する操作対象Model
-	 * @param  object|null $department_model 使用する部署Model
+	 * @param object|null $model            使用する社員Model
+	 * @param object|null $department_model 使用する部署Model
 	 * @return void
 	 */
 	public function __construct($model = null, $department_model = null)
 	{
 		parent::__construct($model);
-
-		if ($department_model !== null and ! is_object($department_model))
-		{
-			throw new \InvalidArgumentException('The department model must be an object.');
-		}
-
-		$this->department_model = $department_model ? $department_model : new Model_Table_Department();
+		$this->department_model = $department_model ?: new Model_Table_Department();
 	}
 
 	/**
-	 * アプリケーション管理の社員番号で社員を登録する。
+	 * 社員を登録する。
 	 *
-	 * @param  string $employee_name         社員名
-	 * @param  int    $department_id         部署ID
-	 * @param  string $role                  社員権限
-	 * @param  string $password              パスワード
-	 * @param  string $password_confirmation 確認用パスワード
+	 * @param mixed $employee_name         社員名
+	 * @param int   $department_id         所属部署ID
+	 * @param mixed $role                  権限
+	 * @param mixed $password              パスワード
+	 * @param mixed $password_confirmation 確認用パスワード
 	 * @return int
 	 */
 	public function create($employee_name, $department_id, $role, $password, $password_confirmation)
 	{
-		$this->assert_positive_id($department_id, 'The department ID');
+		$this->assert_active_department($department_id);
 
-		$employee_name = $this->normalize_name($employee_name);
-		$role = $this->normalize_role($role);
-
-		$password_hash = $this->create_hash_password($password, $password_confirmation);
 		return $this->create_record(array(
-			'employee_name' => $employee_name,
+			'employee_name' => $this->required_text($employee_name),
 			'department_id' => $department_id,
 			'role' => $role,
-			'password_hash' => $password_hash,
+			'password_hash' => $this->create_hash_password(
+				$password,
+				$password_confirmation
+			),
 			'is_active' => 1,
 		));
 	}
 
 	/**
-	 * 管理者を再確認してから社員を登録する。
+	 * 社員の基本情報を更新する。
 	 *
-	 * @param  int    $actor_id              操作する管理者の社員ID
-	 * @param  string $employee_name         社員名
-	 * @param  int    $department_id         部署ID
-	 * @param  string $role                  社員権限
-	 * @param  string $password              パスワード
-	 * @param  string $password_confirmation 確認用パスワード
-	 * @return int
+	 * @param int   $employee_id            対象社員のID
+	 * @param mixed $employee_name 社員名
+	 * @param int   $department_id 所属部署ID
+	 * @param mixed $role          権限
+	 * @return void
 	 */
-	public function create_for_admin($actor_id, $employee_name, $department_id, $role, $password, $password_confirmation)
+	public function update($employee_id, $employee_name, $department_id, $role)
 	{
-		$this->assert_admin_actor($actor_id);
+		$this->assert_positive_id($employee_id);
+		$employee = $this->read($employee_id);
+		$this->assert_active_department($department_id);
 
-		return $this->create($employee_name,
-			$department_id,
-			$role,
-			$password,
-			$password_confirmation
-		);
+		if ((int) $employee['department_id'] !== $department_id
+			and $this->model->has_loan_history($employee_id))
+		{
+			throw new \RuntimeException(
+				'Employees with loan history cannot change departments.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
+
+		if ((int) $employee['is_active'] === 1
+			and $employee['role'] === 'ADMIN'
+			and $role !== 'ADMIN')
+		{
+			$this->assert_not_last_admin($employee);
+		}
+
+		$this->model->update($employee_id, array(
+			'employee_name' => $this->required_text($employee_name),
+			'department_id' => $department_id,
+			'role' => $role,
+		));
 	}
 
 	/**
-	 * 更新可能な社員項目を更新する。
+	 * 未返却貸出のない社員を論理削除する。
 	 *
-	 * @param  int    $actor_id      操作する管理者の社員ID
-	 * @param  int    $id            対象レコードのID
-	 * @param  string $employee_name 社員名
-	 * @param  int    $department_id 部署ID
-	 * @param  string $role          社員権限
-	 * @return array
+	 * @param int $employee_id 対象社員のID
+	 * @return void
 	 */
-	public function update_for_admin($actor_id, $id, $employee_name, $department_id, $role)
+	public function soft_delete($employee_id)
 	{
-		$this->assert_positive_id($id, 'The employee ID');
-		$this->assert_positive_id($department_id, 'The department ID');
-		$employee_name = $this->normalize_name($employee_name);
-		$role = $this->normalize_role($role);
+		$employee = $this->read($employee_id);
 
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id, $employee_name, $department_id, $role)
-			{
-				$this->assert_admin_actor($actor_id, $db);
-				$active_admin_count = $this->model->lock_active_admin_count($db);
-				$employee_before_update = $this->model->read_for_update($id, false, $db);
+		if ($this->model->has_active_loans($employee_id))
+		{
+			throw new \RuntimeException(
+				'Employees with active loans cannot be soft-deleted.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
 
-				if ($employee_before_update === null)
-				{
-					throw new RuntimeException(
-						'The employee was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
-
-				$this->assert_active_department($department_id, $db);
-
-				if ((int) $employee_before_update['department_id'] !== $department_id
-					and $this->model->has_loan_history($id, $db))
-				{
-					throw new RuntimeException(
-						'An employee with lending history cannot change departments.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ((int) $employee_before_update['is_active'] === 1
-					and $employee_before_update['role'] === 'ADMIN'
-					and $role !== 'ADMIN'
-					and $active_admin_count <= 1)
-				{
-					throw new RuntimeException(
-						'The last active administrator cannot lose administrator access.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				return $this->update_and_read_record(
-					$id,
-					array(
-						'employee_name' => $employee_name,
-						'department_id' => $department_id,
-						'role' => $role,
-					),
-					$db
-				);
-			}
-		);
+		$this->assert_not_last_admin($employee);
+		$this->model->soft_delete($employee_id);
 	}
 
 	/**
-	 * 貸出中データがない社員を論理削除する。
+	 * 社員を一時的に無効化する。
 	 *
-	 * @param  int $actor_id 操作する管理者の社員ID
-	 * @param  int $id       対象レコードのID
-	 * @return array
+	 * @param int $employee_id 対象社員のID
+	 * @return void
 	 */
-	public function soft_delete_for_admin($actor_id, $id)
+	public function deactivate($employee_id)
 	{
-		$this->assert_positive_id($id, 'The employee ID');
+		$employee = $this->read($employee_id);
 
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id)
-			{
-				$this->assert_admin_actor($actor_id, $db);
-				$active_admin_count = $this->model->lock_active_admin_count($db);
-				$employee_before_delete = $this->model->read_for_update($id, true, $db);
+		if ((int) $employee['is_active'] === 0)
+		{
+			throw new \RuntimeException(
+				'The employee is already inactive.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
 
-				if ($employee_before_delete === null)
-				{
-					throw new RuntimeException(
-						'The employee was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
+		if ($this->model->has_active_loans($employee_id))
+		{
+			throw new \RuntimeException(
+				'Employees with active loans cannot be deactivated.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
 
-				if ($employee_before_delete['deleted_at'] !== null)
-				{
-					throw new RuntimeException(
-						'The employee is already archived.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ((int) $employee_before_delete['is_active'] === 1
-					and $employee_before_delete['role'] === 'ADMIN'
-					and $active_admin_count <= 1)
-				{
-					throw new RuntimeException(
-						'The last active administrator cannot be archived.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ($this->model->has_active_loans($id, $db))
-				{
-					throw new RuntimeException(
-						'An employee with an active loan cannot be archived.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				return $this->soft_delete_and_read_record($id, $db);
-			}
-		);
+		$this->assert_not_last_admin($employee);
+		$this->model->update_active_state($employee_id, 0);
 	}
 
 	/**
-	 * 社員アカウントを1件一時的に無効化する。
+	 * 社員を再有効化する。
 	 *
-	 * @param  int $actor_id 操作する管理者の社員ID
-	 * @param  int $id       対象レコードのID
-	 * @return array
+	 * @param int $employee_id 対象社員のID
+	 * @return void
 	 */
-	public function deactivate_for_admin($actor_id, $id)
+	public function activate($employee_id)
 	{
-		$this->assert_positive_id($id, 'The employee ID');
+		$employee = $this->read($employee_id);
 
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id)
-			{
-				$this->assert_admin_actor($actor_id, $db);
-				$active_admin_count = $this->model->lock_active_admin_count($db);
-				$employee_before_deactivate = $this->model->read_for_update(
-					$id,
-					false,
-					$db
-				);
+		if ((int) $employee['is_active'] === 1)
+		{
+			throw new \RuntimeException(
+				'The employee is already active.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
 
-				if ($employee_before_deactivate === null)
-				{
-					throw new \RuntimeException(
-						'The employee was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
-
-				if ((int) $employee_before_deactivate['is_active'] === 0)
-				{
-					throw new \RuntimeException(
-						'The employee is already inactive.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ($employee_before_deactivate['role'] === 'ADMIN'
-					and $active_admin_count <= 1)
-				{
-					throw new \RuntimeException(
-						'The last active administrator cannot be deactivated.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				if ($this->model->has_active_loans($id, $db))
-				{
-					throw new \RuntimeException(
-						'An employee with an active loan cannot be deactivated.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				return $this->update_active_state_and_read($id, 0, $db);
-			}
-		);
+		$this->assert_active_department((int) $employee['department_id']);
+		$this->model->update_active_state($employee_id, 1);
 	}
 
 	/**
-	 * 無効な社員アカウントを1件再有効化する。
+	 * 論理削除済み社員を復元する。
 	 *
-	 * @param  int $actor_id 操作する管理者の社員ID
-	 * @param  int $id       対象レコードのID
-	 * @return array
+	 * @param int $employee_id 対象社員のID
+	 * @return void
 	 */
-	public function activate_for_admin($actor_id, $id)
+	public function restore($employee_id)
 	{
-		$this->assert_positive_id($id, 'The employee ID');
+		$this->assert_positive_id($employee_id);
+		$employee = $this->model->read($employee_id, true);
 
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id)
-			{
-				$this->assert_admin_actor($actor_id, $db);
-				$employee_before_activate = $this->model->read_for_update(
-					$id,
-					false,
-					$db
-				);
+		if ($employee === null)
+		{
+			throw new \RuntimeException(
+				'The employee was not found.',
+				static::NOT_FOUND_EXCEPTION_CODE
+			);
+		}
 
-				if ($employee_before_activate === null)
-				{
-					throw new \RuntimeException(
-						'The employee was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
-
-				if ((int) $employee_before_activate['is_active'] === 1)
-				{
-					throw new \RuntimeException(
-						'The employee is already active.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				$this->assert_active_department(
-					(int) $employee_before_activate['department_id'],
-					$db
-				);
-
-				return $this->update_active_state_and_read($id, 1, $db);
-			}
-		);
-	}
-
-	/**
-	 * アカウントを再有効化せずに論理削除済み社員を1件復元する。
-	 *
-	 * @param  int $actor_id 操作する管理者の社員ID
-	 * @param  int $id       対象レコードのID
-	 * @return array
-	 */
-	public function restore_for_admin($actor_id, $id)
-	{
-		$this->assert_positive_id($id, 'The employee ID');
-
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id)
-			{
-				$this->assert_admin_actor($actor_id, $db);
-				$employee_before_restore = $this->model->read_for_update(
-					$id,
-					true,
-					$db
-				);
-
-				if ($employee_before_restore === null)
-				{
-					throw new \RuntimeException(
-						'The employee was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
-
-				if ($employee_before_restore['deleted_at'] === null)
-				{
-					throw new \RuntimeException(
-						'The employee is not archived.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				$this->assert_active_department(
-					(int) $employee_before_restore['department_id'],
-					$db
-				);
-
-				return $this->restore_and_read_record($id, $db);
-			}
-		);
+		$this->assert_active_department((int) $employee['department_id']);
+		$this->restore_record($employee_id);
 	}
 
 	/**
 	 * 認証済み社員本人のパスワードを変更する。
 	 *
-	 * @param  int   $actor_id              操作する管理者の社員ID
-	 * @param  mixed $current_password      現在のパスワード
-	 * @param  mixed $password              パスワード
-	 * @param  mixed $password_confirmation 確認用パスワード
-	 * @return array
+	 * @param int   $employee_id                    対象社員のID
+	 * @param mixed $current_password      現在のパスワード
+	 * @param mixed $password              パスワード
+	 * @param mixed $password_confirmation 確認用パスワード
+	 * @return void
 	 */
-	public function change_own_password($actor_id, $current_password, $password, $password_confirmation)
+	public function change_own_password($employee_id, $current_password, $password, $password_confirmation)
 	{
-		$this->assert_positive_id($actor_id, 'The employee ID');
+		$this->assert_positive_id($employee_id);
+		$password_hash = $this->create_hash_password($password, $password_confirmation);
+		$employee = $this->model->read_for_authentication($employee_id);
 
 		if ( ! is_string($current_password)
-			or $current_password === ''
-			or strlen($current_password) > static::MAX_PASSWORD_BYTES)
-		{
-			throw new \InvalidArgumentException('The current password is invalid.');
-		}
-
-		$password_hash = $this->create_hash_password(
-			$password,
-			$password_confirmation
-		);
-
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $current_password, $password_hash)
-			{
-				$locked_employee = $this->model->read_for_update(
-					$actor_id,
-					false,
-					$db
-				);
-				$employee = $this->model->read_for_authentication(
-					$actor_id,
-					$db
-				);
-
-				if ($locked_employee === null
-					or $employee === null
-					or (int) $employee['is_active'] !== 1
-					or $employee['deleted_at'] !== null
-					or ! password_verify($current_password, $employee['password_hash']))
-				{
-					throw new \RuntimeException(
-						'The current password is invalid.',
-						static::FORBIDDEN_EXCEPTION_CODE
-					);
-				}
-
-				if ($this->model->update_password_hash($actor_id,	$password_hash,	$db) !== 1)
-				{
-					throw new \RuntimeException(
-						'The employee password changed during the update.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				return $this->read_required_record($actor_id, $db);
-			}
-		);
-	}
-
-	/**
-	 * 管理者パスワードを確認してから社員のパスワードを1件再設定する。
-	 *
-	 * @param  int   $actor_id              操作する管理者の社員ID
-	 * @param  int   $id                    対象レコードのID
-	 * @param  mixed $admin_password        管理者確認用パスワード
-	 * @param  mixed $password              パスワード
-	 * @param  mixed $password_confirmation 確認用パスワード
-	 * @return array
-	 */
-	public function reset_password_for_admin($actor_id, $id, $admin_password,	$password, $password_confirmation)
-	{
-		$this->assert_positive_id($id, 'The employee ID');
-
-		if ( ! is_string($admin_password)
-		or $admin_password === ''
-		or strlen($admin_password) > static::MAX_PASSWORD_BYTES)
-		{
-			throw new \InvalidArgumentException('The administrator password is invalid.');
-		}
-
-		$password_hash = $this->create_hash_password(
-			$password,
-			$password_confirmation
-		);
-
-		return $this->model->transaction(
-			function ($db) use ($actor_id, $id, $admin_password, $password_hash)
-			{
-				$this->assert_admin_actor($actor_id, $db);
-				$this->model->lock_active_admin_count($db);
-				$administrator_is_locked = $this->model->read_for_update(
-					$actor_id,
-					false,
-					$db
-				);
-				$administrator = $this->model->read_for_authentication(
-					$actor_id,
-					$db
-				);
-
-				if ($administrator_is_locked === null
-					or $administrator === null
-					or $administrator['role'] !== 'ADMIN'
-					or (int) $administrator['is_active'] !== 1
-					or $administrator['deleted_at'] !== null
-					or ! password_verify($admin_password,	$administrator['password_hash']))
-				{
-					throw new \RuntimeException(
-						'The administrator password is invalid.',
-						static::FORBIDDEN_EXCEPTION_CODE
-					);
-				}
-
-				if ($this->model->read_for_update($id, false, $db) === null)
-				{
-					throw new \RuntimeException(
-						'The employee was not found.',
-						static::NOT_FOUND_EXCEPTION_CODE
-					);
-				}
-
-				if ($this->model->update_password_hash($id,	$password_hash,	$db) !== 1)
-				{
-					throw new \RuntimeException(
-						'The employee password changed during the update.',
-						static::CONFLICT_EXCEPTION_CODE
-					);
-				}
-
-				return $this->read_required_record($id, $db);
-			}
-		);
-	}
-
-	/**
-	 * ロック済みアカウントの状態を変更し、安全な社員行を返す。
-	 *
-	 * @param  int                 $id        対象レコードのID
-	 * @param  int                 $is_active 社員の有効状態
-	 * @param  Database_Connection $db        使用するDB接続
-	 * @return array
-	 */
-	protected function update_active_state_and_read($id, $is_active, \Database_Connection $db)
-	{
-		if ($this->model->update_active_state($id, $is_active, $db) !== 1)
+			or ! $this->is_available_employee($employee)
+			or ! password_verify($current_password, $employee['password_hash']))
 		{
 			throw new \RuntimeException(
-				'The employee state changed during the update.',
-				static::CONFLICT_EXCEPTION_CODE
+				'The current password is invalid.',
+				static::VALIDATION_EXCEPTION_CODE
 			);
 		}
 
-		return $this->read_required_record($id, $db);
+		$this->model->update_password_hash($employee_id, $password_hash);
 	}
 
 	/**
-	 * このサービスで使用する社員モデルを生成する。
+	 * 管理者パスワードを確認して社員パスワードを再設定する。
+	 *
+	 * @param int   $actor_id              操作する管理者のID
+	 * @param int   $employee_id                    対象社員のID
+	 * @param mixed $admin_password        管理者確認用パスワード
+	 * @param mixed $password              パスワード
+	 * @param mixed $password_confirmation 確認用パスワード
+	 * @return void
+	 */
+	public function reset_password($actor_id, $employee_id, $admin_password, $password, $password_confirmation)
+	{
+		$this->assert_positive_id($actor_id);
+		$this->read($employee_id);
+		$administrator = $this->model->read_for_authentication($actor_id);
+
+		if ( ! is_string($admin_password)
+			or ! $this->is_available_employee($administrator)
+			or $administrator['role'] !== 'ADMIN'
+			or ! password_verify($admin_password, $administrator['password_hash']))
+		{
+			throw new \RuntimeException(
+				'The administrator password is invalid.',
+				static::VALIDATION_EXCEPTION_CODE
+			);
+		}
+
+		$this->model->update_password_hash(
+			$employee_id,
+			$this->create_hash_password($password, $password_confirmation)
+		);
+	}
+
+	/**
+	 * このServiceで使用する社員Modelを生成する。
 	 *
 	 * @return Model_Table_Employee
 	 */
@@ -535,122 +259,94 @@ class Service_Table_Employee extends Service_BaseCrud
 	}
 
 	/**
-	 * 登録トランザクション内で部署を再確認する。
+	 * パスワードを確認してハッシュ化する。
 	 *
-	 * @param  array               $create_values 登録する値
-	 * @param  Database_Connection $db            使用するDB接続
-	 * @return void
-	 */
-	protected function before_create(array $create_values, \Database_Connection $db)
-	{
-		$this->assert_active_department($create_values['department_id'], $db);
-	}
-
-	/**
-	 * 社員名を正規化して検証する。
-	 *
-	 * @param  mixed $name 対象の名前
-	 * @return string
-	 */
-	protected function normalize_name($name)
-	{
-		if ( ! is_string($name))
-		{
-			throw new \InvalidArgumentException('The employee name must be a string.');
-		}
-
-		$name = trim($name);
-
-		if ($name === '' or mb_strlen($name, 'UTF-8') > static::MAX_NAME_LENGTH)
-		{
-			throw new \InvalidArgumentException('The employee name must be between 1 and 30 characters.');
-		}
-
-		return $name;
-	}
-
-	/**
-	 * employeesテーブルに保存する権限だけを受け付ける。
-	 *
-	 * @param  mixed $role 社員権限
-	 * @return string
-	 */
-	protected function normalize_role($role)
-	{
-		if ( ! is_string($role))
-		{
-			throw new \InvalidArgumentException('The employee role must be a string.');
-		}
-
-		$role = trim($role);
-
-		if ( ! in_array($role, array('EMPLOYEE', 'ADMIN'), true))
-		{
-			throw new \InvalidArgumentException('The employee role is invalid.');
-		}
-
-		return $role;
-	}
-
-	/**
-	 * パスワードの一致を検証し、そのハッシュだけを返す。
-	 *
-	 * @param  mixed $password     パスワード
-	 * @param  mixed $confirmation 確認用パスワード
+	 * @param mixed $password     パスワード
+	 * @param mixed $confirmation 確認用パスワード
 	 * @return string
 	 */
 	protected function create_hash_password($password, $confirmation)
 	{
-		if ( ! is_string($password) or ! is_string($confirmation))
+		if ( ! is_string($password)
+			or strlen($password) < static::MIN_PASSWORD_BYTES
+			or strlen($password) > static::MAX_PASSWORD_BYTES
+			or ! is_string($confirmation)
+			or ! hash_equals($password, $confirmation))
 		{
-			throw new \InvalidArgumentException('The password and confirmation must be strings.');
+			throw new \InvalidArgumentException('The password is invalid.');
 		}
 
-		$length = strlen($password);
+		$password_hash = password_hash($password, PASSWORD_DEFAULT);
 
-		if ($length < static::MIN_PASSWORD_BYTES or $length > static::MAX_PASSWORD_BYTES)
-		{
-			throw new \InvalidArgumentException('The password must be between 12 and 72 bytes.');
-		}
-
-		if ( ! hash_equals($password, $confirmation))
-		{
-			throw new \InvalidArgumentException('The password confirmation does not match.');
-		}
-
-		$hash = password_hash($password, PASSWORD_DEFAULT);
-
-		if ($hash === false)
+		if ($password_hash === false)
 		{
 			throw new \RuntimeException('Failed to hash the employee password.');
 		}
 
-		return $hash;
+		return $password_hash;
 	}
 
 	/**
-	 * トランザクション更新中に部署を必須としてロックする。
+	 * 指定部署が利用可能か確認する。
 	 *
-	 * @param  int                      $department_id 部署ID
-	 * @param  Database_Connection|null $db            使用するDB接続
+	 * @param int $department_id 所属部署ID
 	 * @return void
 	 */
-	protected function assert_active_department($department_id, $db = null)
+	protected function assert_active_department($department_id)
 	{
-		if ($db instanceof \Database_Connection)
-		{
-			if ($this->department_model->read_for_update($department_id, false, $db) !== null)
-			{
-				return;
-			}
-		}
-		elseif ($this->department_model->is_active($department_id))
-		{
-			return;
-		}
+		$this->assert_positive_id($department_id);
 
-		throw new \InvalidArgumentException(
-			'The selected department is not available.'
-		);
+		if ( ! $this->department_model->is_active($department_id))
+		{
+			throw new \InvalidArgumentException(
+				'The selected department is not available.'
+			);
+		}
+	}
+
+	/**
+	 * 有効な最後の管理者を保護する。
+	 *
+	 * @param array $employee 対象社員
+	 * @return void
+	 */
+	protected function assert_not_last_admin(array $employee)
+	{
+		if ((int) $employee['is_active'] === 1
+			and $employee['role'] === 'ADMIN'
+			and $this->active_admin_count() <= 1)
+		{
+			throw new \RuntimeException(
+				'The last active administrator cannot be changed.',
+				static::CONFLICT_EXCEPTION_CODE
+			);
+		}
+	}
+
+	/**
+	 * 有効な管理者数を取得する。
+	 *
+	 * @return int
+	 */
+	protected function active_admin_count()
+	{
+		return $this->model->transaction(function ($db)
+		{
+			return $this->model->count_active_admins();
+		});
+	}
+
+	/**
+	 * パスワード更新可能な社員状態を確認する。
+	 *
+	 * @param mixed $employee 社員情報
+	 * @return bool
+	 */
+	protected function is_available_employee($employee)
+	{
+		return is_array($employee)
+			and isset($employee['password_hash'], $employee['is_active'])
+			and $employee['deleted_at'] === null
+			and (int) $employee['is_active'] === 1;
 	}
 }

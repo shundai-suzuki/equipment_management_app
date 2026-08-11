@@ -12,9 +12,9 @@
 
 	// 検索条件をURLクエリ文字列へ変換する。
 	function query(parameters) {
-		var values = [];
+		const values = [];
 		Object.keys(parameters || {}).forEach(function (name) {
-			var value = parameters[name];
+			const value = parameters[name];
 			if (value !== '' && value !== null && value !== undefined) {
 				values.push(encodeURIComponent(name) + '=' + encodeURIComponent(value));
 			}

@@ -1,7 +1,7 @@
 <?php
 return array(
 	'_root_' => 'page/site/login',
-	'_404_' => 'welcome/404',
+	'_404_' => 'page/error/not_found',
 
 	'login' => array(
 		array('GET', new Route('page/site/login')),

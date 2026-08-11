@@ -332,7 +332,7 @@ class Service_Table_Employee extends Service_BaseCrud
 	{
 		return $this->model->transaction(function ($db)
 		{
-			return $this->model->lock_active_admin_count($db);
+			return $this->model->count_active_admins();
 		});
 	}
 

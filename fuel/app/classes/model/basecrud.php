@@ -60,11 +60,6 @@ abstract class Model_BaseCrud extends \Model
             ->set($create_values)
             ->execute($db);
 
-        if ( ! isset($result[0], $result[1]) or (int) $result[0] < 1 or (int) $result[1] !== 1)
-        {
-            throw new \RuntimeException('Failed to create the record.');
-        }
-
         return (int) $result[0];
     }
 
@@ -268,7 +263,7 @@ abstract class Model_BaseCrud extends \Model
 	}
 
 	/**
-	 * 1.有効行、2.キーワードによるID・名称検索、3.完全一致（部署、権限、カテゴリ）を適用する。
+	 * 1.有効行、2.キーワードによる名称検索、3.完全一致（部署、権限、カテゴリ）を適用する。
 	 *
 	 * @param  Database_Query_Builder_Where $search_query 検索クエリ
 	 * @param  string                       $keyword      検索キーワード
@@ -279,38 +274,18 @@ abstract class Model_BaseCrud extends \Model
 	{
 		$search_query->where('deleted_at', 'IS', null);
 
-		if ($keyword !== '')
+		if ($keyword !== '' and isset(static::$search_columns[0]))
 		{
-			$search_query->and_where_open();
-			$has_condition = false;
-
-			if (preg_match('/\A[1-9][0-9]*\z/', $keyword) === 1)
-			{
-				$search_query->where('id', '=', (int) $keyword);
-				$has_condition = true;
-			}
-
-			foreach (static::$search_columns as $column)
-			{
-				if ($has_condition)
-				{
-					$search_query->or_where($column, 'LIKE', '%'.$keyword.'%');
-				}
-				else
-				{
-					$search_query->where($column, 'LIKE', '%'.$keyword.'%');
-					$has_condition = true;
-				}
-			}
-
-			$search_query->and_where_close();
+			$search_query->where(static::$search_columns[0], 'LIKE', '%'.$keyword.'%');
 		}
 
 		foreach ($filters as $name => $value)
 		{
 			if ( ! array_key_exists($name, static::$filter_columns))
 			{
-				throw new \InvalidArgumentException('The search filter is not allowed.');
+				throw new \InvalidArgumentException(
+					'The search filter is not allowed.'
+				);
 			}
 
 			$search_query->where(static::$filter_columns[$name], '=', $value);

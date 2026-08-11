@@ -125,8 +125,22 @@ class Controller_Page_Site extends Controller_Page_Base
 			$this->employee_id(),	1, '', array('active_only' => true)
 		);
 
+		$loans = array_map(
+			function (array $loan)
+			{
+				return array(
+					'id' => $loan['id'],
+					'equipment_name' => $loan['equipment_name'],
+					'employee_name' => $loan['employee_name'],
+					'due_date' => $loan['due_date'],
+					'loan_state' => $loan['loan_state'],
+				);
+			},
+			array_slice($search_result['rows'], 0, 6)
+		);
+
 		$this->render_page(
-			'dashboard', 'ダッシュボード', 'dashboard', '', array('loans' => array_slice($search_result['rows'], 0, 6))
+			'dashboard', 'ダッシュボード', 'dashboard', '', array('loans' => $loans)
 		);
 	}
 

@@ -95,7 +95,7 @@ class Inventorysetup
 	 */
 	protected static function read_passwords()
 	{
-		$password_file = __DIR__.DIRECTORY_SEPARATOR.'.env';
+		$password_file = __DIR__.DIRECTORY_SEPARATOR.'demopassword';
 		if ( ! is_file($password_file) or ! is_readable($password_file))
 		{
 			throw new \RuntimeException('The initial-password file is unavailable.');
@@ -274,7 +274,7 @@ class Inventorysetup
 	 * @param Database_Connection $db         使用するDB接続
 	 * @return void
 	 */
-	protected static function insert_loans(array $employees, array $equipments, \Database_Connection $id) 
+	protected static function insert_loans(array $employees, array $equipments, \Database_Connection $db) 
 	{
 		$model = new \Model_Table_Loan($db);
 		$loans = array(

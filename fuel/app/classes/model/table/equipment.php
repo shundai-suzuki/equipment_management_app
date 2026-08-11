@@ -120,9 +120,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 			array(array(\DB::expr('COUNT(*)'), 'total'))
 		);
 		$this->apply_equipment_conditions(
-			$search_count_query,
-			$keyword,
-			$filters
+			$search_count_query, $keyword, $filters
 		);
 		$search_total = (int) $search_count_query
 			->execute($this->db)
@@ -205,7 +203,7 @@ class Model_Table_Equipment extends Model_BaseCrud
 	 */
 	protected function apply_equipment_conditions($query, $keyword, array $filters)
 	{
-		$allowed_filters = array('department_id', 'category', 'available_only');
+		$allowed_filters = array('category', 'available_only');
 
 		if (array_diff(array_keys($filters), $allowed_filters))
 		{
@@ -218,27 +216,13 @@ class Model_Table_Equipment extends Model_BaseCrud
 
 		if ($keyword !== '')
 		{
-			$query->and_where_open();
-
-			if (preg_match('/\A[1-9][0-9]*\z/', $keyword) === 1)
-			{
-				$query->where('equipments.id', '=', (int) $keyword)
-					->or_where('equipments.name', 'LIKE', '%'.$keyword.'%');
-			}
-			else
-			{
-				$query->where('equipments.name', 'LIKE', '%'.$keyword.'%');
-			}
-
-			$query->and_where_close();
+			$query->where('equipments.name', 'LIKE', '%'.$keyword.'%');
 		}
 
 		if (isset($filters['department_id']))
 		{
 			$query->where(
-				'equipments.department_id',
-				'=',
-				$filters['department_id']
+				'equipments.department_id',	'=', $filters['department_id']
 			);
 		}
 
@@ -260,11 +244,9 @@ class Model_Table_Equipment extends Model_BaseCrud
 			{
 				$query->where(
 					\DB::expr(
-						'equipments.total_amount'
-						.' - COALESCE(active_loans.loaned_amount, 0)'
+						'equipments.total_amount - COALESCE(active_loans.loaned_amount, 0)'
 					),
-					'>',
-					0
+					'>', 0
 				);
 			}
 		}
@@ -363,22 +345,17 @@ class Model_Table_Equipment extends Model_BaseCrud
 	}
 
 	/**
-	 * 返却処理に必要な備品行をロックする。
+	 * 返却処理が参照する備品行の存在を確認する。
 	 *
 	 * @param  int                 $id 対象レコードのID
 	 * @param  Database_Connection $db 使用するDB接続
 	 * @return bool
 	 */
-	public function lock_for_return($id, \Database_Connection $db)
+	public function exists_for_return($id, \Database_Connection $db)
 	{
-		$id_column = $this->quoted_column('id', $db);
-		$read_result = \DB::query(
-			'SELECT '.$id_column
-			.' FROM '.$this->quoted_table($db)
-			.' WHERE '.$id_column.' = :id FOR UPDATE',
-			\DB::SELECT
-		)
-			->param('id', $id)
+		$read_result = \DB::select('id')
+			->from(static::$table_name)
+			->where('id', '=', $id)
 			->execute($db);
 
 		return count($read_result) === 1;

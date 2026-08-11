@@ -166,7 +166,7 @@ abstract class Controller_Base extends Controller_Rest
 
 		return $query_value === null or $query_value === ''
 			? null
-			: $this->integer_query_value($value, $name);
+			: $this->integer_value($query_value, $name);
 	}
 
 	/**

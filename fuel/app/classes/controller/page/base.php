@@ -49,6 +49,7 @@ abstract class Controller_Page_Base extends \Controller_Template
 		}
 
 		$data['is_admin'] = $this->is_admin;
+		$data['title'] = $title;
 		$this->template->title = $title;
 		$this->template->active_page = $active_page;
 		$this->template->page_script = $page_script;

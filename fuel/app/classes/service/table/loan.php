@@ -93,7 +93,7 @@ class Service_Table_Loan extends Service_BaseCrud
 
 		return $this->model->transaction(function ($db) use ($actor_id, $employee_id, $equipment_id, $loaned_at, $due_date)
 		{
-			$this->employee_model->lock_active_admin_count($db);
+			$this->employee_model->count_active_admins();
 
 			if ( ! $this->employee_model->is_active_admin($actor_id, $db))
 			{
@@ -103,11 +103,7 @@ class Service_Table_Loan extends Service_BaseCrud
 				);
 			}
 
-			$borrower = $this->employee_model->read_for_update(
-				$employee_id,
-				false,
-				$db
-			);
+			$borrower = $this->employee_model->read($employee_id, false,	$db);
 
 			if ($borrower === null or (int) $borrower['is_active'] !== 1)
 			{
@@ -153,7 +149,7 @@ class Service_Table_Loan extends Service_BaseCrud
 
 		$this->model->transaction(function ($db) use ($actor_id, $id, $note)
 		{
-			$this->employee_model->lock_active_admin_count($db);
+			$this->employee_model->count_active_admins();
 
 			if ( ! $this->employee_model->is_active_admin($actor_id, $db))
 			{
@@ -163,9 +159,9 @@ class Service_Table_Loan extends Service_BaseCrud
 				);
 			}
 
-			$loan_before_lock = $this->model->read_loan($id, $db);
+			$loan = $this->model->read_loan($id, $db);
 
-			if ($loan_before_lock === null)
+			if ($loan === null)
 			{
 				throw new \RuntimeException(
 					'The loan was not found.',
@@ -173,8 +169,8 @@ class Service_Table_Loan extends Service_BaseCrud
 				);
 			}
 
-			if ( ! $this->equipment_model->lock_for_return(
-				$loan_before_lock['equipment_id'],
+			if ( ! $this->equipment_model->exists_for_return(
+				$loan['equipment_id'],
 				$db
 			))
 			{
@@ -184,9 +180,7 @@ class Service_Table_Loan extends Service_BaseCrud
 				);
 			}
 
-			$loan = $this->model->lock_for_return($id, $db);
-
-			if ($loan === null or $loan['returned_at'] !== null)
+			if ($loan['returned_at'] !== null)
 			{
 				throw new \RuntimeException(
 					'The loan cannot be returned.',

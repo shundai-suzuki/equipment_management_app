@@ -21,7 +21,7 @@ class Service_Auth
 	 */
 	public function __construct()
 	{
-		$this->model = $model ?: new Model_Table_Employee();
+		$this->model = new Model_Table_Employee();
 	}
 
 	/**

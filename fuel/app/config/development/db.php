@@ -8,7 +8,7 @@ return array(
 		'type'        => 'mysqli',
 		'connection'  => array(
 			'hostname'   => 'db',
-			'database'   => 'fuelphp',
+			'database'   => 'php_kadai',
 			'username'   => 'root',
 			'password'   => 'root',
 			'persistent' => false,

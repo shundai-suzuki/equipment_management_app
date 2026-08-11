@@ -1,23 +1,22 @@
 (function (window, document, ko, api) {
 	'use strict';
-	var root = document.getElementById('resource-page');
+	const root = document.getElementById('resource-page');
 	if ( ! root || ! ko || ! api) { return; }
 
-	var form = root.querySelector('[data-resource-form]');
-	var actionForm = root.querySelector('[data-resource-action]');
-	var filters = Array.prototype.slice.call(root.querySelectorAll('[data-filter]'));
-	var categoryFilter = root.querySelector('[data-category-filter]');
-	var departments = [];
-	var writeUrl = root.getAttribute('data-write-url');
+	const form = root.querySelector('[data-resource-form]');
+	const actionForm = root.querySelector('[data-resource-action]');
+	const filters = Array.prototype.slice.call(root.querySelectorAll('[data-filter]'));
+	const categoryFilter = root.querySelector('[data-category-filter]');
+	let departments = [];
+	const writeUrl = root.getAttribute('data-write-url');
 
 	try { departments = JSON.parse(root.getAttribute('data-departments')) || []; }
 	catch (error) {}
 
 	function value(row, key) {
-		var item = row[key];
-		var department;
+		const item = row[key];
 		if (key === 'department_id') {
-			department = departments.filter(function (candidate) {
+			const department = departments.filter(function (candidate) {
 				return String(candidate.id) === String(item);
 			})[0];
 			return department ? department.name : '部署ID ' + item;
@@ -45,9 +44,9 @@
 	}
 
 	function parameters(page) {
-		var result = { page: page };
+		const result = { page: page };
 		filters.forEach(function (input) {
-			var key = input.getAttribute('data-filter');
+			const key = input.getAttribute('data-filter');
 			if (input.type === 'checkbox' ? input.checked : input.value !== '') {
 				result[key] = input.type === 'checkbox' ? true : input.value;
 			}
@@ -56,10 +55,10 @@
 	}
 
 	function setCategoryOptions(values) {
-		var selected = categoryFilter.value;
+		const selected = categoryFilter.value;
 		categoryFilter.innerHTML = '';
 		['すべて'].concat(values || []).forEach(function (label, index) {
-			var option = document.createElement('option');
+			const option = document.createElement('option');
 			option.value = index ? label : '';
 			option.text = label;
 			categoryFilter.appendChild(option);
@@ -69,13 +68,13 @@
 
 	function setFormValues(row) {
 		Array.prototype.forEach.call(form.querySelectorAll('[data-field]'), function (input) {
-			var item = row && row[input.name];
+			const item = row && row[input.name];
 			input.value = item === undefined || item === null ? '' : item;
 		});
 	}
 
 	function ResourceViewModel() {
-		var self = this;
+		const self = this;
 		self.rows = ko.observableArray([]);
 		self.currentPage = ko.observable(1);
 		self.total = ko.observable(0);
@@ -102,7 +101,7 @@
 			self.errorMessage('');
 			api.get(root.getAttribute('data-search-url'), parameters(self.currentPage()))
 				.then(function (body) {
-					var pagination = body.meta && body.meta.pagination;
+					const pagination = body.meta && body.meta.pagination;
 					if ( ! Array.isArray(body.data) || ! pagination) {
 						throw new api.ApiError(500, null);
 					}
@@ -156,7 +155,7 @@
 			self.submitAction(row, 'soft_delete', 'このデータを削除しますか？');
 		};
 		self.toggle = function (row) {
-			var active = Number(row.is_active) === 1;
+			const active = Number(row.is_active) === 1;
 			self.submitAction(row, active ? 'deactivate' : 'activate',
 				active ? 'この社員を無効化しますか？' : 'この社員を有効化しますか？');
 		};
@@ -172,8 +171,8 @@
 		};
 	}
 
-	var viewModel = new ResourceViewModel();
-	var searchTimer;
+	const viewModel = new ResourceViewModel();
+	let searchTimer;
 	ko.applyBindings(viewModel, root);
 	filters.forEach(function (input) {
 		input.addEventListener(input.type === 'checkbox' ? 'change' : 'input', function () {

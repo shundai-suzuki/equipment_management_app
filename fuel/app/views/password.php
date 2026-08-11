@@ -1,6 +1,6 @@
 <section class="maw900 m-0_auto">
 	<h1 class="m0 mb24 fs30">パスワード変更</h1>
-	<form class="p32 ba-surface bo1-border br10" method="post" action="<?php echo e(\Uri::create('account/password')); ?>">
+	<form class="p32 back-surface bo1-border br10" method="post" action="<?php echo e(\Uri::create('account/password')); ?>">
 		<?php echo \Form::csrf(); ?>
 		<?php
 		// パスワード変更で表示する入力欄。
@@ -18,7 +18,7 @@
 		<?php endforeach; ?>
 		<p class="mb22 c-muted fs13">新しいパスワードは12バイト以上72バイト以下で入力してください。</p>
 		<div class="d-flex jc-flex_end">
-			<button class="p10_18 fw700 br6 c-white ba-green bo1-green ba-green_dark-hover" type="submit">変更する</button>
+			<button class="pt10 pr18 pb10 pl18 fw700 br6 c-white back-green bo1-green back-green_dark-hover" type="submit">変更する</button>
 		</div>
 	</form>
 </section>

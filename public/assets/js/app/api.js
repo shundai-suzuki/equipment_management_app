@@ -26,7 +26,6 @@
 	async function get(url, parameters) {
 		const response = await window.fetch(url + query(parameters), {
 			method: 'GET',
-			credentials: 'same-origin',
 			headers: { Accept: 'application/json' }
 		});
 		let body;

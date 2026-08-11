@@ -1,4 +1,5 @@
 <?php
+// 各テーブル表示
 $has_actions = $resource === 'equipment' || $is_admin;
 $column_count = count($columns) + ($has_actions ? 1 : 0);
 ?>
@@ -15,23 +16,32 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 >
 	<header class="d-flex ai-center jc-space_between mb24">
 		<h1 class="m0 fs30"><?php echo e($title); ?></h1>
-		<?php if ($is_admin): ?>
+		<?php 
+		// 登録ボタン
+		if ($is_admin): 
+		?>
 			<button
-				class="p10_18 fw700 br6 c-white ba-green bo1-green ba-green_dark-hover"
+				class="pt10 pr18 pb10 pl18 fw700 br6 c-white back-green bo1-green back-green_dark-hover"
 				type="button"
 				data-bind="click: openCreate, enable: ! isSubmitting()"
 			><?php echo e($create_label); ?></button>
 		<?php endif; ?>
 	</header>
 
+	<?php
+	// エラー表示
+	?>
 	<div
 		hidden
-		class="mb18 p13_16 c-red ba-red_light bo1-border br6"
+		class="mb18 pt13 pr16 pb13 pl16 c-red back-red_light bo1-border br6"
 		role="alert"
 		data-bind="attr: { hidden: ! errorMessage() }, text: errorMessage"
 	></div>
 
-	<section class="mb18 p18 ba-white bo1-border br8">
+	<?php
+	// 検索
+	?>
+	<section class="mb18 p18 back-white bo1-border br8">
 		<div class="d-grid gtc4 g16 ai-end">
 			<?php if ($resource === 'equipment'): ?>
 				<label class="d-grid g8 fw600">
@@ -107,18 +117,21 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 			<?php endif; ?>
 		</div>
 		<div class="d-flex jc-flex_end mt16">
-			<button class="p10_18 fw700 br6 c-green ba-white bo1-green" type="button" data-bind="click: clearFilters">条件をクリア</button>
+			<button class="pt10 pr18 pb10 pl18 fw700 br6 c-green back-white bo1-green" type="button" data-bind="click: clearFilters">条件をクリア</button>
 		</div>
 	</section>
 
-	<div class="ba-white bo1-border br8 ov-hidden">
+	<?php
+	// DB表示
+	?>
+	<div class="back-white bo1-border br8 ov-hidden">
 		<table>
 			<thead>
 				<tr>
 					<?php foreach ($columns as $column): ?>
-						<th class="p13_14 ta-left va-middle bb1-border fs13 ba-table_head"><?php echo e($column[1]); ?></th>
+						<th class="pt13 pr14 pb13 pl14 ta-left va-middle bb1-border fs13 back-table_head"><?php echo e($column[1]); ?></th>
 					<?php endforeach; ?>
-					<?php if ($has_actions): ?><th class="p13_14 ta-left va-middle bb1-border fs13 ba-table_head">操作</th><?php endif; ?>
+					<?php if ($has_actions): ?><th class="pt13 pr14 pb13 pl14 ta-left va-middle bb1-border fs13 back-table_head">操作</th><?php endif; ?>
 				</tr>
 			</thead>
 			<tbody aria-live="polite">
@@ -126,34 +139,34 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 					<td class="p40 c-muted ta-center bb1-border" colspan="<?php echo $column_count; ?>">読み込んでいます。</td>
 				</tr>
 				<!-- ko foreach: rows -->
-				<tr class="ba-row_hover-hover">
+				<tr class="back-row_hover-hover">
 					<?php foreach ($columns as $column): ?>
-						<td class="p13_14 ta-left va-middle bb1-border">
+						<td class="pt13 pr14 pb13 pl14 ta-left va-middle bb1-border">
 							<?php if ($column[0] === 'loan_state' or $column[0] === 'is_active'): ?>
-								<span class="d-inline_block p4_9 fs13 fw700 br999" data-bind="text: $root.value($data, '<?php echo e($column[0]); ?>'), css: $root.statusClass($data, '<?php echo e($column[0]); ?>')"></span>
+								<span class="d-inline_block pt4 pr9 pb4 pl9 fs13 fw700 br999" data-bind="text: $root.value($data, '<?php echo e($column[0]); ?>'), css: $root.statusClass($data, '<?php echo e($column[0]); ?>')"></span>
 							<?php else: ?>
 								<span data-bind="text: $root.value($data, '<?php echo e($column[0]); ?>')"></span>
 							<?php endif; ?>
 						</td>
 					<?php endforeach; ?>
 					<?php if ($has_actions): ?>
-						<td class="p13_14 ta-left va-middle bb1-border ws-nowrap">
+						<td class="pt13 pr14 pb13 pl14 ta-left va-middle bb1-border ws-nowrap">
 							<?php if ($resource === 'equipment'): ?>
-								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openView, enable: ! $root.isSubmitting()">詳細</button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-green fs13 fw700 back-white bo1-green br6" type="button" data-bind="click: $root.openView, enable: ! $root.isSubmitting()">詳細</button>
 								<?php if ($is_admin): ?>
-									<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
-									<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
+									<button class="mr6 pt6 pr12 pb6 pl12 c-green fs13 fw700 back-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
+									<button class="mr6 pt6 pr12 pb6 pl12 c-red fs13 fw700 back-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
 								<?php endif; ?>
 							<?php elseif ($resource === 'loans' and $is_admin): ?>
-								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="visible: loan_state !== 'RETURNED', click: $root.returnLoan, enable: ! $root.isSubmitting()">返却</button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-red fs13 fw700 back-white bo1-red br6" type="button" data-bind="visible: loan_state !== 'RETURNED', click: $root.returnLoan, enable: ! $root.isSubmitting()">返却</button>
 							<?php elseif ($resource === 'employees'): ?>
-								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
-								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="text: $root.toggleLabel($data), click: $root.toggle, enable: ! $root.isSubmitting()"></button>
-								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openPassword, enable: ! $root.isSubmitting()">パスワード再設定</button>
-								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-green fs13 fw700 back-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-green fs13 fw700 back-white bo1-green br6" type="button" data-bind="text: $root.toggleLabel($data), click: $root.toggle, enable: ! $root.isSubmitting()"></button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-green fs13 fw700 back-white bo1-green br6" type="button" data-bind="click: $root.openPassword, enable: ! $root.isSubmitting()">パスワード再設定</button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-red fs13 fw700 back-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
 							<?php else: ?>
-								<button class="mr6 p6_12 c-green fs13 fw700 ba-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
-								<button class="mr6 p6_12 c-red fs13 fw700 ba-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-green fs13 fw700 back-white bo1-green br6" type="button" data-bind="click: $root.openEdit, enable: ! $root.isSubmitting()">編集</button>
+								<button class="mr6 pt6 pr12 pb6 pl12 c-red fs13 fw700 back-white bo1-red br6" type="button" data-bind="click: $root.softDelete, enable: ! $root.isSubmitting()">削除</button>
 							<?php endif; ?>
 						</td>
 					<?php endif; ?>
@@ -164,20 +177,23 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 				</tr>
 			</tbody>
 		</table>
-		<div class="d-flex ai-center jc-space_between p14_16">
+		<div class="d-flex ai-center jc-space_between pt14 pr16 pb14 pl16">
 			<span data-bind="text: totalLabel"></span>
 			<div class="d-flex ai-center g12">
-				<button class="p10_18 c-green fw700 ba-white bo1-green br6 cu-default-disabled o04-disabled" type="button" data-bind="click: previousPage, enable: currentPage() > 1 && ! isLoading()">前へ</button>
+				<button class="pt10 pr18 pb10 pl18 c-green fw700 back-white bo1-green br6 cu-default-disabled o04-disabled" type="button" data-bind="click: previousPage, enable: currentPage() > 1 && ! isLoading()">前へ</button>
 				<span data-bind="text: pageLabel"></span>
-				<button class="p10_18 c-green fw700 ba-white bo1-green br6 cu-default-disabled o04-disabled" type="button" data-bind="click: nextPage, enable: currentPage() < totalPages() && ! isLoading()">次へ</button>
+				<button class="pt10 pr18 pb10 pl18 c-green fw700 back-white bo1-green br6 cu-default-disabled o04-disabled" type="button" data-bind="click: nextPage, enable: currentPage() < totalPages() && ! isLoading()">次へ</button>
 			</div>
 		</div>
 	</div>
 
-	<aside class="p-fixed t68 r0 zi10 w430 h-vh68 p26 oy-auto ba-white bl1-border tr100p" data-bind="css: { tr0: drawerOpen }, attr: { 'aria-hidden': drawerOpen() ? 'false' : 'true' }">
-		<header class="p-sticky t0 d-flex ai-center jc-space_between mb24 p20_26 ba-white bb1-border">
+	<?php
+	// ドロワー
+	?>
+	<aside class="p-fixed t68 r0 zi10 w430 h-vh68 p26 oy-auto back-white bl1-border tr100p" data-bind="css: { tr0: drawerOpen }, attr: { 'aria-hidden': drawerOpen() ? 'false' : 'true' }">
+		<header class="p-sticky t0 d-flex ai-center jc-space_between mb24 pt20 pr26 pb20 pl26 back-white bb1-border">
 			<h2 class="m0 fs20" data-bind="text: drawerTitle"></h2>
-			<button class="p4_10 c-navy fs24 ba-transparent bo0" type="button" aria-label="閉じる" data-bind="click: closeDrawer, enable: ! isSubmitting()">×</button>
+			<button class="pt4 pr10 pb4 pl10 c-navy fs24 back-transparent bo0" type="button" aria-label="閉じる" data-bind="click: closeDrawer, enable: ! isSubmitting()">×</button>
 		</header>
 		<form method="post" data-resource-form data-bind="submit: save">
 			<?php echo \Form::csrf(); ?>
@@ -208,9 +224,9 @@ $column_count = count($columns) + ($has_actions ? 1 : 0);
 			<?php else: ?>
 				<label class="d-grid g8 fw600 mb22"><span>部署名</span><input data-field name="name" required maxlength="255"></label>
 			<?php endif; ?>
-			<div class="p-sticky b0 d-flex jc-flex_end g12 mt28 p18_26 ba-white bt1-border">
-				<button class="p10_18 fw700 br6 c-green ba-white bo1-green" type="button" data-bind="click: closeDrawer, enable: ! isSubmitting()">閉じる</button>
-				<button class="p10_18 fw700 br6 c-white ba-green bo1-green ba-green_dark-hover cu-default-disabled o04-disabled" type="submit" data-bind="visible: mode() !== 'view', enable: ! isSubmitting(), text: isSubmitting() ? '送信中…' : '保存する'"></button>
+			<div class="p-sticky b0 d-flex jc-flex_end g12 mt28 pt18 pr26 pb18 pl26 back-white bt1-border">
+				<button class="pt10 pr18 pb10 pl18 fw700 br6 c-green back-white bo1-green" type="button" data-bind="click: closeDrawer, enable: ! isSubmitting()">閉じる</button>
+				<button class="pt10 pr18 pb10 pl18 fw700 br6 c-white back-green bo1-green back-green_dark-hover cu-default-disabled o04-disabled" type="submit" data-bind="visible: mode() !== 'view', enable: ! isSubmitting(), text: isSubmitting() ? '送信中…' : '保存する'"></button>
 			</div>
 		</form>
 	</aside>

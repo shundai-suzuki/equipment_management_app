@@ -1,7 +1,10 @@
 (function (window, document, ko, api) {
 	'use strict';
+
 	const root = document.getElementById('resource-page');
-	if ( ! root || ! ko || ! api) { return; }
+	if ( ! root || ! ko || ! api) { 
+		return; 
+	}
 
 	const form = root.querySelector('[data-resource-form]');
 	const actionForm = root.querySelector('[data-resource-action]');
@@ -10,8 +13,9 @@
 	let departments = [];
 	const writeUrl = root.getAttribute('data-write-url');
 
-	try { departments = JSON.parse(root.getAttribute('data-departments')) || []; }
-	catch (error) {}
+	try { 
+		departments = JSON.parse(root.getAttribute('data-departments')) || []; 
+	}	catch (error) {}
 
 	function value(row, key) {
 		const item = row[key];
@@ -93,7 +97,7 @@
 			return '全' + self.total() + '件';
 		});
 		self.pageLabel = ko.pureComputed(function () {
-			return self.totalPages() ? self.currentPage() + ' / ' + self.totalPages() : '0 / 0';
+			return self.currentPage() + ' / ' + self.totalPages();
 		});
 		self.toggleLabel = function (row) {
 			return Number(row.is_active) === 1 ? '無効化' : '有効化';

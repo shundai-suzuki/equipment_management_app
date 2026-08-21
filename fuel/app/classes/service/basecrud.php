@@ -20,7 +20,6 @@ abstract class Service_BaseCrud
 	/**
 	 * 使用するModelを初期化する。
 	 *
-	 * @param object|null $model 使用する操作対象Model
 	 * @return void
 	 */
 	public function __construct()

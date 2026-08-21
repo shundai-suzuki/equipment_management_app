@@ -41,12 +41,12 @@
 	function statusClass(row, key) {
 		if ((key === 'loan_state' && row[key] === 'OVERDUE')
 			|| (key === 'is_active' && Number(row[key]) !== 1)) {
-			return 'c-red ba-red_light';
+			return 'c-red back-red_light';
 		}
 		if (key === 'loan_state' && row[key] === 'RETURNED') {
-			return 'c-muted ba-background';
+			return 'c-muted back-background';
 		}
-		return 'c-green ba-green_light';
+		return 'c-green back-green_light';
 	}
 
 	function parameters(page) {

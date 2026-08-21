@@ -18,14 +18,13 @@ class Service_Table_Loan extends Service_BaseCrud
 	/**
 	 * 貸出、社員、備品のModelを初期化する。
 	 *
-	 * @param object|null $model           使用する貸出Model
 	 * @param object|null $employee_model  使用する社員Model
 	 * @param object|null $equipment_model 使用する備品Model
 	 * @return void
 	 */
-	public function __construct($model = null, $employee_model = null, $equipment_model = null)
+	public function __construct($employee_model = null, $equipment_model = null)
 	{
-		parent::__construct($model);
+		parent::__construct();
 		$this->employee_model = $employee_model ?: new Model_Table_Employee();
 		$this->equipment_model = $equipment_model ?: new Model_Table_Equipment();
 	}

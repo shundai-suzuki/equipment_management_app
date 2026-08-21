@@ -16,13 +16,12 @@ class Service_Table_Employee extends Service_BaseCrud
 	/**
 	 * 社員と部署のModelを初期化する。
 	 *
-	 * @param object|null $model            使用する社員Model
 	 * @param object|null $department_model 使用する部署Model
 	 * @return void
 	 */
-	public function __construct($model = null, $department_model = null)
+	public function __construct($department_model = null)
 	{
-		parent::__construct($model);
+		parent::__construct();
 		$this->department_model = $department_model ?: new Model_Table_Department();
 	}
 
